@@ -47,6 +47,10 @@ env_value() {
 DOMAIN="$(env_value DOMAIN)"
 GATEWAY_BIND_IP="$(env_value GATEWAY_BIND_IP)"
 GATEWAY_BIND_IP="${GATEWAY_BIND_IP:-127.0.0.1}"
+NGINX_ACTIVE=false
+if systemctl is-active --quiet nginx; then
+  NGINX_ACTIVE=true
+fi
 DOMAIN_IS_PLACEHOLDER=false
 if [ -z "${DOMAIN}" ] || [ "${DOMAIN}" = "api.yourdomain.com" ]; then
   DOMAIN_IS_PLACEHOLDER=true
@@ -59,14 +63,10 @@ echo "===================================="
 check "PostgreSQL"       systemctl is-active --quiet postgresql
 check "Redis"            systemctl is-active --quiet redis-server
 check "RabbitMQ"         systemctl is-active --quiet rabbitmq-server
-if [ "${DOMAIN_IS_PLACEHOLDER}" = "true" ] || [ "${GATEWAY_BIND_IP}" = "0.0.0.0" ]; then
-  if systemctl is-active --quiet nginx; then
-    ok "Nginx"
-  else
-    warn "Nginx skipped (direct gateway or placeholder domain)"
-  fi
+if [ "${NGINX_ACTIVE}" = "false" ]; then
+  warn "Nginx skipped (gateway direct mode)"
 else
-  check "Nginx" systemctl is-active --quiet nginx
+  ok "Nginx"
 fi
 check "PgBouncer auth"   systemctl is-active --quiet pgbouncer-auth
 check "PgBouncer user"   systemctl is-active --quiet pgbouncer-user
@@ -93,11 +93,11 @@ echo "  GATEWAY + HTTPS"
 echo "===================================="
 check "Gateway HTTP" curl -sf http://127.0.0.1:8080/health -o /dev/null
 
-if [ "${DOMAIN_IS_PLACEHOLDER}" = "false" ]; then
+if [ "${NGINX_ACTIVE}" = "true" ] && [ "${DOMAIN_IS_PLACEHOLDER}" = "false" ]; then
   check "HTTPS responds" curl -sf --max-time 10 "https://${DOMAIN}/health" -o /dev/null
   check "TLS cert valid" curl -sf --max-time 10 "https://${DOMAIN}/health" -o /dev/null
 else
-  warn "HTTPS skipped (DOMAIN is not configured)"
+  warn "HTTPS skipped (Nginx/domain is not configured)"
 fi
 
 echo ""

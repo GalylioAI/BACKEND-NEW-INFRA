@@ -33,12 +33,11 @@ APP_DOCKER_SUBNET="${APP_DOCKER_SUBNET:-172.18.0.0/16}"
 APP_DOCKER_GATEWAY="$(get_env_value APP_DOCKER_GATEWAY)"
 APP_DOCKER_GATEWAY="${APP_DOCKER_GATEWAY:-172.18.0.1}"
 GATEWAY_BIND_IP="$(get_env_value GATEWAY_BIND_IP)"
-if [ -z "${GATEWAY_BIND_IP}" ]; then
-  if systemctl is-active --quiet nginx; then
-    GATEWAY_BIND_IP="127.0.0.1"
-  else
-    GATEWAY_BIND_IP="0.0.0.0"
-  fi
+if systemctl is-active --quiet nginx; then
+  GATEWAY_BIND_IP="${GATEWAY_BIND_IP:-127.0.0.1}"
+else
+  GATEWAY_BIND_IP="0.0.0.0"
+  echo "Nginx is not active; exposing api-gateway on 0.0.0.0:8080 for direct IP testing."
 fi
 
 export APP_INTERNAL_NETWORK APP_DOCKER_SUBNET APP_DOCKER_GATEWAY GATEWAY_BIND_IP

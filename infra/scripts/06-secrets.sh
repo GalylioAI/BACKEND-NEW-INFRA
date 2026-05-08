@@ -20,8 +20,9 @@ APP_INTERNAL_NETWORK=app_internal
 APP_DOCKER_SUBNET=172.18.0.0/16
 APP_DOCKER_GATEWAY=172.18.0.1
 
-# Use 127.0.0.1 when Nginx is installed. Use 0.0.0.0 only for temporary IP-based testing.
-# If using 0.0.0.0, open the port once on the VPS: sudo ufw allow 8080/tcp
+# Deploy uses 127.0.0.1 when Nginx is active.
+# If Nginx is not active, deploy overrides this to 0.0.0.0 for direct IP testing.
+# For direct IP testing, open the port once on the VPS: sudo ufw allow 8080/tcp
 GATEWAY_BIND_IP=127.0.0.1
 
 # --- Domain and cookies ---
