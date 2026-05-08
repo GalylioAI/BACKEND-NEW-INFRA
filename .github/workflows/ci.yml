@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-go:
+    name: Go Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Sync Go workspace
+        run: go work sync
+
+      - name: Run Go tests
+        run: |
+          go test \
+            ./shared/... \
+            ./api-gateway/... \
+            ./auth-service/... \
+            ./user-service/... \
+            ./otp-service/... \
+            ./favorites-service/... \
+            ./alerts-service/... \
+            -v -race -count=1 -timeout 120s
+
+  test-python:
+    name: Python Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: mail-service/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r mail-service/requirements.txt
+
+      - name: Run mail service tests
+        run: |
+          cd mail-service
+          python -m unittest discover -s tests -v
+
+  validate-compose:
+    name: Validate Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate production compose syntax
+        run: |
+          IMAGE_TAG=test \
+          JWT_ISSUER=test JWT_AUDIENCE=test \
+          CORS_ALLOWED_ORIGINS=https://test.com \
+          AUTH_DB_PASSWORD=test USER_DB_PASSWORD=test OTP_DB_PASSWORD=test \
+          FAVORITES_DB_PASSWORD=test ALERTS_DB_PASSWORD=test \
+          AUTH_DB_MIGRATION_URL=postgres://u:p@host.docker.internal:5432/auth_db?sslmode=disable \
+          USER_DB_MIGRATION_URL=postgres://u:p@host.docker.internal:5432/user_db?sslmode=disable \
+          OTP_DB_MIGRATION_URL=postgres://u:p@host.docker.internal:5432/otp_db?sslmode=disable \
+          FAVORITES_DB_MIGRATION_URL=postgres://u:p@host.docker.internal:5432/favorites_db?sslmode=disable \
+          ALERTS_DB_MIGRATION_URL=postgres://u:p@host.docker.internal:5432/alerts_db?sslmode=disable \
+          RABBITMQ_URL=amqp://u:p@host.docker.internal:5672/ \
+          REDIS_URL_GATEWAY=redis://:p@host.docker.internal:6379/0 \
+          REDIS_URL_MAIL=redis://:p@host.docker.internal:6379/1 \
+          INTERNAL_SECRET=test \
+          GOOGLE_CLIENT_ID=test GOOGLE_CLIENT_SECRET=test \
+          COOKIE_DOMAIN=.test.com COOKIE_SECURE=true \
+          JWT_ACCESS_EXPIRY=15m JWT_REFRESH_EXPIRY=720h \
+          SMTP_HOST=smtp.test.com SMTP_PORT=587 \
+          SMTP_USER=test SMTP_PASS=test \
+          MAIL_FROM=test@test.com \
+          docker compose -f docker-compose.prod.yml config --quiet

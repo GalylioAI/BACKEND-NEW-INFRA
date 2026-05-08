@@ -1,0 +1,70 @@
+package proxy
+
+import (
+	"net"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
+	"time"
+
+	"backend/shared/apperr"
+	"backend/shared/httpjson"
+	"backend/shared/middleware"
+
+	"github.com/rs/zerolog"
+)
+
+func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) http.Handler {
+	target, err := url.Parse(targetURL)
+	if err != nil {
+		panic(err)
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.Transport = &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   3 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ResponseHeaderTimeout: 10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   10,
+		IdleConnTimeout:       90 * time.Second,
+	}
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		req.Host = target.Host
+		req.Header.Del("Authorization")
+		req.Header.Set(middleware.HeaderInternalSecret, internalSecret)
+		req.Header.Set("X-Forwarded-For", forwardedFor(req))
+		req.Header.Set("X-Forwarded-Proto", "http")
+	}
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		if strings.Contains(err.Error(), "request body too large") {
+			httpjson.WriteError(w, r, apperr.New(http.StatusRequestEntityTooLarge, "PAYLOAD_TOO_LARGE", "Request body is too large."))
+			return
+		}
+		logger.Error().
+			Str("request_id", r.Header.Get("X-Request-Id")).
+			Str("target", target.Host).
+			Err(err).
+			Msg("upstream_error")
+		httpjson.WriteError(w, r, apperr.New(http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "The requested service is temporarily unavailable."))
+	}
+	return proxy
+}
+
+func forwardedFor(req *http.Request) string {
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		host = req.RemoteAddr
+	}
+	existing := req.Header.Get("X-Forwarded-For")
+	if strings.TrimSpace(existing) == "" {
+		return host
+	}
+	return existing + ", " + host
+}

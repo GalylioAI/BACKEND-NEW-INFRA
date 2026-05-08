@@ -1,0 +1,29 @@
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+CREATE TABLE alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  product_id UUID NOT NULL,
+  type VARCHAR(30) NOT NULL CHECK (type IN ('price_drop', 'price_above', 'back_in_stock', 'discount')),
+  threshold NUMERIC(12, 2),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  triggered_at TIMESTAMPTZ,
+  deleted_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_alerts_user_id ON alerts(user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_alerts_product_type_active ON alerts(product_id, type) WHERE is_active = true AND deleted_at IS NULL;
+CREATE INDEX idx_alerts_user_product ON alerts(user_id, product_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE alert_outbox (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  alert_id UUID NOT NULL,
+  event_type VARCHAR(60) NOT NULL,
+  payload JSONB NOT NULL,
+  published BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_alert_outbox_unpublished ON alert_outbox(created_at) WHERE published = false;

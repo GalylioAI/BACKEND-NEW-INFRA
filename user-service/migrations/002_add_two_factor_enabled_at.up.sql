@@ -1,0 +1,2 @@
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS two_factor_enabled_at TIMESTAMPTZ;

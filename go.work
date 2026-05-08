@@ -1,0 +1,11 @@
+go 1.23
+
+use (
+	./alerts-service
+	./api-gateway
+	./auth-service
+	./favorites-service
+	./otp-service
+	./shared
+	./user-service
+)

@@ -1,0 +1,266 @@
+# Production Docker Compose - stateless application containers only.
+# PostgreSQL, Redis, RabbitMQ, PgBouncer, and Nginx run on the VPS host.
+
+x-common: &common
+  restart: unless-stopped
+  logging:
+    driver: "json-file"
+    options:
+      max-size: "50m"
+      max-file: "5"
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
+x-db-pool: &db_pool
+  DB_HOST: host.docker.internal
+  DB_MAX_OPEN_CONNS: "5"
+  DB_MAX_IDLE_CONNS: "2"
+
+networks:
+  internal:
+    driver: bridge
+  gateway-net:
+    driver: bridge
+
+services:
+  api-gateway:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/api-gateway:${IMAGE_TAG}
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      APP_PORT: "8080"
+      APP_ENV: production
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      RS256_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      OTP_SERVICE_URL: http://otp-service:8083
+      FAVORITES_SERVICE_URL: http://favorites-service:8084
+      ALERTS_SERVICE_URL: http://alerts-service:8085
+      REDIS_URL: ${REDIS_URL_GATEWAY}
+    secrets:
+      - source: jwt_public
+        target: jwt_public.pem
+    depends_on:
+      - auth-service
+      - user-service
+      - otp-service
+      - favorites-service
+      - alerts-service
+    networks:
+      - internal
+      - gateway-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
+  auth-service:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/auth-service:${IMAGE_TAG}
+    environment:
+      <<: *db_pool
+      APP_PORT: "8081"
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      DB_PORT: "6433"
+      DB_NAME: auth_db
+      DB_USER: auth_user
+      DB_PASSWORD: ${AUTH_DB_PASSWORD}
+      MIGRATION_DATABASE_URL: ${AUTH_DB_MIGRATION_URL}
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_private.pem
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      USER_SERVICE_URL: http://user-service:8082
+      OTP_SERVICE_URL: http://otp-service:8083
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      COOKIE_SECURE: ${COOKIE_SECURE}
+    secrets:
+      - source: jwt_private
+        target: jwt_private.pem
+      - source: jwt_public
+        target: jwt_public.pem
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+
+  user-service:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/user-service:${IMAGE_TAG}
+    environment:
+      <<: *db_pool
+      APP_PORT: "8082"
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      DB_PORT: "6434"
+      DB_NAME: user_db
+      DB_USER: user_user
+      DB_PASSWORD: ${USER_DB_PASSWORD}
+      MIGRATION_DATABASE_URL: ${USER_DB_MIGRATION_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      AUTH_SERVICE_URL: http://auth-service:8081
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+  otp-service:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/otp-service:${IMAGE_TAG}
+    environment:
+      <<: *db_pool
+      APP_PORT: "8083"
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      DB_PORT: "6435"
+      DB_NAME: otp_db
+      DB_USER: otp_user
+      DB_PASSWORD: ${OTP_DB_PASSWORD}
+      MIGRATION_DATABASE_URL: ${OTP_DB_MIGRATION_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      USER_SERVICE_URL: http://user-service:8082
+      AUTH_SERVICE_URL: http://auth-service:8081
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      JWT_ISSUER: ${JWT_ISSUER}
+      JWT_AUDIENCE: ${JWT_AUDIENCE}
+    secrets:
+      - source: jwt_public
+        target: jwt_public.pem
+    depends_on:
+      - auth-service
+      - user-service
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+  favorites-service:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/favorites-service:${IMAGE_TAG}
+    environment:
+      <<: *db_pool
+      APP_PORT: "8084"
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      DB_PORT: "6436"
+      DB_NAME: favorites_db
+      DB_USER: favorites_user
+      DB_PASSWORD: ${FAVORITES_DB_PASSWORD}
+      MIGRATION_DATABASE_URL: ${FAVORITES_DB_MIGRATION_URL}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+  alerts-service:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/alerts-service:${IMAGE_TAG}
+    environment:
+      <<: *db_pool
+      APP_PORT: "8085"
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS}
+      DB_PORT: "6437"
+      DB_NAME: alerts_db
+      DB_USER: alerts_user
+      DB_PASSWORD: ${ALERTS_DB_PASSWORD}
+      MIGRATION_DATABASE_URL: ${ALERTS_DB_MIGRATION_URL}
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      USER_SERVICE_URL: http://user-service:8082
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+  mail-service:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/mail-service:${IMAGE_TAG}
+    environment:
+      RABBITMQ_URL: ${RABBITMQ_URL}
+      REDIS_URL: ${REDIS_URL_MAIL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      MAIL_FROM: ${MAIL_FROM}
+    networks:
+      - internal
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
+
+secrets:
+  jwt_private:
+    file: /etc/app/secrets/keys/private.pem
+  jwt_public:
+    file: /etc/app/secrets/keys/public.pem

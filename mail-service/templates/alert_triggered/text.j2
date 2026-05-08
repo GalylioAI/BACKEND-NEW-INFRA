@@ -1,0 +1,9 @@
+Product alert
+
+Hi {{ full_name }},
+
+Your {{ alert_type }} alert for {{ product_name }} was triggered.
+{% if threshold is not none %}Threshold: {{ threshold }}{% endif %}
+{% if current_value is not none %}Current value: {{ current_value }}{% endif %}
+
+If you did not request this, ignore this email.

@@ -1,0 +1,12 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    schema: "sqlc/schema.sql"
+    queries:
+      - "sqlc/queries/otp.sql"
+      - "sqlc/queries/reset.sql"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/repository/sqlc"
+        sql_package: "pgx/v5"

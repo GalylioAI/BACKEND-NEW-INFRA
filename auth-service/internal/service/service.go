@@ -1,0 +1,254 @@
+package service
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"net/http"
+	"time"
+
+	"backend/auth-service/internal/client"
+	"backend/auth-service/internal/domain"
+	authjwt "backend/auth-service/internal/jwt"
+	"backend/auth-service/internal/repository"
+	"backend/shared/apperr"
+	"backend/shared/password"
+	"backend/shared/token"
+
+	"github.com/google/uuid"
+	"google.golang.org/api/idtoken"
+)
+
+type Service struct {
+	repo          repository.Repository
+	userClient    client.UserClient
+	otpClient     client.OTPClient
+	jwtManager    *authjwt.Manager
+	google        GoogleVerifier
+	refreshExpiry time.Duration
+}
+
+type GoogleVerifier interface {
+	Verify(ctx context.Context, idToken string) (GoogleClaims, error)
+}
+
+type GoogleClaims struct {
+	Email   string
+	Name    string
+	Picture string
+}
+
+type GoogleIDTokenVerifier struct {
+	ClientID string
+}
+
+func (v GoogleIDTokenVerifier) Verify(ctx context.Context, raw string) (GoogleClaims, error) {
+	if v.ClientID == "" {
+		return GoogleClaims{}, fmt.Errorf("GOOGLE_CLIENT_ID is required")
+	}
+	payload, err := idtoken.Validate(ctx, raw, v.ClientID)
+	if err != nil {
+		return GoogleClaims{}, err
+	}
+	claims := GoogleClaims{}
+	if email, ok := payload.Claims["email"].(string); ok {
+		claims.Email = email
+	}
+	if name, ok := payload.Claims["name"].(string); ok {
+		claims.Name = name
+	}
+	if picture, ok := payload.Claims["picture"].(string); ok {
+		claims.Picture = picture
+	}
+	if claims.Email == "" {
+		return GoogleClaims{}, fmt.Errorf("google token did not include email")
+	}
+	return claims, nil
+}
+
+type LoginResult struct {
+	AccessToken           string    `json:"access_token,omitempty"`
+	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at,omitempty"`
+	TwoFactorRequired     bool      `json:"two_factor_required,omitempty"`
+	TwoFactorSessionToken string    `json:"two_factor_session_token,omitempty"`
+}
+
+func New(repo repository.Repository, userClient client.UserClient, otpClient client.OTPClient, jwtManager *authjwt.Manager, google GoogleVerifier, refreshExpiry time.Duration) *Service {
+	if otpClient == nil {
+		otpClient = client.NoopOTPClient{}
+	}
+	return &Service{repo: repo, userClient: userClient, otpClient: otpClient, jwtManager: jwtManager, google: google, refreshExpiry: refreshExpiry}
+}
+
+type ManualLoginRequest struct {
+	Identifier string `json:"identifier"`
+	Password   string `json:"password"`
+}
+
+func (s *Service) ManualLogin(ctx context.Context, req ManualLoginRequest, deviceInfo string, ip net.IP) (LoginResult, domain.Tokens, error) {
+	user, err := s.userClient.LookupCredential(ctx, req.Identifier)
+	if err != nil {
+		return LoginResult{}, domain.Tokens{}, apperr.InvalidCredentials()
+	}
+	now := time.Now().UTC()
+	if user.IsBanned {
+		return LoginResult{}, domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	if user.LockedUntil != nil && user.LockedUntil.After(now) {
+		return LoginResult{}, domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountLocked, "This account is temporarily locked. Please try again later.")
+	}
+	if !user.IsVerified {
+		return LoginResult{}, domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountNotVerified, "Please verify your account before logging in.")
+	}
+	if user.AuthProvider == domain.ProviderGoogle {
+		return LoginResult{}, domain.Tokens{}, apperr.New(http.StatusConflict, apperr.CodeUseGoogleLogin, "Please sign in with Google.")
+	}
+	if user.PasswordHash == nil {
+		return LoginResult{}, domain.Tokens{}, apperr.InvalidCredentials()
+	}
+	ok, verifyErr := password.Verify(req.Password, *user.PasswordHash)
+	if verifyErr != nil || !ok {
+		_ = s.userClient.RecordLoginFailure(ctx, user.ID, user.FailedLoginAttempts)
+		return LoginResult{}, domain.Tokens{}, apperr.InvalidCredentials()
+	}
+	if user.TwoFactorEnabled {
+		sessionToken, _, err := s.jwtManager.IssuePendingTwoFactor(user.ID, "login", 5*time.Minute)
+		if err != nil {
+			return LoginResult{}, domain.Tokens{}, err
+		}
+		if err := s.otpClient.SendLogin2FA(ctx, user.ID); err != nil {
+			return LoginResult{}, domain.Tokens{}, err
+		}
+		return LoginResult{TwoFactorRequired: true, TwoFactorSessionToken: sessionToken}, domain.Tokens{}, nil
+	}
+	tokens, err := s.issueTokenPair(ctx, user, deviceInfo, ip)
+	if err != nil {
+		return LoginResult{}, domain.Tokens{}, err
+	}
+	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	return LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}, tokens, nil
+}
+
+func (s *Service) GoogleLogin(ctx context.Context, idToken string, deviceInfo string, ip net.IP) (LoginResult, domain.Tokens, error) {
+	claims, err := s.google.Verify(ctx, idToken)
+	if err != nil {
+		return LoginResult{}, domain.Tokens{}, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidGoogleToken, "Google login token is invalid.")
+	}
+	user, _, err := s.userClient.GetOrCreateGoogle(ctx, claims.Email, claims.Name, claims.Picture)
+	if err != nil {
+		return LoginResult{}, domain.Tokens{}, err
+	}
+	if user.IsBanned {
+		return LoginResult{}, domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	tokens, err := s.issueTokenPair(ctx, user, deviceInfo, ip)
+	if err != nil {
+		return LoginResult{}, domain.Tokens{}, err
+	}
+	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	return LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}, tokens, nil
+}
+
+func (s *Service) Refresh(ctx context.Context, rawRefreshToken string, deviceInfo string, ip net.IP) (domain.Tokens, error) {
+	if rawRefreshToken == "" {
+		return domain.Tokens{}, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidRefreshToken, "Refresh token is invalid.")
+	}
+	newRefresh, err := token.RandomURL(32)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	userID, _, err := s.repo.RotateRefreshToken(ctx, token.SHA256(rawRefreshToken), token.SHA256(newRefresh), deviceInfo, ip, time.Now().UTC().Add(s.refreshExpiry))
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	user, err := s.userClient.GetByID(ctx, userID)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	if user.IsBanned {
+		_ = s.repo.RevokeAllRefreshTokens(ctx, user.ID)
+		return domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	access, expiresAt, err := s.jwtManager.IssueAccess(user)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	return domain.Tokens{AccessToken: access, ExpiresAt: expiresAt, RefreshToken: newRefresh}, nil
+}
+
+func (s *Service) Logout(ctx context.Context, rawRefreshToken string) error {
+	if rawRefreshToken == "" {
+		return nil
+	}
+	return s.repo.RevokeRefreshToken(ctx, token.SHA256(rawRefreshToken))
+}
+
+func (s *Service) LogoutAll(ctx context.Context, userID uuid.UUID) error {
+	return s.repo.RevokeAllRefreshTokens(ctx, userID)
+}
+
+func (s *Service) CompleteTwoFactor(ctx context.Context, sessionToken string, deviceInfo string, ip net.IP) (domain.Tokens, error) {
+	userID, err := s.repo.ConsumeTwoFactorSession(ctx, token.SHA256(sessionToken))
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	user, err := s.userClient.GetByID(ctx, userID)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	tokens, err := s.issueTokenPair(ctx, user, deviceInfo, ip)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	return tokens, nil
+}
+
+func (s *Service) IssueTokenPairForUser(ctx context.Context, userID uuid.UUID, deviceInfo string, ip net.IP) (domain.Tokens, error) {
+	user, err := s.userClient.GetByID(ctx, userID)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	if user.IsBanned {
+		return domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	tokens, err := s.issueTokenPair(ctx, user, deviceInfo, ip)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	return tokens, nil
+}
+
+func (s *Service) IssuePendingTwoFactor(ctx context.Context, userID uuid.UUID, contextValue string) (string, time.Time, error) {
+	if contextValue != "login" && contextValue != "2fa_enable" {
+		return "", time.Time{}, apperr.New(http.StatusUnprocessableEntity, apperr.CodeValidationError, "Invalid 2FA context.")
+	}
+	user, err := s.userClient.GetByID(ctx, userID)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	if user.IsBanned {
+		return "", time.Time{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	return s.jwtManager.IssuePendingTwoFactor(userID, contextValue, 5*time.Minute)
+}
+
+func (s *Service) Ping(ctx context.Context) error {
+	return s.repo.Ping(ctx)
+}
+
+func (s *Service) issueTokenPair(ctx context.Context, user domain.User, deviceInfo string, ip net.IP) (domain.Tokens, error) {
+	refreshToken, err := token.RandomURL(32)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	accessToken, expiresAt, err := s.jwtManager.IssueAccess(user)
+	if err != nil {
+		return domain.Tokens{}, err
+	}
+	if err := s.repo.CreateRefreshToken(ctx, user.ID, token.SHA256(refreshToken), deviceInfo, ip, time.Now().UTC().Add(s.refreshExpiry)); err != nil {
+		return domain.Tokens{}, err
+	}
+	return domain.Tokens{AccessToken: accessToken, ExpiresAt: expiresAt, RefreshToken: refreshToken}, nil
+}

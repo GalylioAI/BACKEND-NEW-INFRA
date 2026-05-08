@@ -1,0 +1,626 @@
+name: backend-go-py
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "5"
+
+x-common: &common
+  restart: unless-stopped
+  logging: *default-logging
+
+x-resources-gateway: &resources-gateway
+  resources:
+    limits:
+      cpus: "0.50"
+      memory: 512M
+    reservations:
+      cpus: "0.10"
+      memory: 64M
+
+x-resources-service: &resources-service
+  resources:
+    limits:
+      cpus: "0.25"
+      memory: 256M
+    reservations:
+      cpus: "0.10"
+      memory: 64M
+
+x-resources-auth: &resources-auth
+  resources:
+    limits:
+      cpus: "0.50"
+      memory: 256M
+    reservations:
+      cpus: "0.10"
+      memory: 64M
+
+x-resources-small: &resources-small
+  resources:
+    limits:
+      cpus: "0.25"
+      memory: 128M
+    reservations:
+      cpus: "0.10"
+      memory: 64M
+
+x-resources-db: &resources-db
+  resources:
+    limits:
+      cpus: "0.50"
+      memory: 512M
+    reservations:
+      cpus: "0.10"
+      memory: 64M
+
+x-resources-redis: &resources-redis
+  resources:
+    limits:
+      cpus: "0.25"
+      memory: 256M
+    reservations:
+      cpus: "0.10"
+      memory: 64M
+
+x-resources-pgbouncer: &resources-pgbouncer
+  resources:
+    limits:
+      cpus: "0.10"
+      memory: 64M
+    reservations:
+      cpus: "0.05"
+      memory: 32M
+
+services:
+  postgres-user:
+    <<: *common
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user_user
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-user_pass}
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_user -d user_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-db
+    networks: [internal-net]
+
+  postgres-auth:
+    <<: *common
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: auth_user
+      POSTGRES_PASSWORD: ${AUTH_DB_PASSWORD:-auth_pass}
+    volumes:
+      - postgres_auth_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth_user -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-db
+    networks: [internal-net]
+
+  postgres-otp:
+    <<: *common
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: otp_db
+      POSTGRES_USER: otp_user
+      POSTGRES_PASSWORD: ${OTP_DB_PASSWORD:-otp_pass}
+    volumes:
+      - postgres_otp_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U otp_user -d otp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-db
+    networks: [internal-net]
+
+  postgres-favorites:
+    <<: *common
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: favorites_db
+      POSTGRES_USER: favorites_user
+      POSTGRES_PASSWORD: ${FAVORITES_DB_PASSWORD:-favorites_pass}
+    volumes:
+      - postgres_favorites_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U favorites_user -d favorites_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-db
+    networks: [internal-net]
+
+  postgres-alerts:
+    <<: *common
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: alerts_db
+      POSTGRES_USER: alerts_user
+      POSTGRES_PASSWORD: ${ALERTS_DB_PASSWORD:-alerts_pass}
+    volumes:
+      - postgres_alerts_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alerts_user -d alerts_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-db
+    networks: [internal-net]
+
+  pgbouncer-user:
+    <<: *common
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres-user
+      DB_PORT: 5432
+      DB_NAME: user_db
+      DB_USER: user_user
+      DB_PASSWORD: ${USER_DB_PASSWORD:-user_pass}
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U user_user -d user_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-pgbouncer
+    networks: [internal-net]
+
+  pgbouncer-auth:
+    <<: *common
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_NAME: auth_db
+      DB_USER: auth_user
+      DB_PASSWORD: ${AUTH_DB_PASSWORD:-auth_pass}
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+    depends_on:
+      postgres-auth:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U auth_user -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-pgbouncer
+    networks: [internal-net]
+
+  pgbouncer-otp:
+    <<: *common
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres-otp
+      DB_PORT: 5432
+      DB_NAME: otp_db
+      DB_USER: otp_user
+      DB_PASSWORD: ${OTP_DB_PASSWORD:-otp_pass}
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+    depends_on:
+      postgres-otp:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U otp_user -d otp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-pgbouncer
+    networks: [internal-net]
+
+  pgbouncer-favorites:
+    <<: *common
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres-favorites
+      DB_PORT: 5432
+      DB_NAME: favorites_db
+      DB_USER: favorites_user
+      DB_PASSWORD: ${FAVORITES_DB_PASSWORD:-favorites_pass}
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+    depends_on:
+      postgres-favorites:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U favorites_user -d favorites_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-pgbouncer
+    networks: [internal-net]
+
+  pgbouncer-alerts:
+    <<: *common
+    image: edoburu/pgbouncer:latest
+    environment:
+      DB_HOST: postgres-alerts
+      DB_PORT: 5432
+      DB_NAME: alerts_db
+      DB_USER: alerts_user
+      DB_PASSWORD: ${ALERTS_DB_PASSWORD:-alerts_pass}
+      AUTH_TYPE: scram-sha-256
+      LISTEN_PORT: 6432
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 5
+      RESERVE_POOL_TIMEOUT: 3
+    depends_on:
+      postgres-alerts:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 6432 -U alerts_user -d alerts_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-pgbouncer
+    networks: [internal-net]
+
+  rabbitmq:
+    <<: *common
+    image: rabbitmq:3-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-app}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-app_pass}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-dev_cookie_change_me}
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-db
+    networks: [internal-net]
+
+  redis:
+    <<: *common
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:-redis_pass} --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD:-redis_pass}", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+    deploy: *resources-redis
+    networks: [internal-net]
+
+  user-service:
+    <<: *common
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    environment:
+      APP_PORT: 8082
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
+      AUTH_SERVICE_URL: http://auth-service:8081
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-app_pass}@rabbitmq:5672/
+      MIGRATION_DATABASE_URL: postgres://user_user:${USER_DB_PASSWORD:-user_pass}@postgres-user:5432/user_db?sslmode=disable
+      DB_HOST: pgbouncer-user
+      DB_PORT: 6432
+      DB_NAME: user_db
+      DB_USER: user_user
+      DB_PASSWORD: ${USER_DB_PASSWORD:-user_pass}
+      DB_MAX_OPEN_CONNS: 5
+      DB_MAX_IDLE_CONNS: 2
+    depends_on:
+      pgbouncer-user:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy: *resources-service
+    networks: [internal-net]
+
+  auth-service:
+    <<: *common
+    build:
+      context: .
+      dockerfile: auth-service/Dockerfile
+    environment:
+      APP_PORT: 8081
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
+      USER_SERVICE_URL: http://user-service:8082
+      OTP_SERVICE_URL: http://otp-service:8083
+      JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_private.pem
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      JWT_ISSUER: ${JWT_ISSUER:-your-app-name}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-your-app-client}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY:-15m}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY:-720h}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+      MIGRATION_DATABASE_URL: postgres://auth_user:${AUTH_DB_PASSWORD:-auth_pass}@postgres-auth:5432/auth_db?sslmode=disable
+      DB_HOST: pgbouncer-auth
+      DB_PORT: 6432
+      DB_NAME: auth_db
+      DB_USER: auth_user
+      DB_PASSWORD: ${AUTH_DB_PASSWORD:-auth_pass}
+      DB_MAX_OPEN_CONNS: 5
+      DB_MAX_IDLE_CONNS: 2
+    secrets:
+      - source: jwt_private
+        target: jwt_private.pem
+      - source: jwt_public
+        target: jwt_public.pem
+    depends_on:
+      pgbouncer-auth:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy: *resources-auth
+    networks: [internal-net]
+
+  otp-service:
+    <<: *common
+    build:
+      context: .
+      dockerfile: otp-service/Dockerfile
+    environment:
+      APP_PORT: 8083
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
+      USER_SERVICE_URL: http://user-service:8082
+      AUTH_SERVICE_URL: http://auth-service:8081
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-app_pass}@rabbitmq:5672/
+      JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      JWT_ISSUER: ${JWT_ISSUER:-your-app-name}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-your-app-client}
+      MIGRATION_DATABASE_URL: postgres://otp_user:${OTP_DB_PASSWORD:-otp_pass}@postgres-otp:5432/otp_db?sslmode=disable
+      DB_HOST: pgbouncer-otp
+      DB_PORT: 6432
+      DB_NAME: otp_db
+      DB_USER: otp_user
+      DB_PASSWORD: ${OTP_DB_PASSWORD:-otp_pass}
+      DB_MAX_OPEN_CONNS: 5
+      DB_MAX_IDLE_CONNS: 2
+    secrets:
+      - source: jwt_public
+        target: jwt_public.pem
+    depends_on:
+      pgbouncer-otp:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy: *resources-service
+    networks: [internal-net]
+
+  favorites-service:
+    <<: *common
+    build:
+      context: .
+      dockerfile: favorites-service/Dockerfile
+    environment:
+      APP_PORT: 8084
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
+      MIGRATION_DATABASE_URL: postgres://favorites_user:${FAVORITES_DB_PASSWORD:-favorites_pass}@postgres-favorites:5432/favorites_db?sslmode=disable
+      DB_HOST: pgbouncer-favorites
+      DB_PORT: 6432
+      DB_NAME: favorites_db
+      DB_USER: favorites_user
+      DB_PASSWORD: ${FAVORITES_DB_PASSWORD:-favorites_pass}
+      DB_MAX_OPEN_CONNS: 5
+      DB_MAX_IDLE_CONNS: 2
+    depends_on:
+      pgbouncer-favorites:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy: *resources-small
+    networks: [internal-net]
+
+  alerts-service:
+    <<: *common
+    build:
+      context: .
+      dockerfile: alerts-service/Dockerfile
+    environment:
+      APP_PORT: 8085
+      APP_ENV: production
+      ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
+      USER_SERVICE_URL: http://user-service:8082
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-app_pass}@rabbitmq:5672/
+      MIGRATION_DATABASE_URL: postgres://alerts_user:${ALERTS_DB_PASSWORD:-alerts_pass}@postgres-alerts:5432/alerts_db?sslmode=disable
+      DB_HOST: pgbouncer-alerts
+      DB_PORT: 6432
+      DB_NAME: alerts_db
+      DB_USER: alerts_user
+      DB_PASSWORD: ${ALERTS_DB_PASSWORD:-alerts_pass}
+      DB_MAX_OPEN_CONNS: 5
+      DB_MAX_IDLE_CONNS: 2
+    depends_on:
+      pgbouncer-alerts:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy: *resources-service
+    networks: [internal-net]
+
+  mail-service:
+    <<: *common
+    build:
+      context: .
+      dockerfile: mail-service/Dockerfile
+    environment:
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-app}:${RABBITMQ_PASSWORD:-app_pass}@rabbitmq:5672/
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass}@redis:6379/1
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-smtp}
+      SMTP_HOST: ${SMTP_HOST:-smtp.example.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-noreply@yourdomain.com}
+      APP_NAME: ${APP_NAME:-Your App}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import os, redis; redis.from_url(os.environ['REDIS_URL']).ping()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy: *resources-small
+    networks: [internal-net]
+
+  api-gateway:
+    <<: *common
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+    environment:
+      APP_PORT: 8080
+      APP_ENV: production
+      INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass}@redis:6379/0
+      RS256_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
+      JWT_ISSUER: ${JWT_ISSUER:-your-app-name}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-your-app-client}
+      AUTH_SERVICE_URL: http://auth-service:8081
+      USER_SERVICE_URL: http://user-service:8082
+      OTP_SERVICE_URL: http://otp-service:8083
+      FAVORITES_SERVICE_URL: http://favorites-service:8084
+      ALERTS_SERVICE_URL: http://alerts-service:8085
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
+    secrets:
+      - source: jwt_public
+        target: jwt_public.pem
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      otp-service:
+        condition: service_healthy
+      favorites-service:
+        condition: service_healthy
+      alerts-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "8080:8080"
+    deploy: *resources-gateway
+    networks: [public-net, internal-net]
+
+networks:
+  internal-net:
+    internal: true
+  public-net:
+
+volumes:
+  postgres_user_data:
+  postgres_auth_data:
+  postgres_otp_data:
+  postgres_favorites_data:
+  postgres_alerts_data:
+
+secrets:
+  jwt_private:
+    file: ./secrets/jwt_private.pem
+  jwt_public:
+    file: ./secrets/jwt_public.pem
