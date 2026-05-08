@@ -66,7 +66,10 @@ SMTP_PASS=
 MAIL_FROM=noreply@yourdomain.com
 ENVEOF
 
-chmod 600 "${SECRETS_FILE}"
+chown root:deploy "${SECRETS_FILE}"
+chmod 640 "${SECRETS_FILE}"
+chown -R root:deploy /etc/app/secrets
+chmod 750 /etc/app/secrets /etc/app/secrets/keys
 echo "Created ${SECRETS_FILE}"
 echo ""
 echo "=== DONE: 06-secrets.sh ==="
