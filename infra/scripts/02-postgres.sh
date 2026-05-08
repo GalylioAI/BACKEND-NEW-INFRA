@@ -14,8 +14,17 @@ apt-get install -y postgresql-16 postgresql-client-16
 systemctl enable postgresql
 systemctl start postgresql
 
-DOCKER_GW="$(ip -4 addr show docker0 | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)"
-DOCKER_GW="${DOCKER_GW:-172.17.0.1}"
+APP_INTERNAL_NETWORK="${APP_INTERNAL_NETWORK:-app_internal}"
+APP_DOCKER_SUBNET="${APP_DOCKER_SUBNET:-172.18.0.0/16}"
+DOCKER_GW="${APP_DOCKER_GATEWAY:-172.18.0.1}"
+
+if command -v docker >/dev/null 2>&1 && ! docker network inspect "${APP_INTERNAL_NETWORK}" >/dev/null 2>&1; then
+  docker network create \
+    --driver bridge \
+    --subnet "${APP_DOCKER_SUBNET}" \
+    --gateway "${DOCKER_GW}" \
+    "${APP_INTERNAL_NETWORK}"
+fi
 
 echo "=== Tuning postgresql.conf (baseline for a 4GB VPS) ==="
 PG_CONF="/etc/postgresql/16/main/postgresql.conf"
@@ -92,5 +101,5 @@ systemctl restart postgresql
 
 echo ""
 echo "=== DONE: 02-postgres.sh ==="
-echo "PostgreSQL listens on 127.0.0.1 and ${DOCKER_GW} for Docker host-gateway access."
+echo "PostgreSQL listens on 127.0.0.1 and ${DOCKER_GW} for app container access."
 echo "NEXT: bash 03-redis.sh"

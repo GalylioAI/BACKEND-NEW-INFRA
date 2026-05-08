@@ -100,6 +100,16 @@ EOF
 
 nginx -t && systemctl reload nginx
 
+SECRETS_FILE="/etc/app/secrets/.env"
+if [ -f "${SECRETS_FILE}" ]; then
+  if grep -q '^DOMAIN=' "${SECRETS_FILE}"; then
+    sed -i "s|^DOMAIN=.*|DOMAIN=${DOMAIN}|" "${SECRETS_FILE}"
+  fi
+  if grep -q '^GATEWAY_BIND_IP=' "${SECRETS_FILE}"; then
+    sed -i 's|^GATEWAY_BIND_IP=.*|GATEWAY_BIND_IP=127.0.0.1|' "${SECRETS_FILE}"
+  fi
+fi
+
 (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
 
 echo ""

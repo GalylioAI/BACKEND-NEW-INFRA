@@ -98,6 +98,35 @@ jobs:
 
             echo "=== Deploying tag: ${TAG} ==="
 
+            get_env_value() {
+              grep -E "^$1=" "${ENV_FILE}" 2>/dev/null | tail -n1 | cut -d= -f2- || true
+            }
+
+            APP_INTERNAL_NETWORK="$(get_env_value APP_INTERNAL_NETWORK)"
+            APP_INTERNAL_NETWORK="${APP_INTERNAL_NETWORK:-app_internal}"
+            APP_DOCKER_SUBNET="$(get_env_value APP_DOCKER_SUBNET)"
+            APP_DOCKER_SUBNET="${APP_DOCKER_SUBNET:-172.18.0.0/16}"
+            APP_DOCKER_GATEWAY="$(get_env_value APP_DOCKER_GATEWAY)"
+            APP_DOCKER_GATEWAY="${APP_DOCKER_GATEWAY:-172.18.0.1}"
+            GATEWAY_BIND_IP="$(get_env_value GATEWAY_BIND_IP)"
+            if [ -z "${GATEWAY_BIND_IP}" ]; then
+              if systemctl is-active --quiet nginx; then
+                GATEWAY_BIND_IP="127.0.0.1"
+              else
+                GATEWAY_BIND_IP="0.0.0.0"
+              fi
+            fi
+
+            export APP_INTERNAL_NETWORK APP_DOCKER_SUBNET APP_DOCKER_GATEWAY GATEWAY_BIND_IP
+
+            if ! docker network inspect "${APP_INTERNAL_NETWORK}" >/dev/null 2>&1; then
+              docker network create \
+                --driver bridge \
+                --subnet "${APP_DOCKER_SUBNET}" \
+                --gateway "${APP_DOCKER_GATEWAY}" \
+                "${APP_INTERNAL_NETWORK}"
+            fi
+
             echo "${{ secrets.GHCR_TOKEN }}" | \
               docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
@@ -130,6 +159,8 @@ jobs:
                 exit 1
               fi
             done
+
+            bash /opt/app/infra/scripts/health-check.sh
 
             docker image prune -f --filter "until=72h"
 

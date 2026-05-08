@@ -11,8 +11,17 @@ echo "deb [signed-by=/usr/share/keyrings/redis-archive-keyring.gpg] \
 apt-get update -y
 apt-get install -y redis
 
-DOCKER_GW="$(ip -4 addr show docker0 | awk '/inet / {print $2}' | cut -d/ -f1 | head -n1)"
-DOCKER_GW="${DOCKER_GW:-172.17.0.1}"
+APP_INTERNAL_NETWORK="${APP_INTERNAL_NETWORK:-app_internal}"
+APP_DOCKER_SUBNET="${APP_DOCKER_SUBNET:-172.18.0.0/16}"
+DOCKER_GW="${APP_DOCKER_GATEWAY:-172.18.0.1}"
+
+if command -v docker >/dev/null 2>&1 && ! docker network inspect "${APP_INTERNAL_NETWORK}" >/dev/null 2>&1; then
+  docker network create \
+    --driver bridge \
+    --subnet "${APP_DOCKER_SUBNET}" \
+    --gateway "${DOCKER_GW}" \
+    "${APP_INTERNAL_NETWORK}"
+fi
 
 echo "=== Configuring Redis ==="
 read -rsp "Enter Redis password: " REDIS_PASSWORD; echo
@@ -22,6 +31,8 @@ bind 127.0.0.1 ${DOCKER_GW}
 port 6379
 protected-mode yes
 requirepass ${REDIS_PASSWORD}
+supervised systemd
+daemonize no
 
 appendonly yes
 appendfsync everysec

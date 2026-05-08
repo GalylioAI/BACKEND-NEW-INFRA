@@ -14,6 +14,16 @@ cat > "${SECRETS_FILE}" << 'ENVEOF'
 APP_ENV=production
 IMAGE_TAG=latest
 
+# --- Docker networking ---
+# Must match the host services bind address and docker-compose.prod.yml.
+APP_INTERNAL_NETWORK=app_internal
+APP_DOCKER_SUBNET=172.18.0.0/16
+APP_DOCKER_GATEWAY=172.18.0.1
+
+# Use 127.0.0.1 when Nginx is installed. Use 0.0.0.0 only for temporary IP-based testing.
+# If using 0.0.0.0, open the port once on the VPS: sudo ufw allow 8080/tcp
+GATEWAY_BIND_IP=127.0.0.1
+
 # --- Domain and cookies ---
 DOMAIN=api.yourdomain.com
 COOKIE_DOMAIN=.yourdomain.com
@@ -77,7 +87,7 @@ echo ""
 echo "NEXT STEPS:"
 echo "1. Fill in all values in ${SECRETS_FILE}."
 echo "2. Copy RS256 keys from your local machine:"
-echo "   scp secrets/private.pem deploy@YOUR_VPS_IP:/etc/app/secrets/keys/private.pem"
-echo "   scp secrets/public.pem  deploy@YOUR_VPS_IP:/etc/app/secrets/keys/public.pem"
-echo "   ssh deploy@YOUR_VPS_IP 'chmod 600 /etc/app/secrets/keys/*.pem'"
+echo "   scp secrets/jwt_private.pem deploy@YOUR_VPS_IP:/tmp/private.pem"
+echo "   scp secrets/jwt_public.pem  deploy@YOUR_VPS_IP:/tmp/public.pem"
+echo "   ssh deploy@YOUR_VPS_IP 'sudo mv /tmp/private.pem /etc/app/secrets/keys/private.pem && sudo mv /tmp/public.pem /etc/app/secrets/keys/public.pem && sudo chown root:deploy /etc/app/secrets/keys/*.pem && sudo chmod 640 /etc/app/secrets/keys/*.pem'"
 echo "3. bash 07-pgbouncer.sh"
