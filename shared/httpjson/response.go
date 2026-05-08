@@ -3,6 +3,7 @@ package httpjson
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"time"
 
@@ -76,7 +77,8 @@ func Decode(r *http.Request, dst any) error {
 	if err := decoder.Decode(dst); err != nil {
 		return apperr.New(http.StatusBadRequest, apperr.CodeValidationError, "Request body must be valid JSON.")
 	}
-	if decoder.More() {
+	var extra any
+	if err := decoder.Decode(&extra); err != io.EOF {
 		return apperr.New(http.StatusBadRequest, apperr.CodeValidationError, "Request body must contain a single JSON object.")
 	}
 	return nil

@@ -32,7 +32,8 @@ type CreateUserParams struct {
 
 type UpdateProfileParams struct {
 	ID            uuid.UUID
-	FullName      string
+	FullName      *string
+	Username      *string
 	Phone         *string
 	GouvernoratID *int16
 }
@@ -137,14 +138,23 @@ func (r *PostgresRepository) ExistsPhone(ctx context.Context, phone string) (boo
 func (r *PostgresRepository) UpdateProfile(ctx context.Context, params UpdateProfileParams) (domain.User, error) {
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
-	return scanUser(r.pool.QueryRow(ctx, `
-		UPDATE users SET full_name = $2, phone = $3, gouvernorat_id = $4
+	user, err := scanUser(r.pool.QueryRow(ctx, `
+		UPDATE users
+		SET full_name = COALESCE($2, full_name),
+		    username = COALESCE($3, username),
+		    phone = COALESCE($4, phone),
+		    gouvernorat_id = COALESCE($5, gouvernorat_id),
+		    updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL
 		RETURNING id, full_name, username, email, phone, password_hash, gouvernorat_id, role, auth_provider,
 		          is_verified, is_banned, ban_reason, two_factor_enabled, two_factor_enabled_at, failed_login_attempts, locked_until,
 		          last_login_at, deleted_at, created_at, updated_at`,
-		params.ID, params.FullName, params.Phone, params.GouvernoratID,
+		params.ID, params.FullName, params.Username, params.Phone, params.GouvernoratID,
 	))
+	if err != nil {
+		return domain.User{}, mapPGError(err)
+	}
+	return user, nil
 }
 
 func (r *PostgresRepository) UpdatePasswordWithOutbox(ctx context.Context, id uuid.UUID, passwordHash string, eventPayload any) error {

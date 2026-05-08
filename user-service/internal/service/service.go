@@ -96,9 +96,10 @@ type SignupRequest struct {
 }
 
 type UpdateProfileRequest struct {
-	FullName      string `json:"full_name" validate:"required,min=2,max=150"`
-	Phone         string `json:"phone" validate:"max=20"`
-	GouvernoratID int16  `json:"gouvernorat_id"`
+	FullName      *string `json:"full_name" validate:"omitempty,min=2,max=150"`
+	Username      *string `json:"username" validate:"omitempty,min=3,max=50"`
+	Phone         *string `json:"phone" validate:"omitempty,max=20"`
+	GouvernoratID *int16  `json:"gouvernorat_id" validate:"omitempty,min=1,max=24"`
 }
 
 type ChangePasswordRequest struct {
@@ -187,40 +188,71 @@ func (s *Service) GetProfile(ctx context.Context, id uuid.UUID) (domain.PublicUs
 }
 
 func (s *Service) UpdateProfile(ctx context.Context, id uuid.UUID, req UpdateProfileRequest) (domain.PublicUser, error) {
-	fullName := strings.TrimSpace(req.FullName)
-	phone := validate.NormalizePhone(req.Phone)
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return domain.PublicUser{}, err
+	}
 	fields := apperr.FieldErrors{}
-	if len(fullName) < 2 || len(fullName) > 150 {
-		fields["full_name"] = "Full name must be between 2 and 150 characters."
+	var fullName *string
+	if req.FullName != nil {
+		value := strings.TrimSpace(*req.FullName)
+		if len(value) < 2 || len(value) > 150 {
+			fields["full_name"] = "Full name must be between 2 and 150 characters."
+		} else {
+			fullName = &value
+		}
 	}
-	if phone != "" && !validate.ValidTunisianPhone(phone) {
-		fields["phone"] = "Phone number must be a valid Tunisian number."
-	}
-	if req.GouvernoratID < 1 || req.GouvernoratID > 24 {
-		fields["gouvernorat_id"] = "Gouvernorat is invalid."
-	}
-	if phone != "" {
-		if exists, err := s.repo.ExistsPhone(ctx, phone); err != nil {
-			return domain.PublicUser{}, err
-		} else if exists {
-			current, err := s.repo.GetByID(ctx, id)
-			if err != nil {
+
+	var username *string
+	if req.Username != nil {
+		value := validate.NormalizeUsername(*req.Username)
+		if len(value) < 3 || len(value) > 50 {
+			fields["username"] = "Username must be between 3 and 50 characters."
+		} else if value != current.Username {
+			if exists, err := s.repo.ExistsUsername(ctx, value); err != nil {
 				return domain.PublicUser{}, err
+			} else if exists {
+				fields["username"] = "Username is already in use."
+			} else {
+				username = &value
 			}
-			if current.Phone == nil || *current.Phone != phone {
+		} else {
+			username = &value
+		}
+	}
+
+	var phonePtr *string
+	if req.Phone != nil {
+		value := validate.NormalizePhone(*req.Phone)
+		if value != "" && !validate.ValidTunisianPhone(value) {
+			fields["phone"] = "Phone number must be a valid Tunisian number."
+		} else if value != "" {
+			if exists, err := s.repo.ExistsPhone(ctx, value); err != nil {
+				return domain.PublicUser{}, err
+			} else if exists && (current.Phone == nil || *current.Phone != value) {
 				fields["phone"] = "Phone number is already in use."
+			} else {
+				phonePtr = &value
 			}
+		}
+	}
+
+	var govID *int16
+	if req.GouvernoratID != nil {
+		if *req.GouvernoratID < 1 || *req.GouvernoratID > 24 {
+			fields["gouvernorat_id"] = "Gouvernorat is invalid."
+		} else {
+			value := *req.GouvernoratID
+			govID = &value
 		}
 	}
 	if len(fields) > 0 {
 		return domain.PublicUser{}, apperr.Validation(fields)
 	}
-	govID := req.GouvernoratID
-	var phonePtr *string
-	if phone != "" {
-		phonePtr = &phone
+	if fullName == nil && username == nil && phonePtr == nil && govID == nil {
+		return domain.Public(current), nil
 	}
-	user, err := s.repo.UpdateProfile(ctx, repository.UpdateProfileParams{ID: id, FullName: fullName, Phone: phonePtr, GouvernoratID: &govID})
+	user, err := s.repo.UpdateProfile(ctx, repository.UpdateProfileParams{ID: id, FullName: fullName, Username: username, Phone: phonePtr, GouvernoratID: govID})
 	if err != nil {
 		return domain.PublicUser{}, err
 	}

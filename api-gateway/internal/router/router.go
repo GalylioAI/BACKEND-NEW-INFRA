@@ -24,7 +24,7 @@ type Router struct {
 }
 
 func New(cfg config.Config, logger zerolog.Logger, redisClient *redis.Client) http.Handler {
-	router := &Router{cfg: cfg, logger: logger, redis: redisClient, rateLimit: gwmw.NewRateLimiter(redisClient, logger)}
+	router := &Router{cfg: cfg, logger: logger, redis: redisClient, rateLimit: gwmw.NewRateLimiter(redisClient, logger, cfg.TrustedProxyCIDRs)}
 	return router.routes()
 }
 

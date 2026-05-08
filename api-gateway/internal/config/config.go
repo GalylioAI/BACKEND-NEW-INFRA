@@ -26,6 +26,7 @@ type Config struct {
 	FavoritesServiceURL string
 	AlertsServiceURL    string
 	RedisURL            string
+	TrustedProxyCIDRs   []string
 	RequestTimeout      time.Duration
 	BodyLimitBytes      int64
 }
@@ -59,8 +60,12 @@ func Load() (Config, error) {
 		FavoritesServiceURL: sharedcfg.String("FAVORITES_SERVICE_URL", "http://favorites-service:8084"),
 		AlertsServiceURL:    sharedcfg.String("ALERTS_SERVICE_URL", "http://alerts-service:8085"),
 		RedisURL:            sharedcfg.String("REDIS_URL", ""),
+		TrustedProxyCIDRs:   sharedcfg.CSV("TRUSTED_PROXY_CIDRS"),
 		RequestTimeout:      30 * time.Second,
 		BodyLimitBytes:      1 << 20,
+	}
+	if len(cfg.TrustedProxyCIDRs) == 0 {
+		cfg.TrustedProxyCIDRs = []string{"127.0.0.1/32", "::1/128"}
 	}
 	if cfg.InternalSecret == "" && cfg.AppEnv == "production" {
 		return Config{}, fmt.Errorf("INTERNAL_SECRET is required in production")

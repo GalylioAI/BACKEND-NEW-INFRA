@@ -33,9 +33,10 @@ return redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')[2]
 `
 
 type RateLimiter struct {
-	client *redis.Client
-	logger zerolog.Logger
-	script *redis.Script
+	client          *redis.Client
+	logger          zerolog.Logger
+	script          *redis.Script
+	trustedProxyNet []*net.IPNet
 }
 
 type routeLimit struct {
@@ -43,11 +44,12 @@ type routeLimit struct {
 	Window time.Duration
 }
 
-func NewRateLimiter(client *redis.Client, logger zerolog.Logger) *RateLimiter {
+func NewRateLimiter(client *redis.Client, logger zerolog.Logger, trustedProxyCIDRs []string) *RateLimiter {
 	return &RateLimiter{
-		client: client,
-		logger: logger,
-		script: redis.NewScript(slidingWindowLua),
+		client:          client,
+		logger:          logger,
+		script:          redis.NewScript(slidingWindowLua),
+		trustedProxyNet: parseTrustedProxyCIDRs(trustedProxyCIDRs),
 	}
 }
 
@@ -59,7 +61,7 @@ func (r *RateLimiter) Middleware(routeKey string) func(http.Handler) http.Handle
 				return
 			}
 			limit := limitForRoute(routeKey)
-			allowed, retryAfter, err := r.allow(req.Context(), routeKey, clientIP(req), limit)
+			allowed, retryAfter, err := r.allow(req.Context(), routeKey, r.clientIP(req), limit)
 			if err != nil {
 				r.logger.Warn().
 					Str("request_id", req.Header.Get("X-Request-Id")).
@@ -139,19 +141,62 @@ func limitForRoute(routeKey string) routeLimit {
 	}
 }
 
-func clientIP(r *http.Request) string {
-	forwarded := r.Header.Get("X-Forwarded-For")
-	if forwarded != "" {
-		first := strings.TrimSpace(strings.Split(forwarded, ",")[0])
-		host, _, err := net.SplitHostPort(first)
-		if err == nil {
-			return host
-		}
-		return first
-	}
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
+func (r *RateLimiter) clientIP(req *http.Request) string {
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
 	if err != nil {
-		return r.RemoteAddr
+		host = req.RemoteAddr
+	}
+	if r.trustedProxyIP(host) {
+		forwarded := req.Header.Get("X-Forwarded-For")
+		if forwarded != "" {
+			first := strings.TrimSpace(strings.Split(forwarded, ",")[0])
+			forwardedHost, _, err := net.SplitHostPort(first)
+			if err == nil {
+				return forwardedHost
+			}
+			return first
+		}
 	}
 	return host
+}
+
+func (r *RateLimiter) trustedProxyIP(host string) bool {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, network := range r.trustedProxyNet {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func parseTrustedProxyCIDRs(values []string) []*net.IPNet {
+	if len(values) == 0 {
+		values = []string{"127.0.0.1/32", "::1/128"}
+	}
+	networks := make([]*net.IPNet, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if ip := net.ParseIP(value); ip != nil {
+			bits := 32
+			if ip.To4() == nil {
+				bits = 128
+			}
+			networks = append(networks, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+			continue
+		}
+		if _, network, err := net.ParseCIDR(value); err == nil {
+			networks = append(networks, network)
+		}
+	}
+	if len(networks) == 0 {
+		return parseTrustedProxyCIDRs(nil)
+	}
+	return networks
 }

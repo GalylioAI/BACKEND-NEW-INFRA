@@ -32,6 +32,7 @@ type AMQPPublisher struct {
 	conn      *amqp.Connection
 	ch        *amqp.Channel
 	mu        sync.RWMutex
+	opMu      sync.Mutex
 	done      chan struct{}
 	closeOnce sync.Once
 	ready     chan struct{}
@@ -185,9 +186,11 @@ func (p *AMQPPublisher) Check(ctx context.Context) error {
 	if p == nil {
 		return fmt.Errorf("rabbitmq channel is not ready")
 	}
+	p.opMu.Lock()
+	defer p.opMu.Unlock()
 	p.mu.RLock()
+	defer p.mu.RUnlock()
 	ch := p.ch
-	p.mu.RUnlock()
 	if ch == nil {
 		return fmt.Errorf("rabbitmq channel is not ready")
 	}
@@ -207,9 +210,11 @@ func (p *AMQPPublisher) Publish(ctx context.Context, routingKey string, payload 
 	if p == nil {
 		return fmt.Errorf("rabbitmq publisher is nil")
 	}
+	p.opMu.Lock()
+	defer p.opMu.Unlock()
 	p.mu.RLock()
+	defer p.mu.RUnlock()
 	ch := p.ch
-	p.mu.RUnlock()
 	if ch == nil {
 		return fmt.Errorf("rabbitmq channel is not ready")
 	}

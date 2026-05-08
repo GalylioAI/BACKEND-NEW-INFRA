@@ -24,6 +24,7 @@ APP_DOCKER_GATEWAY=172.18.0.1
 # If Nginx is not active, deploy overrides this to 0.0.0.0 for direct IP testing.
 # For direct IP testing, open the port once on the VPS: sudo ufw allow 8080/tcp
 GATEWAY_BIND_IP=127.0.0.1
+TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128
 
 # --- Domain and cookies ---
 DOMAIN=api.yourdomain.com

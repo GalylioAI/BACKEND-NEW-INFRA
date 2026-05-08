@@ -68,6 +68,41 @@ func TestSignupReturnsFieldConflict(t *testing.T) {
 	}
 }
 
+func TestUpdateProfileTreatsFieldsAsOptional(t *testing.T) {
+	id := uuid.New()
+	phone := "+21612345678"
+	newPhone := "12 345 679"
+	govID := int16(1)
+	repo := &fakeUserRepo{current: domain.User{
+		ID:            id,
+		FullName:      "Jane Doe",
+		Username:      "janed",
+		Email:         "jane@example.com",
+		Phone:         &phone,
+		GouvernoratID: &govID,
+		Role:          domain.RoleUser,
+		AuthProvider:  domain.ProviderManual,
+	}}
+	svc := service.New(repo, fakeAuthClient{})
+
+	_, err := svc.UpdateProfile(context.Background(), id, service.UpdateProfileRequest{Phone: &newPhone})
+	if err != nil {
+		t.Fatalf("UpdateProfile returned error: %v", err)
+	}
+	if repo.updated.FullName != nil {
+		t.Fatal("full_name should not be overwritten when omitted")
+	}
+	if repo.updated.Username != nil {
+		t.Fatal("username should not be overwritten when omitted")
+	}
+	if repo.updated.GouvernoratID != nil {
+		t.Fatal("gouvernorat_id should not be overwritten when omitted")
+	}
+	if repo.updated.Phone == nil || *repo.updated.Phone != "+21612345679" {
+		t.Fatalf("phone was not normalized: %#v", repo.updated.Phone)
+	}
+}
+
 type fakeAuthClient struct{}
 
 func (fakeAuthClient) RevokeAllRefreshTokens(context.Context, uuid.UUID) error { return nil }
@@ -77,6 +112,8 @@ type fakeUserRepo struct {
 	usernameExists bool
 	phoneExists    bool
 	created        repository.CreateUserParams
+	updated        repository.UpdateProfileParams
+	current        domain.User
 	eventType      string
 }
 
@@ -100,7 +137,7 @@ func (f *fakeUserRepo) CreateUserWithOutbox(_ context.Context, params repository
 }
 
 func (f *fakeUserRepo) GetByID(context.Context, uuid.UUID) (domain.User, error) {
-	return domain.User{}, nil
+	return f.current, nil
 }
 func (f *fakeUserRepo) GetByIdentifier(context.Context, string) (domain.User, error) {
 	return domain.User{}, nil
@@ -113,8 +150,22 @@ func (f *fakeUserRepo) ExistsUsername(context.Context, string) (bool, error) {
 	return f.usernameExists, nil
 }
 func (f *fakeUserRepo) ExistsPhone(context.Context, string) (bool, error) { return f.phoneExists, nil }
-func (f *fakeUserRepo) UpdateProfile(context.Context, repository.UpdateProfileParams) (domain.User, error) {
-	return domain.User{}, nil
+func (f *fakeUserRepo) UpdateProfile(_ context.Context, params repository.UpdateProfileParams) (domain.User, error) {
+	f.updated = params
+	user := f.current
+	if params.FullName != nil {
+		user.FullName = *params.FullName
+	}
+	if params.Username != nil {
+		user.Username = *params.Username
+	}
+	if params.Phone != nil {
+		user.Phone = params.Phone
+	}
+	if params.GouvernoratID != nil {
+		user.GouvernoratID = params.GouvernoratID
+	}
+	return user, nil
 }
 func (f *fakeUserRepo) UpdatePasswordWithOutbox(context.Context, uuid.UUID, string, any) error {
 	return nil
