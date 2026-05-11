@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"backend/otp-service/internal/service"
 	"backend/shared/apperr"
@@ -110,12 +111,17 @@ func (h *Handler) enableTwoFactor(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) verifyTwoFactor(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Code         string `json:"code" validate:"required,len=6,numeric"`
-		SessionToken string `json:"session_token" validate:"required,max=4096"`
+		SessionToken string `json:"session_token" validate:"omitempty,max=4096"`
 	}
 	if !decodeAndValidate(w, r, &req) {
 		return
 	}
-	tokens, message, err := h.service.VerifyTwoFactor(r.Context(), req.Code, req.SessionToken)
+	sessionToken := twoFactorSessionToken(r, req.SessionToken)
+	if sessionToken == "" {
+		httpjson.WriteError(w, r, apperr.Validation(apperr.FieldErrors{"session_token": "2FA session token is required."}))
+		return
+	}
+	tokens, message, err := h.service.VerifyTwoFactor(r.Context(), req.Code, sessionToken)
 	if err != nil {
 		httpjson.WriteError(w, r, err)
 		return
@@ -128,6 +134,23 @@ func (h *Handler) verifyTwoFactor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpjson.Write(w, r, http.StatusOK, map[string]string{"message": message})
+}
+
+func twoFactorSessionToken(r *http.Request, bodyToken string) string {
+	if token := strings.TrimSpace(r.Header.Get("X-2FA-Session-Token")); token != "" {
+		return token
+	}
+	if token := bearerToken(r.Header.Get("Authorization")); token != "" {
+		return token
+	}
+	return strings.TrimSpace(bodyToken)
+}
+
+func bearerToken(header string) string {
+	if len(header) < len("Bearer ") || !strings.EqualFold(header[:len("Bearer ")], "Bearer ") {
+		return ""
+	}
+	return strings.TrimSpace(header[len("Bearer "):])
 }
 
 func (h *Handler) disableTwoFactor(w http.ResponseWriter, r *http.Request) {

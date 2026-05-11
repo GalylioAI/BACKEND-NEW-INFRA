@@ -267,13 +267,19 @@ paths:
     post:
       tags: [OTP]
       summary: Complete login 2FA or confirm 2FA enablement
+      description: >
+        Send the short-lived 2FA pending JWT in the Authorization header as
+        `Bearer <2fa_pending_token>`. The legacy `session_token` request-body
+        field is still accepted for compatibility.
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [code, session_token]
+              required: [code]
               properties:
                 code:
                   type: string
@@ -282,6 +288,9 @@ paths:
                   pattern: "^[0-9]{6}$"
                 session_token:
                   type: string
+                  deprecated: true
+                  description: >
+                    Deprecated. Prefer `Authorization: Bearer <2fa_pending_token>`.
                   maxLength: 4096
       responses:
         "200":

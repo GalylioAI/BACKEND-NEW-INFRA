@@ -33,6 +33,9 @@ func TestRouteAuthContract(t *testing.T) {
 		if r.Header.Get("Authorization") != "" {
 			t.Fatal("authorization header must not be forwarded to downstream services")
 		}
+		if r.URL.Path == "/otp/2fa/verify" && r.Header.Get("X-2FA-Session-Token") != "pending-token" {
+			t.Fatalf("expected 2FA session token handoff header, got %q", r.Header.Get("X-2FA-Session-Token"))
+		}
 		otpHits.Add(1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -86,6 +89,7 @@ func TestRouteAuthContract(t *testing.T) {
 	t.Run("public otp email send does not require bearer", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/otp/email/send", strings.NewReader(`{"email":"user@example.com"}`))
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-2FA-Session-Token", "client-injected")
 		rec := httptest.NewRecorder()
 
 		handler.ServeHTTP(rec, req)
@@ -94,6 +98,18 @@ func TestRouteAuthContract(t *testing.T) {
 		}
 		if otpHits.Load() != 1 {
 			t.Fatalf("expected OTP upstream hit")
+		}
+	})
+
+	t.Run("public 2fa verify forwards bearer token only as handoff header", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/otp/2fa/verify", strings.NewReader(`{"code":"123456"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer pending-token")
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("expected public OTP 2FA route to pass, got %d: %s", rec.Code, rec.Body.String())
 		}
 	})
 

@@ -35,8 +35,14 @@ func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) ht
 	}
 	originalDirector := proxy.Director
 	proxy.Director = func(req *http.Request) {
+		authorization := req.Header.Get("Authorization")
 		originalDirector(req)
 		req.Host = target.Host
+		if req.Method == http.MethodPost && req.URL.Path == "/otp/2fa/verify" {
+			if token := bearerToken(authorization); token != "" {
+				req.Header.Set("X-2FA-Session-Token", token)
+			}
+		}
 		req.Header.Del("Authorization")
 		req.Header.Set(middleware.HeaderInternalSecret, internalSecret)
 		req.Header.Set("X-Forwarded-For", forwardedFor(req))
@@ -55,6 +61,13 @@ func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) ht
 		httpjson.WriteError(w, r, apperr.New(http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "The requested service is temporarily unavailable."))
 	}
 	return proxy
+}
+
+func bearerToken(header string) string {
+	if len(header) < len("Bearer ") || !strings.EqualFold(header[:len("Bearer ")], "Bearer ") {
+		return ""
+	}
+	return strings.TrimSpace(header[len("Bearer "):])
 }
 
 func forwardedFor(req *http.Request) string {

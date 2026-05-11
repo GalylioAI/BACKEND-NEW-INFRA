@@ -1,6 +1,7 @@
 import asyncio
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formatdate, make_msgid
 
 import aiosmtplib
 import structlog
@@ -8,6 +9,12 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
 log = structlog.get_logger()
+
+
+def _message_id_domain(mail_from: str) -> str:
+    if "@" not in mail_from:
+        return "localhost"
+    return mail_from.rsplit("@", 1)[1].strip() or "localhost"
 
 
 def mask_email(email: str) -> str:
@@ -37,8 +44,10 @@ class Mailer:
         msg["Subject"] = subject
         msg["From"] = self.config.MAIL_FROM
         msg["To"] = to
-        msg.attach(MIMEText(text, "plain"))
-        msg.attach(MIMEText(html, "html"))
+        msg["Date"] = formatdate(localtime=False, usegmt=True)
+        msg["Message-ID"] = make_msgid(domain=_message_id_domain(self.config.MAIL_FROM))
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
 
         kwargs = {
             "hostname": self.config.SMTP_HOST,
