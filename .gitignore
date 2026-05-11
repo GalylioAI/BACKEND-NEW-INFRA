@@ -13,5 +13,6 @@ secrets/*.pem
 
 .idea/
 .vscode/
+.agents/
 .worktrees/
 worktrees/
