@@ -387,7 +387,7 @@ func insertOutbox(ctx context.Context, tx pgx.Tx, eventType string, payload any)
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(ctx, `INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)`, eventType, body)
+	_, err = tx.Exec(ctx, `INSERT INTO outbox_events (event_type, payload) VALUES ($1, $2)`, eventType, string(body))
 	return err
 }
 

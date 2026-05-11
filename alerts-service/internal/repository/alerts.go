@@ -181,7 +181,7 @@ func (r *PostgresRepository) TriggerAlertWithOutbox(ctx context.Context, alertID
 	}
 	if _, err := tx.Exec(ctx, `
 		INSERT INTO alert_outbox (alert_id, event_type, payload)
-		VALUES ($1, $2, $3)`, alertID, eventType, body); err != nil {
+		VALUES ($1, $2, $3)`, alertID, eventType, string(body)); err != nil {
 		return domain.Alert{}, err
 	}
 	if err := tx.Commit(ctx); err != nil {
