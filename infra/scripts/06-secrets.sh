@@ -4,6 +4,8 @@ set -euo pipefail
 
 SECRETS_FILE="/etc/app/secrets/.env"
 
+mkdir -p /etc/app/secrets/keys /etc/app/secrets/runtime
+
 cat > "${SECRETS_FILE}" << 'ENVEOF'
 # ============================================================
 # FILL IN ALL VALUES - do not leave blanks in production.
@@ -25,6 +27,7 @@ APP_DOCKER_GATEWAY=172.18.0.1
 # For direct IP testing, open the port once on the VPS: sudo ufw allow 8080/tcp
 GATEWAY_BIND_IP=127.0.0.1
 TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128
+DOCS_ENABLED=true
 
 # --- Domain and cookies ---
 DOMAIN=api.yourdomain.com
@@ -71,17 +74,23 @@ GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
 # --- Mail ---
+MAIL_PROVIDER=smtp
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
+SENDGRID_API_KEY=
 MAIL_FROM=noreply@yourdomain.com
+APP_NAME=1111
 ENVEOF
 
 chown root:deploy "${SECRETS_FILE}"
 chmod 640 "${SECRETS_FILE}"
 chown -R root:deploy /etc/app/secrets
 chmod 750 /etc/app/secrets /etc/app/secrets/keys
+# The deploy user refreshes generated Docker secret files on every release.
+chown deploy:deploy /etc/app/secrets/runtime
+chmod 770 /etc/app/secrets/runtime
 echo "Created ${SECRETS_FILE}"
 echo ""
 echo "=== DONE: 06-secrets.sh ==="
@@ -93,3 +102,4 @@ echo "   scp secrets/jwt_private.pem deploy@YOUR_VPS_IP:/tmp/private.pem"
 echo "   scp secrets/jwt_public.pem  deploy@YOUR_VPS_IP:/tmp/public.pem"
 echo "   ssh deploy@YOUR_VPS_IP 'sudo mv /tmp/private.pem /etc/app/secrets/keys/private.pem && sudo mv /tmp/public.pem /etc/app/secrets/keys/public.pem && sudo chown root:deploy /etc/app/secrets/keys/*.pem && sudo chmod 640 /etc/app/secrets/keys/*.pem'"
 echo "3. bash 07-pgbouncer.sh"
+echo "4. sudo -u deploy bash /opt/app/infra/scripts/08-materialize-secrets.sh before first manual compose run"

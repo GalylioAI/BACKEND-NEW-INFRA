@@ -11,6 +11,14 @@ export const API_BASE_URL =
 
 In production, set `VITE_API_BASE_URL` to your API domain, for example `https://api.example.com`.
 
+For interactive testing, open the backend Swagger UI:
+
+```text
+https://backend.1111.tn/docs
+```
+
+Click **Authorize**, paste the access token as `Bearer <token>`, then use "Try it out" on protected endpoints.
+
 The backend CORS config must include the frontend origin exactly:
 
 ```env

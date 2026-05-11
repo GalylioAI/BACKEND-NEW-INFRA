@@ -4,6 +4,8 @@ All public requests go through the API Gateway.
 
 - Local dev base URL: `http://localhost:8080`
 - Production base URL: `https://<your-api-domain>` when Nginx/TLS is enabled, or `http://<vps-ip>:8080` for direct temporary deployments.
+- Swagger UI: `/docs` when `DOCS_ENABLED=true`.
+- OpenAPI document: `/openapi.yaml`.
 - JSON responses always use:
 
 ```json

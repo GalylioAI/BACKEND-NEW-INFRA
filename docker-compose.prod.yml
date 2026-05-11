@@ -32,7 +32,8 @@ services:
     environment:
       APP_PORT: "8080"
       APP_ENV: production
-      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
       RS256_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
@@ -42,11 +43,13 @@ services:
       OTP_SERVICE_URL: http://otp-service:8083
       FAVORITES_SERVICE_URL: http://favorites-service:8084
       ALERTS_SERVICE_URL: http://alerts-service:8085
-      REDIS_URL: ${REDIS_URL_GATEWAY}
+      REDIS_URL_FILE: /run/secrets/redis_url_gateway
       TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:-127.0.0.1/32,::1/128}
     secrets:
       - source: jwt_public
         target: jwt_public.pem
+      - internal_secret
+      - redis_url_gateway
     depends_on:
       - auth-service
       - user-service
@@ -79,20 +82,20 @@ services:
       DB_PORT: "6433"
       DB_NAME: auth_db
       DB_USER: auth_user
-      DB_PASSWORD: ${AUTH_DB_PASSWORD}
-      MIGRATION_DATABASE_URL: ${AUTH_DB_MIGRATION_URL}
+      DB_PASSWORD_FILE: /run/secrets/auth_db_password
+      MIGRATION_DATABASE_URL_FILE: /run/secrets/auth_db_migration_url
       JWT_PRIVATE_KEY_PATH: /run/secrets/jwt_private.pem
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       JWT_ISSUER: ${JWT_ISSUER}
       JWT_AUDIENCE: ${JWT_AUDIENCE}
       JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY}
       JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      RABBITMQ_URL_FILE: /run/secrets/rabbitmq_url
+      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
       USER_SERVICE_URL: http://user-service:8082
       OTP_SERVICE_URL: http://otp-service:8083
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
       COOKIE_DOMAIN: ${COOKIE_DOMAIN}
       COOKIE_SECURE: ${COOKIE_SECURE}
     secrets:
@@ -100,6 +103,11 @@ services:
         target: jwt_private.pem
       - source: jwt_public
         target: jwt_public.pem
+      - internal_secret
+      - rabbitmq_url
+      - auth_db_password
+      - auth_db_migration_url
+      - google_client_secret
     networks:
       - internal
     healthcheck:
@@ -125,13 +133,18 @@ services:
       DB_PORT: "6434"
       DB_NAME: user_db
       DB_USER: user_user
-      DB_PASSWORD: ${USER_DB_PASSWORD}
-      MIGRATION_DATABASE_URL: ${USER_DB_MIGRATION_URL}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      DB_PASSWORD_FILE: /run/secrets/user_db_password
+      MIGRATION_DATABASE_URL_FILE: /run/secrets/user_db_migration_url
+      RABBITMQ_URL_FILE: /run/secrets/rabbitmq_url
+      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
       AUTH_SERVICE_URL: http://auth-service:8081
     networks:
       - internal
+    secrets:
+      - internal_secret
+      - rabbitmq_url
+      - user_db_password
+      - user_db_migration_url
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8082/health || exit 1"]
       interval: 10s
@@ -155,10 +168,10 @@ services:
       DB_PORT: "6435"
       DB_NAME: otp_db
       DB_USER: otp_user
-      DB_PASSWORD: ${OTP_DB_PASSWORD}
-      MIGRATION_DATABASE_URL: ${OTP_DB_MIGRATION_URL}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      DB_PASSWORD_FILE: /run/secrets/otp_db_password
+      MIGRATION_DATABASE_URL_FILE: /run/secrets/otp_db_migration_url
+      RABBITMQ_URL_FILE: /run/secrets/rabbitmq_url
+      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
       USER_SERVICE_URL: http://user-service:8082
       AUTH_SERVICE_URL: http://auth-service:8081
       JWT_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
@@ -167,6 +180,10 @@ services:
     secrets:
       - source: jwt_public
         target: jwt_public.pem
+      - internal_secret
+      - rabbitmq_url
+      - otp_db_password
+      - otp_db_migration_url
     depends_on:
       - auth-service
       - user-service
@@ -195,11 +212,15 @@ services:
       DB_PORT: "6436"
       DB_NAME: favorites_db
       DB_USER: favorites_user
-      DB_PASSWORD: ${FAVORITES_DB_PASSWORD}
-      MIGRATION_DATABASE_URL: ${FAVORITES_DB_MIGRATION_URL}
-      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      DB_PASSWORD_FILE: /run/secrets/favorites_db_password
+      MIGRATION_DATABASE_URL_FILE: /run/secrets/favorites_db_migration_url
+      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
     networks:
       - internal
+    secrets:
+      - internal_secret
+      - favorites_db_password
+      - favorites_db_migration_url
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8084/health || exit 1"]
       interval: 10s
@@ -223,13 +244,18 @@ services:
       DB_PORT: "6437"
       DB_NAME: alerts_db
       DB_USER: alerts_user
-      DB_PASSWORD: ${ALERTS_DB_PASSWORD}
-      MIGRATION_DATABASE_URL: ${ALERTS_DB_MIGRATION_URL}
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      INTERNAL_SECRET: ${INTERNAL_SECRET}
+      DB_PASSWORD_FILE: /run/secrets/alerts_db_password
+      MIGRATION_DATABASE_URL_FILE: /run/secrets/alerts_db_migration_url
+      RABBITMQ_URL_FILE: /run/secrets/rabbitmq_url
+      INTERNAL_SECRET_FILE: /run/secrets/internal_secret
       USER_SERVICE_URL: http://user-service:8082
     networks:
       - internal
+    secrets:
+      - internal_secret
+      - rabbitmq_url
+      - alerts_db_password
+      - alerts_db_migration_url
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8085/health || exit 1"]
       interval: 10s
@@ -246,15 +272,23 @@ services:
     <<: *common
     image: ghcr.io/galylioai/backend-new-infra/mail-service:${IMAGE_TAG}
     environment:
-      RABBITMQ_URL: ${RABBITMQ_URL}
-      REDIS_URL: ${REDIS_URL_MAIL}
+      RABBITMQ_URL_FILE: /run/secrets/rabbitmq_url
+      REDIS_URL_FILE: /run/secrets/redis_url_mail
+      MAIL_PROVIDER: ${MAIL_PROVIDER:-smtp}
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
-      SMTP_PASS: ${SMTP_PASS}
+      SMTP_PASS_FILE: /run/secrets/smtp_pass
       MAIL_FROM: ${MAIL_FROM}
+      SENDGRID_API_KEY_FILE: /run/secrets/sendgrid_api_key
+      APP_NAME: ${APP_NAME:-1111}
     networks:
       - internal
+    secrets:
+      - rabbitmq_url
+      - redis_url_mail
+      - smtp_pass
+      - sendgrid_api_key
     deploy:
       resources:
         limits:
@@ -263,6 +297,40 @@ services:
 
 secrets:
   jwt_private:
-    file: /etc/app/secrets/keys/private.pem
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/keys/private.pem
   jwt_public:
-    file: /etc/app/secrets/keys/public.pem
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/keys/public.pem
+  internal_secret:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/internal_secret
+  redis_url_gateway:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/redis_url_gateway
+  redis_url_mail:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/redis_url_mail
+  rabbitmq_url:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/rabbitmq_url
+  auth_db_password:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/auth_db_password
+  user_db_password:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/user_db_password
+  otp_db_password:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/otp_db_password
+  favorites_db_password:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/favorites_db_password
+  alerts_db_password:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/alerts_db_password
+  auth_db_migration_url:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/auth_db_migration_url
+  user_db_migration_url:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/user_db_migration_url
+  otp_db_migration_url:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/otp_db_migration_url
+  favorites_db_migration_url:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/favorites_db_migration_url
+  alerts_db_migration_url:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/alerts_db_migration_url
+  google_client_secret:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/google_client_secret
+  smtp_pass:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/smtp_pass
+  sendgrid_api_key:
+    file: ${APP_SECRETS_DIR:-/etc/app/secrets}/runtime/sendgrid_api_key

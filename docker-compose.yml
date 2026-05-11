@@ -571,6 +571,7 @@ services:
       APP_ENV: production
       INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass}@redis:6379/0
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
       RS256_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       JWT_ISSUER: ${JWT_ISSUER:-your-app-name}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-your-app-client}

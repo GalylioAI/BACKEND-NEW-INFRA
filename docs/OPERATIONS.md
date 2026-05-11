@@ -33,6 +33,35 @@ docker compose -f /opt/app/docker-compose.prod.yml --env-file /etc/app/secrets/.
   | wc -l
 ```
 
+## API Documentation
+
+Swagger UI is served by the API Gateway when `DOCS_ENABLED=true`:
+
+```bash
+curl http://127.0.0.1:8080/openapi.yaml
+```
+
+In production with Nginx:
+
+```text
+https://backend.1111.tn/docs
+https://backend.1111.tn/openapi.yaml
+```
+
+Disable public docs by setting `DOCS_ENABLED=false` in `/etc/app/secrets/.env` and recreating `api-gateway`.
+
+## Secret Files
+
+The VPS keeps the editable source of truth in `/etc/app/secrets/.env`, but app containers consume sensitive values from Docker secret files under `/etc/app/secrets/runtime`.
+
+After editing `/etc/app/secrets/.env`, refresh the secret files:
+
+```bash
+sudo -u deploy bash /opt/app/infra/scripts/08-materialize-secrets.sh
+```
+
+Then recreate affected containers.
+
 ## Network Checks
 
 From a container:

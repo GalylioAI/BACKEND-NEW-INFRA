@@ -1,6 +1,9 @@
 import unittest
+import tempfile
 from pathlib import Path
+from unittest import mock
 
+from config import env_value
 from models import parse_mail_event
 from services.mailer import mask_email
 from services.renderer import Renderer
@@ -33,6 +36,13 @@ class MailServiceTests(unittest.TestCase):
         html, text = renderer.render("welcome", {"full_name": "Jane"})
         self.assertIn("Jane", html)
         self.assertIn("Jane", text)
+
+    def test_env_value_reads_file_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            secret = Path(tmp) / "secret"
+            secret.write_text("from-file\n", encoding="utf-8")
+            with mock.patch.dict("os.environ", {"MAIL_SECRET_FILE": str(secret)}, clear=False):
+                self.assertEqual(env_value("MAIL_SECRET", "fallback"), "from-file")
 
 
 if __name__ == "__main__":

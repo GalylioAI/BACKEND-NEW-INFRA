@@ -80,7 +80,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.prod.yml,infra/scripts/health-check.sh,infra/scripts/rollback.sh"
+          source: "docker-compose.prod.yml,infra/scripts/health-check.sh,infra/scripts/rollback.sh,infra/scripts/08-materialize-secrets.sh"
           target: "/opt/app/"
 
       - name: Deploy on VPS
@@ -97,6 +97,7 @@ jobs:
             ENV_FILE="/etc/app/secrets/.env"
 
             echo "=== Deploying tag: ${TAG} ==="
+            bash /opt/app/infra/scripts/08-materialize-secrets.sh
 
             get_env_value() {
               grep -E "^$1=" "${ENV_FILE}" 2>/dev/null | tail -n1 | cut -d= -f2- || true

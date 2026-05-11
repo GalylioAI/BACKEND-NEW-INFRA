@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"backend/api-gateway/internal/config"
+	apidocs "backend/api-gateway/internal/docs"
 	gwmw "backend/api-gateway/internal/middleware"
 	"backend/api-gateway/internal/proxy"
 	"backend/shared/httpjson"
@@ -37,6 +38,9 @@ func (r *Router) routes() http.Handler {
 	alerts := proxy.NewServiceProxy(r.cfg.AlertsServiceURL, r.cfg.InternalSecret, r.logger)
 
 	mux.HandleFunc("GET /health", r.health)
+	if r.cfg.DocsEnabled {
+		apidocs.Register(mux)
+	}
 
 	r.public(mux, "POST /auth/login", auth)
 	r.public(mux, "POST /auth/google", auth)

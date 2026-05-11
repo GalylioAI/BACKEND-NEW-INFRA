@@ -62,6 +62,8 @@ sudo mv /tmp/private.pem /etc/app/secrets/keys/private.pem
 sudo mv /tmp/public.pem /etc/app/secrets/keys/public.pem
 sudo chown -R root:deploy /etc/app/secrets
 sudo chmod 750 /etc/app/secrets /etc/app/secrets/keys
+sudo chown deploy:deploy /etc/app/secrets/runtime
+sudo chmod 770 /etc/app/secrets/runtime
 sudo chmod 640 /etc/app/secrets/.env /etc/app/secrets/keys/*.pem
 ```
 
@@ -78,6 +80,7 @@ Repository path: `Settings -> Secrets and variables -> Actions`.
 ## VPS Secret File
 
 The app reads `/etc/app/secrets/.env`. It must be readable by group `deploy`.
+On deploy, `infra/scripts/08-materialize-secrets.sh` validates required secret values, rejects placeholder strings, and renders sensitive values from that file into Docker secret files under `/etc/app/secrets/runtime`, which is writable only by the `deploy` user/group. Containers receive those values through `*_FILE` variables mounted at `/run/secrets/...`, so database passwords, Redis URLs, RabbitMQ URLs, SMTP passwords, and the internal secret are not passed as plain container environment variables.
 
 Important values:
 
@@ -87,6 +90,7 @@ COOKIE_DOMAIN=.yourdomain.com
 COOKIE_SECURE=true
 CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com
 TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128
+DOCS_ENABLED=true
 
 JWT_ISSUER=your-app-name
 JWT_AUDIENCE=your-app-client
@@ -102,13 +106,19 @@ AUTH_DB_MIGRATION_URL=postgres://auth_user:<password>@host.docker.internal:5432/
 
 Repeat DB URLs for user, OTP, favorites, and alerts.
 
+If you edit `/etc/app/secrets/.env` manually, refresh mounted secret files before a manual compose run:
+
+```bash
+sudo -u deploy bash /opt/app/infra/scripts/08-materialize-secrets.sh
+```
+
 ## GitHub Actions Pipeline
 
 On push to `main`:
 
 1. CI runs Go tests, Python tests, and production compose validation.
 2. Build job builds seven images and pushes them to GHCR using the commit SHA and `latest` tags.
-3. Deploy job SSHes into the VPS, copies compose and scripts, pulls all images, recreates services, checks gateway health, and runs `infra/scripts/health-check.sh`.
+3. Deploy job SSHes into the VPS, copies compose and scripts, refreshes Docker secret files, pulls all images, recreates services, checks gateway health, and runs `infra/scripts/health-check.sh`.
 
 ## Direct IP vs Domain Mode
 

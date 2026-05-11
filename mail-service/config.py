@@ -18,17 +18,31 @@ class Config:
     APP_NAME: str
 
 
+def env_value(key: str, default: str = "") -> str:
+    value = os.getenv(key)
+    if value:
+        return value.strip()
+    file_path = os.getenv(f"{key}_FILE")
+    if file_path:
+        try:
+            with open(file_path, "r", encoding="utf-8") as handle:
+                return handle.read().strip()
+        except OSError:
+            return default
+    return default
+
+
 def load_config() -> Config:
     load_dotenv()
     return Config(
-        RABBITMQ_URL=os.getenv("RABBITMQ_URL", "amqp://app:app_pass@rabbitmq:5672/"),
-        REDIS_URL=os.getenv("REDIS_URL", "redis://:redis_pass@redis:6379/1"),
-        MAIL_PROVIDER=os.getenv("MAIL_PROVIDER", "smtp").lower(),
-        SMTP_HOST=os.getenv("SMTP_HOST", "mailpit"),
-        SMTP_PORT=int(os.getenv("SMTP_PORT", "1025")),
-        SMTP_USER=os.getenv("SMTP_USER", ""),
-        SMTP_PASS=os.getenv("SMTP_PASS", ""),
-        MAIL_FROM=os.getenv("MAIL_FROM", "noreply@yourdomain.com"),
-        SENDGRID_API_KEY=os.getenv("SENDGRID_API_KEY", ""),
-        APP_NAME=os.getenv("APP_NAME", "Your App"),
+        RABBITMQ_URL=env_value("RABBITMQ_URL", "amqp://app:app_pass@rabbitmq:5672/"),
+        REDIS_URL=env_value("REDIS_URL", "redis://:redis_pass@redis:6379/1"),
+        MAIL_PROVIDER=env_value("MAIL_PROVIDER", "smtp").lower(),
+        SMTP_HOST=env_value("SMTP_HOST", "mailpit"),
+        SMTP_PORT=int(env_value("SMTP_PORT", "1025")),
+        SMTP_USER=env_value("SMTP_USER", ""),
+        SMTP_PASS=env_value("SMTP_PASS", ""),
+        MAIL_FROM=env_value("MAIL_FROM", "noreply@yourdomain.com"),
+        SENDGRID_API_KEY=env_value("SENDGRID_API_KEY", ""),
+        APP_NAME=env_value("APP_NAME", "Your App"),
     )

@@ -65,6 +65,8 @@ See `docs/DEPLOYMENT.md` for the full production checklist.
 - `docs/FRONTEND_INTEGRATION.md`: frontend login, refresh, OTP, favorites, alerts, CORS, cookies.
 - `docs/DEPLOYMENT.md`: VPS and GitHub Actions deployment.
 - `docs/OPERATIONS.md`: health checks, logs, rollback, recovery checks.
+- Swagger UI: `GET /docs` when `DOCS_ENABLED=true`.
+- OpenAPI spec: `GET /openapi.yaml`.
 
 ## Verification
 

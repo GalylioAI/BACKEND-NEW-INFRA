@@ -27,6 +27,7 @@ type Config struct {
 	AlertsServiceURL    string
 	RedisURL            string
 	TrustedProxyCIDRs   []string
+	DocsEnabled         bool
 	RequestTimeout      time.Duration
 	BodyLimitBytes      int64
 }
@@ -61,6 +62,7 @@ func Load() (Config, error) {
 		AlertsServiceURL:    sharedcfg.String("ALERTS_SERVICE_URL", "http://alerts-service:8085"),
 		RedisURL:            sharedcfg.String("REDIS_URL", ""),
 		TrustedProxyCIDRs:   sharedcfg.CSV("TRUSTED_PROXY_CIDRS"),
+		DocsEnabled:         sharedcfg.Bool("DOCS_ENABLED", true),
 		RequestTimeout:      30 * time.Second,
 		BodyLimitBytes:      1 << 20,
 	}

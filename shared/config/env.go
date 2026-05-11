@@ -11,6 +11,9 @@ import (
 func String(key, fallback string) string {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
+		value = fileValue(key)
+	}
+	if value == "" {
 		return fallback
 	}
 	return value
@@ -19,9 +22,20 @@ func String(key, fallback string) string {
 func RequiredString(key string) (string, error) {
 	value := strings.TrimSpace(os.Getenv(key))
 	if value == "" {
+		value = fileValue(key)
+	}
+	if value == "" {
 		return "", fmt.Errorf("%s is required", key)
 	}
 	return value, nil
+}
+
+func Bool(key string, fallback bool) bool {
+	value := strings.ToLower(String(key, ""))
+	if value == "" {
+		return fallback
+	}
+	return value == "1" || value == "true" || value == "yes" || value == "on"
 }
 
 func Int(key string, fallback int) (int, error) {
@@ -49,7 +63,7 @@ func Duration(key string, fallback time.Duration) (time.Duration, error) {
 }
 
 func CSV(key string) []string {
-	raw := strings.TrimSpace(os.Getenv(key))
+	raw := String(key, "")
 	if raw == "" {
 		return nil
 	}
@@ -62,4 +76,16 @@ func CSV(key string) []string {
 		}
 	}
 	return values
+}
+
+func fileValue(key string) string {
+	path := strings.TrimSpace(os.Getenv(key + "_FILE"))
+	if path == "" {
+		return ""
+	}
+	body, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(body))
 }

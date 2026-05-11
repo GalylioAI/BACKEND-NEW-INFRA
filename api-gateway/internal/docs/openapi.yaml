@@ -1,0 +1,851 @@
+openapi: 3.0.3
+info:
+  title: Backend API
+  version: 1.0.0
+  description: Public API served through the API Gateway. Internal service endpoints are intentionally excluded.
+servers:
+  - url: /
+security: []
+tags:
+  - name: Auth
+  - name: Users
+  - name: OTP
+  - name: Favorites
+  - name: Alerts
+  - name: Admin
+  - name: Health
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Gateway and upstream health
+      responses:
+        "200":
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Manual login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Access token or 2FA pending token
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+        "403":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /auth/google:
+    post:
+      tags: [Auth]
+      summary: Google ID-token login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_token]
+              properties:
+                id_token:
+                  type: string
+                  maxLength: 4096
+      responses:
+        "200":
+          description: Access token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Rotate refresh cookie and issue a new access token
+      responses:
+        "200":
+          description: New access token and refresh cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current session
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+        "401":
+          $ref: "#/components/responses/Error"
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout all sessions
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /users/signup:
+    post:
+      tags: [Users]
+      summary: Register a manual user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Success"
+        "409":
+          $ref: "#/components/responses/Error"
+        "422":
+          $ref: "#/components/responses/Error"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /gouvernorats:
+    get:
+      tags: [Users]
+      summary: List Tunisian gouvernorats
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /users/me:
+    get:
+      tags: [Users]
+      summary: Get own profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    put:
+      tags: [Users]
+      summary: Partially update own profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    delete:
+      tags: [Users]
+      summary: Soft-delete own account
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /users/me/password:
+    put:
+      tags: [Users]
+      summary: Change own password
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChangePasswordRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /otp/email/send:
+    post:
+      tags: [OTP]
+      summary: Send email verification OTP
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /otp/email/verify:
+    post:
+      tags: [OTP]
+      summary: Verify email OTP
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/OTPCode"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /otp/2fa/enable:
+    post:
+      tags: [OTP]
+      summary: Send 2FA enable OTP
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password:
+                  type: string
+                  maxLength: 128
+                  format: password
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /otp/2fa/disable:
+    post:
+      tags: [OTP]
+      summary: Send or verify 2FA disable OTP
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /otp/2fa/verify:
+    post:
+      tags: [OTP]
+      summary: Complete login 2FA or confirm 2FA enablement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, session_token]
+              properties:
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  pattern: "^[0-9]{6}$"
+                session_token:
+                  type: string
+                  maxLength: 4096
+      responses:
+        "200":
+          description: Access token for login context or success message for enable context
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+  /otp/password-reset/send:
+    post:
+      tags: [OTP]
+      summary: Send password reset OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /otp/password-reset/verify:
+    post:
+      tags: [OTP]
+      summary: Verify reset OTP and receive reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email:
+                  type: string
+                  format: email
+                code:
+                  type: string
+                  minLength: 6
+                  maxLength: 6
+                  pattern: "^[0-9]{6}$"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /otp/password-reset/apply:
+    post:
+      tags: [OTP]
+      summary: Apply new password using reset token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reset_token, new_password, new_password_confirm]
+              properties:
+                reset_token:
+                  type: string
+                  maxLength: 256
+                new_password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  maxLength: 128
+                new_password_confirm:
+                  type: string
+                  format: password
+                  minLength: 8
+                  maxLength: 128
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /favorites:
+    get:
+      tags: [Favorites]
+      summary: List own favorites
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    post:
+      tags: [Favorites]
+      summary: Add a favorite
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductIDRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "409":
+          $ref: "#/components/responses/Error"
+  /favorites/all:
+    delete:
+      tags: [Favorites]
+      summary: Clear all favorites
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Confirm
+          in: header
+          required: true
+          schema:
+            type: string
+            enum: [clear-all-favorites]
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /favorites/{product_id}:
+    get:
+      tags: [Favorites]
+      summary: Check whether a product is favorited
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProductID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    delete:
+      tags: [Favorites]
+      summary: Remove a favorite
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ProductID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: List own alerts
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+        - name: is_active
+          in: query
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          schema:
+            $ref: "#/components/schemas/AlertType"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    post:
+      tags: [Alerts]
+      summary: Create an alert
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertRequest"
+      responses:
+        "201":
+          $ref: "#/components/responses/Created"
+        "409":
+          $ref: "#/components/responses/Error"
+  /alerts/{id}:
+    get:
+      tags: [Alerts]
+      summary: Get one owned alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    put:
+      tags: [Alerts]
+      summary: Update alert type or threshold
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    delete:
+      tags: [Alerts]
+      summary: Soft-delete alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /alerts/{id}/toggle:
+    put:
+      tags: [Alerts]
+      summary: Enable or disable an alert
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_active]
+              properties:
+                is_active:
+                  type: boolean
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /users:
+    get:
+      tags: [Admin]
+      summary: List users
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /users/{id}:
+    get:
+      tags: [Admin]
+      summary: Get any user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+    delete:
+      tags: [Admin]
+      summary: Soft-delete a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /users/{id}/ban:
+    put:
+      tags: [Admin]
+      summary: Ban or unban a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [is_banned]
+              properties:
+                is_banned:
+                  type: boolean
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /users/{id}/role:
+    put:
+      tags: [Admin]
+      summary: Change user role
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/ID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                  enum: [user, admin]
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /admin/favorites/popular:
+    get:
+      tags: [Admin]
+      summary: Popular favorite products
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            maximum: 50
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /admin/alerts:
+    get:
+      tags: [Admin]
+      summary: List all alerts
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  requestBodies:
+    OTPCode:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code]
+            properties:
+              code:
+                type: string
+                minLength: 6
+                maxLength: 6
+                pattern: "^[0-9]{6}$"
+  parameters:
+    ID:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ProductID:
+      name: product_id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    PerPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+  responses:
+    OK:
+      description: Success
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Success"
+    Created:
+      description: Created
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Success"
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Rate limited
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    Success:
+      type: object
+      required: [success, meta]
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          additionalProperties: true
+        meta:
+          $ref: "#/components/schemas/Meta"
+    ErrorResponse:
+      type: object
+      required: [success, error, meta]
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            fields:
+              type: object
+              additionalProperties:
+                type: string
+            retry_after_seconds:
+              type: integer
+        meta:
+          $ref: "#/components/schemas/Meta"
+    Meta:
+      type: object
+      properties:
+        request_id:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    LoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+          maxLength: 255
+        password:
+          type: string
+          maxLength: 128
+          format: password
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        access_token_expires_at:
+          type: string
+          format: date-time
+        two_factor_required:
+          type: boolean
+        two_factor_session_token:
+          type: string
+    SignupRequest:
+      type: object
+      required: [full_name, username, email, phone, password, gouvernorat_id]
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 150
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 20
+          example: "+21612345678"
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          format: password
+        gouvernorat_id:
+          type: integer
+          minimum: 1
+          maximum: 24
+    UpdateProfileRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          minLength: 2
+          maxLength: 150
+        username:
+          type: string
+          minLength: 3
+          maxLength: 50
+        phone:
+          type: string
+          maxLength: 20
+        gouvernorat_id:
+          type: integer
+          minimum: 1
+          maximum: 24
+    ChangePasswordRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password:
+          type: string
+          maxLength: 128
+          format: password
+        new_password:
+          type: string
+          minLength: 8
+          maxLength: 128
+          format: password
+    ProductIDRequest:
+      type: object
+      required: [product_id]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+    AlertType:
+      type: string
+      enum: [price_drop, price_above, back_in_stock, discount]
+    AlertRequest:
+      type: object
+      required: [product_id, type]
+      properties:
+        product_id:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/AlertType"
+        threshold:
+          type: number
+          format: double
+          minimum: 0
