@@ -148,16 +148,22 @@ jobs:
             done
 
             echo "=== Waiting for gateway health ==="
-            for i in $(seq 1 12); do
-              HTTP=$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/health || echo "000")
+            for i in $(seq 1 24); do
+              HTTP="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/health 2>/dev/null || true)"
+              HTTP="${HTTP:-000}"
               if [ "${HTTP}" = "200" ]; then
                 echo "Gateway healthy (attempt ${i})"
                 break
               fi
-              echo "Attempt ${i}/12: HTTP ${HTTP}; waiting 5s"
+              echo "Attempt ${i}/24: HTTP ${HTTP}; waiting 5s"
               sleep 5
-              if [ "${i}" = "12" ]; then
-                echo "DEPLOY FAILED: gateway not healthy after 60s"
+              if [ "${i}" = "24" ]; then
+                echo "DEPLOY FAILED: gateway not healthy after 120s"
+                docker compose -f "${COMPOSE}" --env-file "${ENV_FILE}" ps || true
+                docker logs app-api-gateway-1 --tail 160 || true
+                for svc in auth-service user-service otp-service favorites-service alerts-service mail-service; do
+                  docker logs "app-${svc}-1" --tail 60 || true
+                done
                 exit 1
               fi
             done

@@ -22,5 +22,7 @@ RUN apk add --no-cache su-exec && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /out/auth-service /app/auth-service
 COPY --from=build /src/auth-service/migrations /app/migrations
+COPY infra/docker/app-entrypoint.sh /app/entrypoint.sh
+RUN chmod 0755 /app/entrypoint.sh
 EXPOSE 8081
-ENTRYPOINT ["/bin/sh", "-c", "if [ -f /run/secrets/jwt_private.pem ]; then cp /run/secrets/jwt_private.pem /tmp/jwt_private.pem && cp /run/secrets/jwt_public.pem /tmp/jwt_public.pem && chown app:app /tmp/jwt_private.pem /tmp/jwt_public.pem && chmod 0400 /tmp/jwt_private.pem && chmod 0444 /tmp/jwt_public.pem && export JWT_PRIVATE_KEY_PATH=/tmp/jwt_private.pem && export JWT_PUBLIC_KEY_PATH=/tmp/jwt_public.pem; fi; exec su-exec app /app/auth-service"]
+ENTRYPOINT ["/app/entrypoint.sh", "/app/auth-service"]

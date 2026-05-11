@@ -18,10 +18,11 @@ RUN go work sync
 RUN go build -trimpath -ldflags="-s -w" -o /out/alerts-service ./alerts-service/cmd
 
 FROM alpine:3.21
-RUN addgroup -S app && adduser -S app -G app
-USER app
+RUN apk add --no-cache su-exec && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /out/alerts-service /app/alerts-service
 COPY --from=build /src/alerts-service/migrations /app/migrations
+COPY infra/docker/app-entrypoint.sh /app/entrypoint.sh
+RUN chmod 0755 /app/entrypoint.sh
 EXPOSE 8085
-ENTRYPOINT ["/app/alerts-service"]
+ENTRYPOINT ["/app/entrypoint.sh", "/app/alerts-service"]

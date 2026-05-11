@@ -22,5 +22,7 @@ RUN apk add --no-cache su-exec && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /out/otp-service /app/otp-service
 COPY --from=build /src/otp-service/migrations /app/migrations
+COPY infra/docker/app-entrypoint.sh /app/entrypoint.sh
+RUN chmod 0755 /app/entrypoint.sh
 EXPOSE 8083
-ENTRYPOINT ["/bin/sh", "-c", "if [ -f /run/secrets/jwt_public.pem ]; then cp /run/secrets/jwt_public.pem /tmp/jwt_public.pem && chown app:app /tmp/jwt_public.pem && chmod 0444 /tmp/jwt_public.pem && export JWT_PUBLIC_KEY_PATH=/tmp/jwt_public.pem; fi; exec su-exec app /app/otp-service"]
+ENTRYPOINT ["/app/entrypoint.sh", "/app/otp-service"]

@@ -21,5 +21,7 @@ FROM alpine:3.21
 RUN apk add --no-cache su-exec && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /out/api-gateway /app/api-gateway
+COPY infra/docker/app-entrypoint.sh /app/entrypoint.sh
+RUN chmod 0755 /app/entrypoint.sh
 EXPOSE 8080
-ENTRYPOINT ["/bin/sh", "-c", "if [ -f /run/secrets/jwt_public.pem ]; then cp /run/secrets/jwt_public.pem /tmp/jwt_public.pem && chown app:app /tmp/jwt_public.pem && chmod 0444 /tmp/jwt_public.pem && export RS256_PUBLIC_KEY_PATH=/tmp/jwt_public.pem; fi; exec su-exec app /app/api-gateway"]
+ENTRYPOINT ["/app/entrypoint.sh", "/app/api-gateway"]
