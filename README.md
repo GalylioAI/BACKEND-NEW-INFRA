@@ -65,6 +65,7 @@ See `docs/DEPLOYMENT.md` for the full production checklist.
 - `docs/FRONTEND_INTEGRATION.md`: frontend login, refresh, OTP, favorites, alerts, CORS, cookies.
 - `docs/DEPLOYMENT.md`: VPS and GitHub Actions deployment.
 - `docs/OPERATIONS.md`: health checks, logs, rollback, recovery checks.
+- `docs/EMAIL_DELIVERABILITY.md`: SPF, DKIM, DMARC, and SMTP provider setup.
 - Swagger UI: `GET /docs` when `DOCS_ENABLED=true`.
 - OpenAPI spec: `GET /openapi.yaml`.
 
@@ -75,5 +76,3 @@ docker run --rm -v "${PWD}:/src" -w /src golang:1.23-alpine sh -c "go work sync 
 docker run --rm -v "${PWD}/mail-service:/app" -w /app python:3.12-slim sh -c "pip install -r requirements.txt -q && python -m unittest discover -s tests -v"
 docker compose -f docker-compose.prod.yml config --quiet
 ```
-
-There is no Swagger UI served by the backend yet. The API reference docs are the source of truth for frontend integration.

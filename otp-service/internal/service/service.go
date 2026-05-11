@@ -50,6 +50,12 @@ type PendingClaims struct {
 	jwtlib.RegisteredClaims
 }
 
+type AccessClaims struct {
+	Role  string `json:"role"`
+	Email string `json:"email"`
+	jwtlib.RegisteredClaims
+}
+
 func New(repo repository.Repository, userClient client.UserClient, authClient client.AuthClient, publisher rabbit.Publisher, verifier *PendingJWTVerifier) *Service {
 	if publisher == nil {
 		publisher = rabbit.NoopPublisher{}
@@ -70,18 +76,47 @@ func NewPendingJWTVerifier(publicKeyPath, issuer, audience string) (*PendingJWTV
 }
 
 func (v *PendingJWTVerifier) Verify(raw string) (uuid.UUID, string, error) {
+	if userID, contextValue, err := v.verifyPending(raw); err == nil {
+		return userID, contextValue, nil
+	}
+	if userID, err := v.verifyAccess(raw); err == nil {
+		return userID, "2fa_enable", nil
+	}
+	return uuid.Nil, "", invalidTwoFactorSession()
+}
+
+func (v *PendingJWTVerifier) verifyPending(raw string) (uuid.UUID, string, error) {
 	claims := &PendingClaims{}
 	parsed, err := jwtlib.ParseWithClaims(raw, claims, func(token *jwtlib.Token) (any, error) {
 		return v.publicKey, nil
 	}, jwtlib.WithIssuer(v.issuer), jwtlib.WithAudience(v.audience), jwtlib.WithValidMethods([]string{jwtlib.SigningMethodRS256.Alg()}))
 	if err != nil || !parsed.Valid || claims.Type != "2fa_pending" {
-		return uuid.Nil, "", apperr.New(http.StatusUnauthorized, apperr.CodeInvalidTwoFASession, "2FA session token is invalid.")
+		return uuid.Nil, "", invalidTwoFactorSession()
 	}
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return uuid.Nil, "", apperr.New(http.StatusUnauthorized, apperr.CodeInvalidTwoFASession, "2FA session token is invalid.")
+		return uuid.Nil, "", invalidTwoFactorSession()
 	}
 	return userID, claims.Context, nil
+}
+
+func (v *PendingJWTVerifier) verifyAccess(raw string) (uuid.UUID, error) {
+	claims := &AccessClaims{}
+	parsed, err := jwtlib.ParseWithClaims(raw, claims, func(token *jwtlib.Token) (any, error) {
+		return v.publicKey, nil
+	}, jwtlib.WithIssuer(v.issuer), jwtlib.WithAudience(v.audience), jwtlib.WithValidMethods([]string{jwtlib.SigningMethodRS256.Alg()}))
+	if err != nil || !parsed.Valid || claims.Role == "" || claims.Email == "" {
+		return uuid.Nil, invalidTwoFactorSession()
+	}
+	userID, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, invalidTwoFactorSession()
+	}
+	return userID, nil
+}
+
+func invalidTwoFactorSession() error {
+	return apperr.New(http.StatusUnauthorized, apperr.CodeInvalidTwoFASession, "2FA session token is invalid.")
 }
 
 func GenerateOTP() (plain string, hash string, err error) {
@@ -207,6 +242,16 @@ func (s *Service) VerifyTwoFactor(ctx context.Context, code, sessionToken string
 	if err != nil {
 		return client.TokenPair{}, "", err
 	}
+	user, err := s.userClient.GetByID(ctx, userID)
+	if err != nil {
+		return client.TokenPair{}, "", err
+	}
+	if user.IsBanned {
+		return client.TokenPair{}, "", apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	if !user.IsVerified {
+		return client.TokenPair{}, "", apperr.New(http.StatusForbidden, apperr.CodeAccountNotVerified, "Please verify your account before continuing.")
+	}
 	if err := s.verifyOTP(ctx, userID, domain.OTPTypeTwoFactor, code); err != nil {
 		return client.TokenPair{}, "", err
 	}
@@ -220,7 +265,7 @@ func (s *Service) VerifyTwoFactor(ctx context.Context, code, sessionToken string
 		}
 		return client.TokenPair{}, "2FA enabled successfully", nil
 	default:
-		return client.TokenPair{}, "", apperr.New(http.StatusUnauthorized, apperr.CodeInvalidTwoFASession, "2FA session token is invalid.")
+		return client.TokenPair{}, "", invalidTwoFactorSession()
 	}
 }
 

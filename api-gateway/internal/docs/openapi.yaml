@@ -268,9 +268,11 @@ paths:
       tags: [OTP]
       summary: Complete login 2FA or confirm 2FA enablement
       description: >
-        Send the short-lived 2FA pending JWT in the Authorization header as
-        `Bearer <2fa_pending_token>`. The legacy `session_token` request-body
-        field is still accepted for compatibility.
+        For login 2FA, send the short-lived 2FA pending JWT returned by
+        `/auth/login` in the Authorization header as `Bearer <2fa_pending_token>`.
+        For confirming 2FA enablement while already signed in, send the normal
+        access token in the same Authorization header. The legacy `session_token`
+        request-body field is still accepted for pending-token compatibility.
       security:
         - bearerAuth: []
       requestBody:
@@ -290,7 +292,9 @@ paths:
                   type: string
                   deprecated: true
                   description: >
-                    Deprecated. Prefer `Authorization: Bearer <2fa_pending_token>`.
+                    Deprecated. Prefer `Authorization: Bearer <2fa_pending_token>`
+                    for login completion, or `Authorization: Bearer <access_token>`
+                    for confirming 2FA enablement.
                   maxLength: 4096
       responses:
         "200":

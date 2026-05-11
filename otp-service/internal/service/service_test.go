@@ -1,9 +1,18 @@
 package service_test
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
+	"encoding/pem"
+	"os"
 	"testing"
+	"time"
 
 	"backend/otp-service/internal/service"
+
+	jwtlib "github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 func TestGenerateOTPReturnsSixDigitsAndBcryptHash(t *testing.T) {
@@ -28,4 +37,96 @@ func TestGenerateOTPReturnsSixDigitsAndBcryptHash(t *testing.T) {
 	if service.VerifyOTP("000000", hash) && plain != "000000" {
 		t.Fatal("wrong OTP should not verify")
 	}
+}
+
+func TestPendingJWTVerifierAcceptsPendingAndAccessTokens(t *testing.T) {
+	privateKey, publicKeyPath := testJWTKey(t)
+	verifier, err := service.NewPendingJWTVerifier(publicKeyPath, "test-issuer", "test-audience")
+	if err != nil {
+		t.Fatalf("NewPendingJWTVerifier returned error: %v", err)
+	}
+	userID := uuid.New()
+
+	pending := signToken(t, privateKey, service.PendingClaims{
+		Type:             "2fa_pending",
+		Context:          "login",
+		RegisteredClaims: registeredClaims(userID),
+	})
+	verifiedUserID, contextValue, err := verifier.Verify(pending)
+	if err != nil {
+		t.Fatalf("pending token should verify: %v", err)
+	}
+	if verifiedUserID != userID || contextValue != "login" {
+		t.Fatalf("unexpected pending claims: user_id=%s context=%q", verifiedUserID, contextValue)
+	}
+
+	access := signToken(t, privateKey, service.AccessClaims{
+		Role:             "user",
+		Email:            "user@example.com",
+		RegisteredClaims: registeredClaims(userID),
+	})
+	verifiedUserID, contextValue, err = verifier.Verify(access)
+	if err != nil {
+		t.Fatalf("access token should verify for 2FA enable confirmation: %v", err)
+	}
+	if verifiedUserID != userID || contextValue != "2fa_enable" {
+		t.Fatalf("unexpected access claims: user_id=%s context=%q", verifiedUserID, contextValue)
+	}
+}
+
+func TestPendingJWTVerifierRejectsGenericSignedToken(t *testing.T) {
+	privateKey, publicKeyPath := testJWTKey(t)
+	verifier, err := service.NewPendingJWTVerifier(publicKeyPath, "test-issuer", "test-audience")
+	if err != nil {
+		t.Fatalf("NewPendingJWTVerifier returned error: %v", err)
+	}
+	raw := signToken(t, privateKey, jwtlib.RegisteredClaims{
+		Issuer:    "test-issuer",
+		Subject:   uuid.NewString(),
+		Audience:  jwtlib.ClaimStrings{"test-audience"},
+		ExpiresAt: jwtlib.NewNumericDate(time.Now().Add(time.Minute)),
+		IssuedAt:  jwtlib.NewNumericDate(time.Now()),
+		ID:        uuid.NewString(),
+	})
+	if _, _, err := verifier.Verify(raw); err == nil {
+		t.Fatal("generic signed token must not verify as a 2FA session")
+	}
+}
+
+func registeredClaims(userID uuid.UUID) jwtlib.RegisteredClaims {
+	now := time.Now().UTC()
+	return jwtlib.RegisteredClaims{
+		Issuer:    "test-issuer",
+		Subject:   userID.String(),
+		Audience:  jwtlib.ClaimStrings{"test-audience"},
+		ExpiresAt: jwtlib.NewNumericDate(now.Add(time.Minute)),
+		IssuedAt:  jwtlib.NewNumericDate(now),
+		ID:        uuid.NewString(),
+	}
+}
+
+func testJWTKey(t *testing.T) (*rsa.PrivateKey, string) {
+	t.Helper()
+	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		t.Fatalf("rsa.GenerateKey returned error: %v", err)
+	}
+	publicPEM := pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PUBLIC KEY",
+		Bytes: x509.MarshalPKCS1PublicKey(&privateKey.PublicKey),
+	})
+	path := t.TempDir() + "/public.pem"
+	if err := os.WriteFile(path, publicPEM, 0o600); err != nil {
+		t.Fatalf("os.WriteFile returned error: %v", err)
+	}
+	return privateKey, path
+}
+
+func signToken(t *testing.T, privateKey *rsa.PrivateKey, claims jwtlib.Claims) string {
+	t.Helper()
+	raw, err := jwtlib.NewWithClaims(jwtlib.SigningMethodRS256, claims).SignedString(privateKey)
+	if err != nil {
+		t.Fatalf("SignedString returned error: %v", err)
+	}
+	return raw
 }

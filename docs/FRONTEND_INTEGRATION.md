@@ -53,18 +53,23 @@ export function setAccessToken(token: string | null) {
   accessToken = token;
 }
 
+type ApiFetchOptions = RequestInit & { authToken?: string | null };
+
 export async function apiFetch<T>(
   path: string,
-  options: RequestInit = {},
+  options: ApiFetchOptions = {},
 ): Promise<ApiResponse<T>> {
+  const { authToken, ...fetchOptions } = options;
   const headers = new Headers(options.headers);
   headers.set("Content-Type", "application/json");
-  if (accessToken) {
+  if (authToken) {
+    headers.set("Authorization", `Bearer ${authToken}`);
+  } else if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...options,
+    ...fetchOptions,
     headers,
     credentials: "include",
   });
@@ -169,9 +174,9 @@ Treat the pending token as short-lived sensitive state and keep it in memory.
 ```ts
 const res = await apiFetch<{ access_token: string }>("/otp/2fa/verify", {
   method: "POST",
+  authToken: pendingToken,
   body: JSON.stringify({
     code,
-    session_token: pendingToken,
   }),
 });
 
@@ -179,6 +184,10 @@ if (res.success) {
   setAccessToken(res.data!.access_token);
 }
 ```
+
+For confirming 2FA enablement after `POST /otp/2fa/enable`, call the same endpoint
+with the normal access token as `authToken` and `{ code }` in the body. Login 2FA
+must still use the short-lived pending token from `/auth/login`.
 
 ## Logout
 

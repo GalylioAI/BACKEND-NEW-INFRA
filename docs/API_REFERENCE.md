@@ -213,10 +213,14 @@ Sends a 2FA OTP and returns a pending session token for activation.
 
 Public because it is used before login completes.
 
+For login 2FA, send the `two_factor_session_token` returned by `/auth/login` as
+`Authorization: Bearer <2fa-pending-jwt>`. For confirming 2FA enablement while
+already signed in, send the normal access token as `Authorization: Bearer <access-token>`.
+The legacy body `session_token` is still accepted for login-token compatibility.
+
 ```json
 {
-  "code": "847291",
-  "session_token": "<2fa-pending-jwt>"
+  "code": "847291"
 }
 ```
 
