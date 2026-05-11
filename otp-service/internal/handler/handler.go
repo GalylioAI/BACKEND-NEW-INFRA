@@ -28,11 +28,12 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /health", h.health)
 	mux.HandleFunc("GET /healthz", h.health)
 
+	internalOnly := middleware.RequireInternalSecret(h.internalSecret)
 	protected := func(fn http.HandlerFunc) http.Handler {
 		return middleware.Chain(fn, middleware.RequireInternalSecret(h.internalSecret), middleware.RequireUserContext)
 	}
-	mux.Handle("POST /otp/email/send", protected(h.sendEmailVerification))
-	mux.Handle("POST /otp/email/verify", protected(h.verifyEmail))
+	mux.Handle("POST /otp/email/send", internalOnly(http.HandlerFunc(h.sendEmailVerification)))
+	mux.Handle("POST /otp/email/verify", internalOnly(http.HandlerFunc(h.verifyEmail)))
 	mux.Handle("POST /otp/2fa/enable", protected(h.enableTwoFactor))
 	mux.Handle("POST /otp/2fa/disable", protected(h.disableTwoFactor))
 
@@ -41,8 +42,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("POST /otp/password-reset/verify", h.verifyPasswordReset)
 	mux.HandleFunc("POST /otp/password-reset/apply", h.applyPasswordReset)
 
-	internal := middleware.RequireInternalSecret(h.internalSecret)
-	mux.Handle("POST /internal/otp/2fa/send-login", internal(http.HandlerFunc(h.internalSendLoginTwoFactor)))
+	mux.Handle("POST /internal/otp/2fa/send-login", internalOnly(http.HandlerFunc(h.internalSendLoginTwoFactor)))
 
 	return mux
 }
@@ -56,12 +56,13 @@ func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) sendEmailVerification(w http.ResponseWriter, r *http.Request) {
-	user, ok := userctx.FromContext(r.Context())
-	if !ok {
-		httpjson.WriteError(w, r, apperr.New(http.StatusUnauthorized, apperr.CodeUnauthorized, "Authentication is required."))
+	var req struct {
+		Email string `json:"email" validate:"required,email,max=255"`
+	}
+	if !decodeAndValidate(w, r, &req) {
 		return
 	}
-	if err := h.service.SendEmailVerification(r.Context(), user.ID); err != nil {
+	if err := h.service.SendEmailVerificationByEmail(r.Context(), req.Email); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}
@@ -69,18 +70,14 @@ func (h *Handler) sendEmailVerification(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *Handler) verifyEmail(w http.ResponseWriter, r *http.Request) {
-	user, ok := userctx.FromContext(r.Context())
-	if !ok {
-		httpjson.WriteError(w, r, apperr.New(http.StatusUnauthorized, apperr.CodeUnauthorized, "Authentication is required."))
-		return
-	}
 	var req struct {
-		Code string `json:"code" validate:"required,len=6,numeric"`
+		Email string `json:"email" validate:"required,email,max=255"`
+		Code  string `json:"code" validate:"required,len=6,numeric"`
 	}
 	if !decodeAndValidate(w, r, &req) {
 		return
 	}
-	if err := h.service.VerifyEmail(r.Context(), user.ID, req.Code); err != nil {
+	if err := h.service.VerifyEmailByEmail(r.Context(), req.Email, req.Code); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}

@@ -40,3 +40,20 @@ func TestClientIPTrustsConfiguredProxyCIDR(t *testing.T) {
 		t.Fatalf("expected forwarded client IP, got %q", got)
 	}
 }
+
+func TestPublicOTPVerifyRoutesUseStrictRateLimit(t *testing.T) {
+	routes := []string{
+		"POST /otp/email/verify",
+		"POST /otp/2fa/verify",
+		"POST /otp/password-reset/verify",
+		"POST /otp/password-reset/apply",
+	}
+	for _, route := range routes {
+		t.Run(route, func(t *testing.T) {
+			limit := limitForRoute(route)
+			if limit.Limit != 3 {
+				t.Fatalf("expected strict limit 3/min for %s, got %d", route, limit.Limit)
+			}
+		})
+	}
+}

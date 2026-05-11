@@ -107,6 +107,21 @@ func (s *Service) SendEmailVerification(ctx context.Context, userID uuid.UUID) e
 	return s.sendEmailVerificationForUser(ctx, user)
 }
 
+func (s *Service) SendEmailVerificationByEmail(ctx context.Context, email string) error {
+	normalized := validate.NormalizeEmail(email)
+	if !validate.ValidEmail(normalized) {
+		return apperr.Validation(apperr.FieldErrors{"email": "Must be a valid email address."})
+	}
+	user, err := s.userClient.GetByEmail(ctx, normalized)
+	if err != nil {
+		return nil
+	}
+	if user.IsBanned {
+		return nil
+	}
+	return s.sendEmailVerificationForUser(ctx, user)
+}
+
 func (s *Service) sendEmailVerificationForUser(ctx context.Context, user domain.User) error {
 	if user.IsVerified {
 		return nil
@@ -134,6 +149,21 @@ func (s *Service) VerifyEmail(ctx context.Context, userID uuid.UUID, code string
 		return err
 	}
 	return s.publishMail(ctx, "mail.send.welcome", user, "welcome", map[string]any{"full_name": user.FullName})
+}
+
+func (s *Service) VerifyEmailByEmail(ctx context.Context, email, code string) error {
+	normalized := validate.NormalizeEmail(email)
+	if !validate.ValidEmail(normalized) {
+		return apperr.Validation(apperr.FieldErrors{"email": "Must be a valid email address."})
+	}
+	user, err := s.userClient.GetByEmail(ctx, normalized)
+	if err != nil {
+		return apperr.New(http.StatusUnauthorized, apperr.CodeOTPInvalid, "Verification code is invalid.")
+	}
+	if user.IsBanned {
+		return apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	return s.VerifyEmail(ctx, user.ID, code)
 }
 
 func (s *Service) SendLoginTwoFactor(ctx context.Context, userID uuid.UUID) error {

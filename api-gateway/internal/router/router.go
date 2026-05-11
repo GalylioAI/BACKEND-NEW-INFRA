@@ -21,11 +21,18 @@ type Router struct {
 	cfg       config.Config
 	logger    zerolog.Logger
 	rateLimit *gwmw.RateLimiter
+	userCheck *gwmw.UserStatusChecker
 	redis     *redis.Client
 }
 
 func New(cfg config.Config, logger zerolog.Logger, redisClient *redis.Client) http.Handler {
-	router := &Router{cfg: cfg, logger: logger, redis: redisClient, rateLimit: gwmw.NewRateLimiter(redisClient, logger, cfg.TrustedProxyCIDRs)}
+	router := &Router{
+		cfg:       cfg,
+		logger:    logger,
+		redis:     redisClient,
+		rateLimit: gwmw.NewRateLimiter(redisClient, logger, cfg.TrustedProxyCIDRs),
+		userCheck: gwmw.NewUserStatusChecker(cfg.UserServiceURL, cfg.InternalSecret),
+	}
 	return router.routes()
 }
 
@@ -45,21 +52,21 @@ func (r *Router) routes() http.Handler {
 	r.public(mux, "POST /auth/login", auth)
 	r.public(mux, "POST /auth/google", auth)
 	r.public(mux, "POST /auth/refresh", auth)
+	r.public(mux, "POST /auth/logout", auth)
 	r.public(mux, "POST /users/signup", user)
 	r.public(mux, "GET /gouvernorats", user)
+	r.public(mux, "POST /otp/email/send", otp)
+	r.public(mux, "POST /otp/email/verify", otp)
 	r.public(mux, "POST /otp/password-reset/send", otp)
 	r.public(mux, "POST /otp/password-reset/verify", otp)
 	r.public(mux, "POST /otp/password-reset/apply", otp)
 	r.public(mux, "POST /otp/2fa/verify", otp)
 
-	r.authenticated(mux, "POST /auth/logout", auth)
 	r.authenticated(mux, "POST /auth/logout-all", auth)
 	r.authenticated(mux, "GET /users/me", user)
 	r.authenticated(mux, "PUT /users/me", user)
 	r.authenticated(mux, "PUT /users/me/password", user)
 	r.authenticated(mux, "DELETE /users/me", user)
-	r.authenticated(mux, "POST /otp/email/send", otp)
-	r.authenticated(mux, "POST /otp/email/verify", otp)
 	r.authenticated(mux, "POST /otp/2fa/enable", otp)
 	r.authenticated(mux, "POST /otp/2fa/disable", otp)
 
@@ -79,8 +86,8 @@ func (r *Router) routes() http.Handler {
 	r.admin(mux, "GET /users", user, "admin", "superadmin")
 	r.admin(mux, "GET /users/{id}", user, "admin", "superadmin")
 	r.admin(mux, "PUT /users/{id}/ban", user, "admin", "superadmin")
-	r.admin(mux, "PUT /users/{id}/role", user, "superadmin")
-	r.admin(mux, "DELETE /users/{id}", user, "superadmin")
+	r.admin(mux, "PUT /users/{id}/role", user, "admin", "superadmin")
+	r.admin(mux, "DELETE /users/{id}", user, "admin", "superadmin")
 	r.admin(mux, "GET /admin/favorites/popular", favorites, "admin", "superadmin")
 	r.admin(mux, "GET /admin/alerts", alerts, "admin", "superadmin")
 
@@ -101,11 +108,11 @@ func (r *Router) public(mux *http.ServeMux, pattern string, handler http.Handler
 }
 
 func (r *Router) authenticated(mux *http.ServeMux, pattern string, handler http.Handler) {
-	mux.Handle(pattern, chain(handler, r.rateLimit.Middleware(pattern), gwmw.JWT(r.cfg.PublicKey, r.cfg.JWTIssuer, r.cfg.JWTAudience)))
+	mux.Handle(pattern, chain(handler, r.rateLimit.Middleware(pattern), gwmw.JWT(r.cfg.PublicKey, r.cfg.JWTIssuer, r.cfg.JWTAudience), r.userCheck.Middleware))
 }
 
 func (r *Router) admin(mux *http.ServeMux, pattern string, handler http.Handler, roles ...string) {
-	mux.Handle(pattern, chain(handler, r.rateLimit.Middleware(pattern), gwmw.JWT(r.cfg.PublicKey, r.cfg.JWTIssuer, r.cfg.JWTAudience), gwmw.RequireRole(roles...)))
+	mux.Handle(pattern, chain(handler, r.rateLimit.Middleware(pattern), gwmw.JWT(r.cfg.PublicKey, r.cfg.JWTIssuer, r.cfg.JWTAudience), r.userCheck.Middleware, gwmw.RequireRole(roles...)))
 }
 
 func chain(handler http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {

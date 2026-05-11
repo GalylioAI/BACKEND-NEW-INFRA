@@ -295,6 +295,17 @@ func (s *Service) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return s.authClient.RevokeAllRefreshTokens(ctx, id)
 }
 
+func (s *Service) SoftDeleteManagedUser(ctx context.Context, id uuid.UUID) error {
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if user.Role == domain.RoleSuperAdmin {
+		return apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin accounts cannot be deleted via API.")
+	}
+	return s.SoftDelete(ctx, id)
+}
+
 func (s *Service) ListUsers(ctx context.Context, page, perPage int) ([]domain.PublicUser, map[string]int, error) {
 	if page < 1 {
 		page = 1
@@ -329,6 +340,13 @@ func (s *Service) ChangeRole(ctx context.Context, id uuid.UUID, role string) (do
 	if role != domain.RoleUser && role != domain.RoleAdmin {
 		return domain.PublicUser{}, apperr.New(http.StatusUnprocessableEntity, apperr.CodeInvalidRole, "Role must be user or admin.")
 	}
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return domain.PublicUser{}, err
+	}
+	if current.Role == domain.RoleSuperAdmin {
+		return domain.PublicUser{}, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin role cannot be changed via API.")
+	}
 	user, err := s.repo.ChangeRole(ctx, id, role)
 	if err != nil {
 		return domain.PublicUser{}, err
@@ -337,6 +355,13 @@ func (s *Service) ChangeRole(ctx context.Context, id uuid.UUID, role string) (do
 }
 
 func (s *Service) SetBan(ctx context.Context, id uuid.UUID, banned bool, reason *string) (domain.PublicUser, error) {
+	current, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return domain.PublicUser{}, err
+	}
+	if current.Role == domain.RoleSuperAdmin && banned {
+		return domain.PublicUser{}, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin accounts cannot be banned via API.")
+	}
 	if reason != nil {
 		trimmed := strings.TrimSpace(*reason)
 		reason = &trimmed

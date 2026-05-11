@@ -176,7 +176,7 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) changeRole(w http.ResponseWriter, r *http.Request) {
-	if !requireSuperAdmin(w, r) {
+	if !requireAdmin(w, r) {
 		return
 	}
 	id, ok := parsePathUUID(w, r, "id")
@@ -223,14 +223,14 @@ func (h *Handler) setBan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
-	if !requireSuperAdmin(w, r) {
+	if !requireAdmin(w, r) {
 		return
 	}
 	id, ok := parsePathUUID(w, r, "id")
 	if !ok {
 		return
 	}
-	if err := h.service.SoftDelete(r.Context(), id); err != nil {
+	if err := h.service.SoftDeleteManagedUser(r.Context(), id); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}

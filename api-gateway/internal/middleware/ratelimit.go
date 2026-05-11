@@ -134,7 +134,13 @@ func limitForRoute(routeKey string) routeLimit {
 	switch routeKey {
 	case "POST /auth/login", "POST /auth/google":
 		return routeLimit{Limit: 5, Window: time.Minute}
-	case "POST /users/signup", "POST /otp/email/send", "POST /otp/password-reset/send":
+	case "POST /users/signup",
+		"POST /otp/email/send",
+		"POST /otp/email/verify",
+		"POST /otp/2fa/verify",
+		"POST /otp/password-reset/send",
+		"POST /otp/password-reset/verify",
+		"POST /otp/password-reset/apply":
 		return routeLimit{Limit: 3, Window: time.Minute}
 	default:
 		return routeLimit{Limit: 60, Window: time.Minute}
