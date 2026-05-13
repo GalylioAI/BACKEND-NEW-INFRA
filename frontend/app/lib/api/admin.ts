@@ -1,57 +1,78 @@
-import { apiFetch } from "./client";
-import type { AccessRule, AccessRulePayload, DashboardRole, UserResponse } from "./types";
+import { apiRequest } from "./client";
+import { endpoints } from "./endpoints";
+import type {
+  Alert,
+  PaginatedItems,
+  PopularFavorite,
+  UserResponse,
+  UserRole,
+} from "./types";
+import { normalizeUser } from "./types";
 
-export function getAdminUsers(token: string, page = 1, per_page = 20) {
-  return apiFetch<UserResponse[]>("/users", {
-    token,
-    cache: "no-store",
-    query: { page, per_page },
-  });
+export async function listAdminUsers(query?: {
+  page?: number;
+  per_page?: number;
+  search?: string;
+}) {
+  const data = await apiRequest<
+    PaginatedItems<UserResponse> | { items: UserResponse[] }
+  >(endpoints.users.list, { method: "GET", auth: true, query });
+  const items = "items" in data ? data.items : [];
+  return {
+    ...data,
+    items: items.map(normalizeUser),
+  };
 }
 
-export function getAdminUser(token: string, userId: string) {
-  return apiFetch<UserResponse>(`/users/${userId}`, {
-    token,
-    cache: "no-store",
+export async function getAdminUser(id: string) {
+  const user = await apiRequest<UserResponse>(endpoints.users.detail(id), {
+    method: "GET",
+    auth: true,
   });
+  return normalizeUser(user);
 }
 
-export function updateAdminUserRole(token: string, userId: string, role: DashboardRole) {
-  return apiFetch<UserResponse>(`/users/${userId}/role`, {
+export async function updateAdminUserRole(id: string, role: UserRole) {
+  const user = await apiRequest<UserResponse>(endpoints.users.role(id), {
     method: "PUT",
-    token,
+    auth: true,
     body: { role },
   });
+  return normalizeUser(user);
 }
 
-export function banUser(token: string, userId: string, is_banned: boolean, reason?: string) {
-  return apiFetch<UserResponse>(`/users/${userId}/ban`, {
+export async function setAdminUserBan(
+  id: string,
+  isBanned: boolean,
+  reason?: string,
+) {
+  const user = await apiRequest<UserResponse>(endpoints.users.ban(id), {
     method: "PUT",
-    token,
-    body: { is_banned, reason },
+    auth: true,
+    body: { is_banned: isBanned, reason: reason || undefined },
   });
+  return normalizeUser(user);
 }
 
-export function deleteUser(token: string, userId: string) {
-  return apiFetch<{ message?: string }>(`/users/${userId}`, {
+export function deleteAdminUser(id: string) {
+  return apiRequest<{ message?: string }>(endpoints.users.detail(id), {
     method: "DELETE",
-    token,
+    auth: true,
   });
 }
 
-// Access rules are not implemented in the new backend — return empty so all routes pass through
-export function getAccessRules(_token: string): Promise<AccessRule[]> {
-  return Promise.resolve([]);
+export function listPopularFavorites(limit = 10) {
+  return apiRequest<{ items: PopularFavorite[] }>(endpoints.favorites.popular, {
+    method: "GET",
+    auth: true,
+    query: { limit },
+  });
 }
 
-export function getPublicAccessRules(): Promise<AccessRule[]> {
-  return Promise.resolve([]);
-}
-
-export function upsertAccessRule(_token: string, _payload: AccessRulePayload): Promise<AccessRule> {
-  return Promise.reject(new Error("Access rules not supported in this backend"));
-}
-
-export function deleteAccessRule(_token: string, _path: string): Promise<{ message?: string }> {
-  return Promise.reject(new Error("Access rules not supported in this backend"));
+export function listAdminAlerts(query?: { page?: number; per_page?: number }) {
+  return apiRequest<PaginatedItems<Alert>>(endpoints.alerts.admin, {
+    method: "GET",
+    auth: true,
+    query,
+  });
 }

@@ -8,7 +8,10 @@ export default function ThemeToggle() {
     const saved = localStorage.getItem("theme");
     const isDark = saved ? saved === "dark" : true;
     setDark(isDark);
-    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+    document.documentElement.setAttribute(
+      "data-theme",
+      isDark ? "dark" : "light",
+    );
   }, []);
 
   const toggle = () => {
@@ -28,7 +31,9 @@ export default function ThemeToggle() {
         width: 50,
         height: 28,
         borderRadius: 999,
-        border: dark ? "1px solid rgba(204,255,155,0.45)" : "1px solid rgba(15,23,42,0.16)",
+        border: dark
+          ? "1px solid rgba(204,255,155,0.45)"
+          : "1px solid rgba(15,23,42,0.16)",
         cursor: "pointer",
         padding: 3,
         background: dark
@@ -57,24 +62,27 @@ export default function ThemeToggle() {
           box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.28), 0 6px 16px rgba(15, 23, 42, 0.2) !important;
         }
       `}</style>
-      <span style={{
-        width: 22,
-        height: 22,
-        borderRadius: "50%",
-        background: dark
-          ? "linear-gradient(180deg, #0a0f0d, #111827)"
-          : "linear-gradient(180deg, #ffffff, #f8fafc)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 11,
-        transform: dark ? "translateX(22px)" : "translateX(0)",
-        transition: "transform 0.25s ease, background 0.25s ease, color 0.25s ease",
-        boxShadow: dark
-          ? "0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)"
-          : "0 2px 8px rgba(15,23,42,0.2), inset 0 1px 0 rgba(255,255,255,0.95)",
-        color: dark ? "#d1fae5" : "#f59e0b",
-      }}>
+      <span
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: "50%",
+          background: dark
+            ? "linear-gradient(180deg, #0a0f0d, #111827)"
+            : "linear-gradient(180deg, #ffffff, #f8fafc)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 11,
+          transform: dark ? "translateX(22px)" : "translateX(0)",
+          transition:
+            "transform 0.25s ease, background 0.25s ease, color 0.25s ease",
+          boxShadow: dark
+            ? "0 2px 8px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.12)"
+            : "0 2px 8px rgba(15,23,42,0.2), inset 0 1px 0 rgba(255,255,255,0.95)",
+          color: dark ? "#d1fae5" : "#f59e0b",
+        }}
+      >
         {dark ? "🌙" : "☀️"}
       </span>
     </button>

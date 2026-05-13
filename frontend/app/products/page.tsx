@@ -1,9 +1,10 @@
 import ProductListingSection from "../components/ProductListingSection";
-import type { CatalogSource, CategoryType } from "../lib/api/types";
+import type { CatalogSource, CategoryType } from "../lib/demo-data/types";
 
 export const metadata = {
   title: "Catalogue Produits - 1111.tn",
-  description: "Comparez les prix en temps reel sur les grandes enseignes tunisiennes.",
+  description:
+    "Comparez les prix en temps reel sur les grandes enseignes tunisiennes.",
 };
 
 interface ProductsPageProps {
@@ -14,7 +15,9 @@ interface ProductsPageProps {
   }>;
 }
 
-export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+export default async function ProductsPage({
+  searchParams,
+}: ProductsPageProps) {
   const params = await searchParams;
   const source = params.source === "para" ? "para" : "retail";
 

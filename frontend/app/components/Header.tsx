@@ -6,8 +6,18 @@ import { useAuth } from "../lib/auth/AuthProvider";
 
 function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
-    <a href="/" className="brand-logo-link" style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "2px" }}>
-      <span className="brand-logo-num"
+    <a
+      href="/"
+      className="brand-logo-link"
+      style={{
+        textDecoration: "none",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "2px",
+      }}
+    >
+      <span
+        className="brand-logo-num"
         style={{
           fontFamily: "'Inter', system-ui, sans-serif",
           fontSize: compact ? "2rem" : "2.8rem",
@@ -18,7 +28,8 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
       >
         1111
       </span>
-      <span className="brand-logo-tld"
+      <span
+        className="brand-logo-tld"
         style={{
           fontFamily: "'Inter', system-ui, sans-serif",
           fontSize: compact ? "0.85rem" : "1.1rem",
@@ -34,7 +45,13 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function LogoutButton({ onClick, fullWidth = false }: { onClick: () => void; fullWidth?: boolean }) {
+function LogoutButton({
+  onClick,
+  fullWidth = false,
+}: {
+  onClick: () => void;
+  fullWidth?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -59,7 +76,8 @@ function LogoutButton({ onClick, fullWidth = false }: { onClick: () => void; ful
 export default function Header() {
   const { status, user, logout } = useAuth();
   const isAuthenticated = status === "authenticated";
-  const displayName = user?.full_name || user?.username || user?.email || "Mon compte";
+  const displayName =
+    user?.full_name || user?.username || user?.email || "Mon compte";
 
   useEffect(() => {
     return () => {
@@ -79,7 +97,9 @@ export default function Header() {
       document.body.classList.toggle("mobile-menu-visible");
     }
   };
-  const handleMobileMenuContentClick: React.MouseEventHandler<HTMLElement> = (event) => {
+  const handleMobileMenuContentClick: React.MouseEventHandler<HTMLElement> = (
+    event,
+  ) => {
     const target = event.target as HTMLElement | null;
     if (target?.closest("a")) {
       closeMobileMenu();
@@ -93,7 +113,10 @@ export default function Header() {
   ) : null;
 
   return (
-    <header id="header" className="main-header header header-fixed style-absolute">
+    <header
+      id="header"
+      className="main-header header header-fixed style-absolute"
+    >
       <style>{`
         /* brand logo colors (class-based so light mode can override) */
         .brand-logo-num { color: #ffffff; }
@@ -411,12 +434,35 @@ export default function Header() {
                     <a href="/blogs">Blog</a>
                   </li>
                   <li>
-                    <a href="/vols" style={{ display: "inline-flex", alignItems: "center", gap: "5px" }}>
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <a
+                      href="/vols"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                      }}
+                    >
+                      <svg
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                      >
                         <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
                       </svg>
                       Vols
-                      <span className="label" style={{ background: "linear-gradient(90deg,#3BDEB9,#CCFF9B)", color: "#000" }}>LIVE</span>
+                      <span
+                        className="label"
+                        style={{
+                          background: "linear-gradient(90deg,#3BDEB9,#CCFF9B)",
+                          color: "#000",
+                        }}
+                      >
+                        LIVE
+                      </span>
                     </a>
                   </li>
                   {authNav}
@@ -426,12 +472,21 @@ export default function Header() {
           </div>
 
           <div className="header-right">
-            <div className="header-right-actions" style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              className="header-right-actions"
+              style={{ display: "flex", alignItems: "center", gap: "12px" }}
+            >
               <ThemeToggle />
               <div className="flat-bt-top sc-btn-top d-lg-flex d-none">
                 {isAuthenticated ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <a href="/compte" className="tf-btn-1 light_skew_hover" title={displayName}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 10 }}
+                  >
+                    <a
+                      href="/compte"
+                      className="tf-btn-1 light_skew_hover"
+                      title={displayName}
+                    >
                       <div>Mon compte</div>
                     </a>
                     <LogoutButton onClick={logout} />
@@ -461,9 +516,25 @@ export default function Header() {
         <nav className="menu-box" onClick={handleMobileMenuContentClick}>
           <div className="nav-logo">
             <BrandLogo compact />
-            <button type="button" className="close-btn" aria-label="Fermer le menu" onClick={closeMobileMenu}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+            <button
+              type="button"
+              className="close-btn"
+              aria-label="Fermer le menu"
+              onClick={closeMobileMenu}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M18 6L6 18M6 6l12 12"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                />
               </svg>
             </button>
           </div>

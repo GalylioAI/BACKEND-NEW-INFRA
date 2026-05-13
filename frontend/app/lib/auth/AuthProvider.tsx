@@ -9,121 +9,135 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { getCurrentUser, signinUser, signupUser } from "../api/auth";
-import { is2FAPending } from "../api/types";
-import type { AuthToken2FAPending, UserCreate, UserLogin, UserResponse } from "../api/types";
-
-const TOKEN_KEY = "1111.auth.token";
-const ROLE_KEY = "1111.auth.role";
+import {
+  clearAuthToken,
+  currentUser as fetchCurrentUser,
+  login as loginRequest,
+  logout as logoutRequest,
+  refreshSession,
+} from "../api/auth";
+import { setUnauthorizedHandler } from "../api/client";
+import { signup as signupRequest } from "../api/users";
+import type { LoginRequest, SignupRequest, UserResponse } from "../api/types";
 
 type AuthStatus = "loading" | "authenticated" | "anonymous";
+
+export type LoginResult =
+  | { status: "authenticated"; user: UserResponse }
+  | { status: "2fa_required"; pendingToken: string };
 
 interface AuthContextValue {
   status: AuthStatus;
   loading: boolean;
-  token: string | null;
   user: UserResponse | null;
-  login: (payload: UserLogin) => Promise<UserResponse | AuthToken2FAPending>;
-  signup: (payload: UserCreate) => Promise<{ user_id: string; email: string }>;
-  logout: () => void;
+  login: (payload: LoginRequest) => Promise<LoginResult>;
+  signup: (payload: SignupRequest) => Promise<UserResponse>;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<UserResponse | null>;
+  clearSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-function persistToken(token: { access_token: string; role: string }) {
-  window.localStorage.setItem(TOKEN_KEY, token.access_token);
-  window.localStorage.setItem(ROLE_KEY, token.role);
-}
-
-function clearToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
-  window.localStorage.removeItem(ROLE_KEY);
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
-  const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<UserResponse | null>(null);
   const loading = status === "loading";
 
-  const applyToken = useCallback(async (nextToken: string) => {
-    setStatus("loading");
-    setToken(nextToken);
-
-    try {
-      const currentUser = await getCurrentUser(nextToken);
-      setUser(currentUser);
-      setStatus("authenticated");
-      return currentUser;
-    } catch (error) {
-      clearToken();
-      setToken(null);
-      setUser(null);
-      setStatus("anonymous");
-      throw error;
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    clearToken();
-    setToken(null);
+  const clearSession = useCallback(() => {
+    clearAuthToken();
     setUser(null);
     setStatus("anonymous");
   }, []);
 
   useEffect(() => {
-    const storedToken = window.localStorage.getItem(TOKEN_KEY);
-    if (!storedToken) {
-      setStatus("anonymous");
-      return;
-    }
-
-    applyToken(storedToken).catch(() => {
-      setStatus("anonymous");
-    });
-  }, [applyToken]);
+    setUnauthorizedHandler(clearSession);
+    return () => setUnauthorizedHandler(null);
+  }, [clearSession]);
 
   useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key !== TOKEN_KEY) return;
-      if (event.newValue) {
-        applyToken(event.newValue).catch(() => undefined);
-      } else {
-        setToken(null);
-        setUser(null);
-        setStatus("anonymous");
+    let active = true;
+
+    async function restore() {
+      setStatus("loading");
+      try {
+        const token = await refreshSession();
+        if (!active) return;
+        if (!token) {
+          clearSession();
+          return;
+        }
+        const currentUser = await fetchCurrentUser();
+        if (!active) return;
+        setUser(currentUser);
+        setStatus("authenticated");
+      } catch {
+        if (!active) return;
+        clearSession();
       }
+    }
+
+    restore();
+    return () => {
+      active = false;
     };
+  }, [clearSession]);
 
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, [applyToken]);
+  const login = useCallback(async (payload: LoginRequest) => {
+    const loginResult = await loginRequest(payload);
+    if (
+      loginResult.two_factor_required &&
+      loginResult.two_factor_session_token
+    ) {
+      return {
+        status: "2fa_required" as const,
+        pendingToken: loginResult.two_factor_session_token,
+      };
+    }
 
-  const login = useCallback(
-    async (payload: UserLogin) => {
-      const result = await signinUser(payload);
-      // 2FA required — return the pending session to the caller to handle
-      if (is2FAPending(result)) return result;
-      persistToken(result);
-      return applyToken(result.access_token);
-    },
-    [applyToken],
-  );
-
-  const signup = useCallback(async (payload: UserCreate) => signupUser(payload), []);
-
-  const refreshUser = useCallback(async () => {
-    if (!token) return null;
-    const currentUser = await getCurrentUser(token);
+    const currentUser = await fetchCurrentUser();
     setUser(currentUser);
     setStatus("authenticated");
-    return currentUser;
-  }, [token]);
+    return { status: "authenticated" as const, user: currentUser };
+  }, []);
+
+  const signup = useCallback(
+    async (payload: SignupRequest) => signupRequest(payload),
+    [],
+  );
+
+  const logout = useCallback(async () => {
+    try {
+      await logoutRequest();
+    } finally {
+      clearSession();
+    }
+  }, [clearSession]);
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const currentUser = await fetchCurrentUser();
+      setUser(currentUser);
+      setStatus("authenticated");
+      return currentUser;
+    } catch {
+      clearSession();
+      return null;
+    }
+  }, [clearSession]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ status, loading, token, user, login, signup, logout, refreshUser }),
-    [status, loading, token, user, login, signup, logout, refreshUser],
+    () => ({
+      status,
+      loading,
+      user,
+      login,
+      signup,
+      logout,
+      refreshUser,
+      clearSession,
+    }),
+    [status, loading, user, login, signup, logout, refreshUser, clearSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

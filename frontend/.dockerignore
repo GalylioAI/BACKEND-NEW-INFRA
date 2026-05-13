@@ -1,0 +1,8 @@
+node_modules
+.next
+.codex-logs
+npm-debug.log
+.env
+.env.local
+.env.production
+tsconfig.tsbuildinfo

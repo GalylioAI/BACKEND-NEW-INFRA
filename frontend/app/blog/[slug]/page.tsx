@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import SafeImage from "../../components/SafeImage";
 import { loadBlogBySlug } from "../../lib/blog-content";
-import type { BlogSection } from "../../lib/api/types";
+import type { BlogSection } from "../../lib/demo-data/types";
 
-const FALLBACK_IMG = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=800&q=80";
+const FALLBACK_IMG = "/images/item-cart.png";
 
 interface ArticlePageProps {
   params: Promise<{ slug: string }>;
@@ -12,7 +12,9 @@ interface ArticlePageProps {
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: ArticlePageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: ArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
   const article = await loadBlogBySlug(slug);
 
@@ -31,21 +33,45 @@ export async function generateMetadata({ params }: ArticlePageProps): Promise<Me
 function renderSection(section: BlogSection, index: number) {
   switch (section.type) {
     case "h2":
-      return <h2 key={index} className="art-h2">{section.text}</h2>;
+      return (
+        <h2 key={index} className="art-h2">
+          {section.text}
+        </h2>
+      );
     case "h3":
-      return <h3 key={index} className="art-h3">{section.text}</h3>;
+      return (
+        <h3 key={index} className="art-h3">
+          {section.text}
+        </h3>
+      );
     case "p":
-      return <p key={index} className="art-p">{section.text}</p>;
+      return (
+        <p key={index} className="art-p">
+          {section.text}
+        </p>
+      );
     case "ul":
       return (
         <ul key={index} className="art-ul">
-          {(section.items ?? []).map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+          {(section.items ?? []).map((item, itemIndex) => (
+            <li key={itemIndex}>{item}</li>
+          ))}
         </ul>
       );
     case "highlight":
       return (
         <div key={index} className="art-callout">
-          <svg className="art-callout-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3BDEB9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            className="art-callout-icon"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#3BDEB9"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <circle cx="12" cy="16" r="0.5" fill="#3BDEB9" />
@@ -327,24 +353,48 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         <div id="pagee">
           <main className="art-page">
             <nav className="art-topbar">
-              <a href="/" className="art-logo">1111<span>.tn</span></a>
+              <a href="/" className="art-logo">
+                1111<span>.tn</span>
+              </a>
               <a href="/blogs" className="art-back">
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                  <path d="M12.83 7H1.17M1.17 7L7 1.17M1.17 7L7 12.83" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M12.83 7H1.17M1.17 7L7 1.17M1.17 7L7 12.83"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
                 Tous les articles
               </a>
-              <a href="https://1111.tn" target="_blank" rel="noreferrer" className="art-cta-btn">
+              <a
+                href="/products"
+                target="_blank"
+                rel="noreferrer"
+                className="art-cta-btn"
+              >
                 Comparer maintenant
                 <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                  <path d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                  <path
+                    d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               </a>
             </nav>
 
             <div className="art-wrap">
               <div className="art-hero">
-                <span className="art-hero-cat" style={{ background: article.categoryColor }}>{article.category}</span>
+                <span
+                  className="art-hero-cat"
+                  style={{ background: article.categoryColor }}
+                >
+                  {article.category}
+                </span>
                 <SafeImage
                   src={article.img || FALLBACK_IMG}
                   fallbackSrc={FALLBACK_IMG}
@@ -361,7 +411,9 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               <p className="art-lead">{article.desc}</p>
 
               <div className="art-body">
-                {article.sections.map((section, index) => renderSection(section, index))}
+                {article.sections.map((section, index) =>
+                  renderSection(section, index),
+                )}
               </div>
 
               <div className="art-bottom-cta">
@@ -369,10 +421,21 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   <strong>Pret a trouver le meilleur prix ?</strong>
                   <p>Comparez en temps reel sur tous les e-shops tunisiens</p>
                 </div>
-                <a href="https://1111.tn" target="_blank" rel="noreferrer" className="art-cta-btn">
+                <a
+                  href="/products"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="art-cta-btn"
+                >
                   Comparer sur 1111.tn
                   <svg width="12" height="12" viewBox="0 0 14 14" fill="none">
-                    <path d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </a>
               </div>
@@ -380,14 +443,26 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               <div className="art-nav-links">
                 <a href="/blogs" className="art-nav-link">
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M12.83 7H1.17M1.17 7L7 1.17M1.17 7L7 12.83" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M12.83 7H1.17M1.17 7L7 1.17M1.17 7L7 12.83"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                   Retour aux articles
                 </a>
                 <a href="/" className="art-nav-link">
                   Accueil 1111.tn
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                    <path
+                      d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5"
+                      stroke="currentColor"
+                      strokeWidth="1.6"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 </a>
               </div>

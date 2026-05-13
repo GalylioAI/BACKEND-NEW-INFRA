@@ -8,17 +8,18 @@ import { AppAccessGuard } from "./components/access/access-guard";
 export const metadata: Metadata = {
   title: "1111.tn - Comparateur de prix tunisie",
   description:
-    "Discover our Template, crafted for seamless performance, modern design, and unmatched versatility.",
-  authors: [{ name: "themesflat.com" }],
+    "Comparateur de prix tunisien avec comptes, favoris, alertes et tableau de bord securises.",
+  authors: [{ name: "1111.tn" }],
   openGraph: {
-    title: "HTML Starter Template by 1111.tn",
-    description: "Free responsive HTML template for modern web projects.",
-    url: "https://themesflat.co/html/1111.tn/index.html",
+    title: "1111.tn",
+    description:
+      "Comparateur de prix tunisien avec comptes, favoris, alertes et tableau de bord.",
+    url: "https://1111.tn",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "HTML Starter Template by 1111.tn",
+    title: "1111.tn",
   },
   icons: {
     icon: "/images/logo/Favicon.png",
@@ -35,7 +36,10 @@ export default function RootLayout({
     <html lang="en-US" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head suppressHydrationWarning>
         <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, maximum-scale=1"
+        />
         <link rel="stylesheet" href="/css/app.css" />
         <link rel="stylesheet" href="/css/light-mode.css?v=7" />
         <link rel="stylesheet" href="/css/textanimation.css" />
@@ -53,7 +57,10 @@ export default function RootLayout({
             })();
           `}
         </Script>
-        <Script id="strip-extension-hydration-attrs" strategy="beforeInteractive">
+        <Script
+          id="strip-extension-hydration-attrs"
+          strategy="beforeInteractive"
+        >
           {`
             (() => {
               const ATTRIBUTES = ["bis_skin_checked", "bis_size", "bis_id"];

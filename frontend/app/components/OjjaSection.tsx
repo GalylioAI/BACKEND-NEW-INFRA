@@ -3,11 +3,19 @@
 import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 
-type IngredientIconKind = "garlic" | "harissa" | "eggs" | "oliveOil" | "onions" | "salt" | "tomatoPaste" | "tomatoes";
+type IngredientIconKind =
+  | "garlic"
+  | "harissa"
+  | "eggs"
+  | "oliveOil"
+  | "onions"
+  | "salt"
+  | "tomatoPaste"
+  | "tomatoes";
 
 const shopStyles = {
-  Monoprix:   { color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
-  Carrefour:  { color: "#3B82F6", bg: "rgba(59,130,246,0.12)" },
+  Monoprix: { color: "#EF4444", bg: "rgba(239,68,68,0.12)" },
+  Carrefour: { color: "#3B82F6", bg: "rgba(59,130,246,0.12)" },
   GeantDrive: { color: "#22C55E", bg: "rgba(34,197,94,0.12)" },
 } as const;
 
@@ -15,23 +23,159 @@ type ShopName = keyof typeof shopStyles;
 type TooltipSide = "top" | "bottom" | "left" | "right";
 type ShopPrice = { name: ShopName; price: number };
 type Ingredient = {
-  accent: string; badge: string; brand: string; delay: string;
-  icon: IngredientIconKind; left: string; name: string;
-  shops: ShopPrice[]; size: string; tooltipSide: TooltipSide; top: string;
+  accent: string;
+  badge: string;
+  brand: string;
+  delay: string;
+  icon: IngredientIconKind;
+  left: string;
+  name: string;
+  shops: ShopPrice[];
+  size: string;
+  tooltipSide: TooltipSide;
+  top: string;
 };
 
 const shopLegend: ShopName[] = ["Monoprix", "Carrefour", "GeantDrive"];
 
 /** Prix au rayon = paquet entier ; prix affiché = coût pour la quantité « recette » (proportion du paquet). */
 const ingredients: Ingredient[] = [
-  { name: "Ail Frais", brand: "Locale", size: "50g", badge: "Légumes", icon: "garlic", accent: "#C7A7FF", left: "16%", top: "23%", delay: "0s", tooltipSide: "right", shops: [{ name: "Carrefour", price: 0.85 }, { name: "Monoprix", price: 0.9 }, { name: "GeantDrive", price: 0.95 }] },
-  { name: "Oignons Blancs", brand: "Locale", size: "2 pièces (~200g)", badge: "Légumes", icon: "onions", accent: "#F3C864", left: "50%", top: "15%", delay: "0.35s", tooltipSide: "bottom", shops: [{ name: "Carrefour", price: 0.398 }, { name: "Monoprix", price: 0.43 }, { name: "GeantDrive", price: 0.45 }] },
-  { name: "Harissa", brand: "Cap Bon", size: "15g", badge: "Épices", icon: "harissa", accent: "#FF7D54", left: "84%", top: "23%", delay: "0.7s", tooltipSide: "left", shops: [{ name: "Carrefour", price: 0.15 }, { name: "Monoprix", price: 0.161 }, { name: "GeantDrive", price: 0.172 }] },
-  { name: "Concentré Tomates", brand: "Sicam", size: "100g", badge: "Conserves", icon: "tomatoPaste", accent: "#FF9075", left: "10%", top: "56%", delay: "1.05s", tooltipSide: "right", shops: [{ name: "Carrefour", price: 0.463 }, { name: "Monoprix", price: 0.488 }, { name: "GeantDrive", price: 0.525 }] },
-  { name: "Sel de Table", brand: "Cotusal", size: "10g", badge: "Épices", icon: "salt", accent: "#D8DEE8", left: "90%", top: "56%", delay: "1.4s", tooltipSide: "left", shops: [{ name: "Carrefour", price: 0.015 }, { name: "Monoprix", price: 0.017 }, { name: "GeantDrive", price: 0.018 }] },
-  { name: "Huile Végétale", brand: "Nejma", size: "100 ml", badge: "Huiles", icon: "oliveOil", accent: "#F3CA59", left: "19%", top: "82%", delay: "1.75s", tooltipSide: "right", shops: [{ name: "Carrefour", price: 0.469 }, { name: "Monoprix", price: 0.485 }, { name: "GeantDrive", price: 0.495 }] },
-  { name: "Tomates Fraîches", brand: "Locale", size: "100g", badge: "Légumes", icon: "tomatoes", accent: "#FF6F61", left: "50%", top: "88%", delay: "2.1s", tooltipSide: "top", shops: [{ name: "Carrefour", price: 0.299 }, { name: "Monoprix", price: 0.325 }, { name: "GeantDrive", price: 0.345 }] },
-  { name: "Œufs Frais", brand: "El Mazraa", size: "4 pièces", badge: "Frais", icon: "eggs", accent: "#F5D783", left: "81%", top: "84%", delay: "2.45s", tooltipSide: "left", shops: [{ name: "Carrefour", price: 1.500 }, { name: "Monoprix", price: 1.750 }, { name: "GeantDrive", price: 1.600 }] },
+  {
+    name: "Ail Frais",
+    brand: "Locale",
+    size: "50g",
+    badge: "Légumes",
+    icon: "garlic",
+    accent: "#C7A7FF",
+    left: "16%",
+    top: "23%",
+    delay: "0s",
+    tooltipSide: "right",
+    shops: [
+      { name: "Carrefour", price: 0.85 },
+      { name: "Monoprix", price: 0.9 },
+      { name: "GeantDrive", price: 0.95 },
+    ],
+  },
+  {
+    name: "Oignons Blancs",
+    brand: "Locale",
+    size: "2 pièces (~200g)",
+    badge: "Légumes",
+    icon: "onions",
+    accent: "#F3C864",
+    left: "50%",
+    top: "15%",
+    delay: "0.35s",
+    tooltipSide: "bottom",
+    shops: [
+      { name: "Carrefour", price: 0.398 },
+      { name: "Monoprix", price: 0.43 },
+      { name: "GeantDrive", price: 0.45 },
+    ],
+  },
+  {
+    name: "Harissa",
+    brand: "Cap Bon",
+    size: "15g",
+    badge: "Épices",
+    icon: "harissa",
+    accent: "#FF7D54",
+    left: "84%",
+    top: "23%",
+    delay: "0.7s",
+    tooltipSide: "left",
+    shops: [
+      { name: "Carrefour", price: 0.15 },
+      { name: "Monoprix", price: 0.161 },
+      { name: "GeantDrive", price: 0.172 },
+    ],
+  },
+  {
+    name: "Concentré Tomates",
+    brand: "Sicam",
+    size: "100g",
+    badge: "Conserves",
+    icon: "tomatoPaste",
+    accent: "#FF9075",
+    left: "10%",
+    top: "56%",
+    delay: "1.05s",
+    tooltipSide: "right",
+    shops: [
+      { name: "Carrefour", price: 0.463 },
+      { name: "Monoprix", price: 0.488 },
+      { name: "GeantDrive", price: 0.525 },
+    ],
+  },
+  {
+    name: "Sel de Table",
+    brand: "Cotusal",
+    size: "10g",
+    badge: "Épices",
+    icon: "salt",
+    accent: "#D8DEE8",
+    left: "90%",
+    top: "56%",
+    delay: "1.4s",
+    tooltipSide: "left",
+    shops: [
+      { name: "Carrefour", price: 0.015 },
+      { name: "Monoprix", price: 0.017 },
+      { name: "GeantDrive", price: 0.018 },
+    ],
+  },
+  {
+    name: "Huile Végétale",
+    brand: "Nejma",
+    size: "100 ml",
+    badge: "Huiles",
+    icon: "oliveOil",
+    accent: "#F3CA59",
+    left: "19%",
+    top: "82%",
+    delay: "1.75s",
+    tooltipSide: "right",
+    shops: [
+      { name: "Carrefour", price: 0.469 },
+      { name: "Monoprix", price: 0.485 },
+      { name: "GeantDrive", price: 0.495 },
+    ],
+  },
+  {
+    name: "Tomates Fraîches",
+    brand: "Locale",
+    size: "100g",
+    badge: "Légumes",
+    icon: "tomatoes",
+    accent: "#FF6F61",
+    left: "50%",
+    top: "88%",
+    delay: "2.1s",
+    tooltipSide: "top",
+    shops: [
+      { name: "Carrefour", price: 0.299 },
+      { name: "Monoprix", price: 0.325 },
+      { name: "GeantDrive", price: 0.345 },
+    ],
+  },
+  {
+    name: "Œufs Frais",
+    brand: "El Mazraa",
+    size: "4 pièces",
+    badge: "Frais",
+    icon: "eggs",
+    accent: "#F5D783",
+    left: "81%",
+    top: "84%",
+    delay: "2.45s",
+    tooltipSide: "left",
+    shops: [
+      { name: "Carrefour", price: 1.5 },
+      { name: "Monoprix", price: 1.75 },
+      { name: "GeantDrive", price: 1.6 },
+    ],
+  },
 ];
 
 const fmtNum = (p: number) => p.toFixed(3);
@@ -52,9 +196,19 @@ function computeCouffinStats(ings: Ingredient[]) {
   return { byShop, best, worst, carrefour };
 }
 
-function PriceWithDT({ value, className }: { value: number; className?: string }) {
+function PriceWithDT({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
   return (
-    <span className={className ? `ojja-price-with-dt ${className}` : "ojja-price-with-dt"}>
+    <span
+      className={
+        className ? `ojja-price-with-dt ${className}` : "ojja-price-with-dt"
+      }
+    >
       <span className="ojja-price-with-dt__value">{fmtNum(value)}</span>
       <span className="ojja-price-with-dt__unit">DT</span>
     </span>
@@ -65,14 +219,78 @@ const sortShops = (s: ShopPrice[]) => [...s].sort((a, b) => a.price - b.price);
 
 function IngredientIcon({ kind }: { kind: IngredientIconKind }) {
   const icons: Record<IngredientIconKind, ReactElement> = {
-    garlic: <img src="/images/ail.webp" alt="Ail" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
-    harissa: <img src="/images/harissa.webp" alt="Harissa" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
-    eggs: <img src="/images/egg.webp" alt="Oeufs" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
-    oliveOil: <img src="/images/huile-vegetale.webp" alt="Huile vegetale" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
-    onions: <img src="/images/onion.webp" alt="Oignons" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
-    salt: <img src="/images/sel.webp" alt="Sel" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
-    tomatoPaste: <img src="/images/sicam.webp" alt="Sicam" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
-    tomatoes: <img src="/images/tomate.webp" alt="Tomates" loading="lazy" decoding="async" style={{ width: 62, height: 62, objectFit: "contain" }} />,
+    garlic: (
+      <img
+        src="/images/ail.webp"
+        alt="Ail"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
+    harissa: (
+      <img
+        src="/images/harissa.webp"
+        alt="Harissa"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
+    eggs: (
+      <img
+        src="/images/egg.webp"
+        alt="Oeufs"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
+    oliveOil: (
+      <img
+        src="/images/huile-vegetale.webp"
+        alt="Huile vegetale"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
+    onions: (
+      <img
+        src="/images/onion.webp"
+        alt="Oignons"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
+    salt: (
+      <img
+        src="/images/sel.webp"
+        alt="Sel"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
+    tomatoPaste: (
+      <img
+        src="/images/sicam.webp"
+        alt="Sicam"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
+    tomatoes: (
+      <img
+        src="/images/tomate.webp"
+        alt="Tomates"
+        loading="lazy"
+        decoding="async"
+        style={{ width: 62, height: 62, objectFit: "contain" }}
+      />
+    ),
   };
   return icons[kind];
 }
@@ -114,40 +332,61 @@ function OjjaDishArtwork({
   );
 }
 
-function OjjaDishCompareContent({ stats }: { stats: ReturnType<typeof computeCouffinStats> }) {
+function OjjaDishCompareContent({
+  stats,
+}: {
+  stats: ReturnType<typeof computeCouffinStats>;
+}) {
   const others = shopLegend.filter((n) => n !== "Carrefour");
   const carrefourIsCheapest = Math.abs(stats.carrefour - stats.best) < 0.0005;
 
   return (
     <div className="ojja-dish-hover__panel">
-      <span className="ojja-dish-hover__eyebrow">Couffin tunisien · {ingredients.length} ingrédients</span>
+      <span className="ojja-dish-hover__eyebrow">
+        Couffin tunisien · {ingredients.length} ingrédients
+      </span>
       <p className="ojja-dish-hover__title">Total Carrefour</p>
       <p className="ojja-dish-hover__subtitle">
         Somme des prix recette ingrédient par ingrédient chez Carrefour
-        {carrefourIsCheapest ? " — panier le plus avantageux sur ce comparatif" : ""}
+        {carrefourIsCheapest
+          ? " — panier le plus avantageux sur ce comparatif"
+          : ""}
       </p>
       <div className="ojja-dish-hover__hero ojja-dish-hover__hero--carrefour">
         <span className="ojja-dish-hover__hero-label">
-          <span className="ojja-dish-hover__dot" style={{ background: shopStyles.Carrefour.color }} />
+          <span
+            className="ojja-dish-hover__dot"
+            style={{ background: shopStyles.Carrefour.color }}
+          />
           Carrefour
         </span>
-        <PriceWithDT value={stats.carrefour} className="ojja-dish-hover__hero-price" />
+        <PriceWithDT
+          value={stats.carrefour}
+          className="ojja-dish-hover__hero-price"
+        />
       </div>
       <div className="ojja-dish-hover__stores ojja-dish-hover__stores--secondary">
-        <span className="ojja-dish-hover__stores-caption">Autres enseignes (même recette)</span>
+        <span className="ojja-dish-hover__stores-caption">
+          Autres enseignes (même recette)
+        </span>
         {others.map((name) => {
           const st = shopStyles[name];
           const extra = stats.byShop[name] - stats.carrefour;
           return (
             <div key={name} className="ojja-dish-hover__store-row">
               <span className="ojja-dish-hover__store-name">
-                <span className="ojja-dish-hover__dot" style={{ background: st.color }} />
+                <span
+                  className="ojja-dish-hover__dot"
+                  style={{ background: st.color }}
+                />
                 {name === "GeantDrive" ? "Géant Drive" : name}
               </span>
               <span className="ojja-dish-hover__store-pill">
                 <PriceWithDT value={stats.byShop[name]} />
                 {extra > 0.0005 ? (
-                  <span className="ojja-dish-hover__delta">+{fmtNum(extra)} DT</span>
+                  <span className="ojja-dish-hover__delta">
+                    +{fmtNum(extra)} DT
+                  </span>
                 ) : null}
               </span>
             </div>
@@ -155,7 +394,9 @@ function OjjaDishCompareContent({ stats }: { stats: ReturnType<typeof computeCou
         })}
       </div>
       <p className="ojja-dish-hover__hint">
-        Écart max. comparatif&nbsp;: <PriceWithDT value={stats.worst - stats.best} /> (meilleur panier vs le plus cher)
+        Écart max. comparatif&nbsp;:{" "}
+        <PriceWithDT value={stats.worst - stats.best} /> (meilleur panier vs le
+        plus cher)
       </p>
     </div>
   );
@@ -163,7 +404,7 @@ function OjjaDishCompareContent({ stats }: { stats: ReturnType<typeof computeCou
 
 function PriceBar({ shops }: { shops: ShopPrice[] }) {
   const sorted = sortShops(shops);
-  const max = Math.max(...sorted.map(s => s.price));
+  const max = Math.max(...sorted.map((s) => s.price));
   const min = sorted[0].price;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
@@ -173,56 +414,105 @@ function PriceBar({ shops }: { shops: ShopPrice[] }) {
         const isBest = i === 0;
         const saving = shop.price - min;
         return (
-          <div key={shop.name} style={{
-            display: "flex", flexDirection: "column", gap: "5px",
-            padding: "8px 10px",
-            borderRadius: "10px",
-            background: isBest ? `${style.bg}` : "rgba(255,255,255,0.03)",
-            border: `1px solid ${isBest ? style.color + "44" : "rgba(255,255,255,0.05)"}`,
-          }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{
-                  width: "6px", height: "6px", borderRadius: "50%",
-                  background: style.color, flexShrink: 0,
-                  boxShadow: isBest ? `0 0 6px ${style.color}` : "none",
-                }} />
-                <span style={{
-                  fontSize: "11px", fontWeight: isBest ? 700 : 500,
-                  color: isBest ? "#fff" : "rgba(255,255,255,0.55)",
-                  letterSpacing: "-0.01em",
-                }}>
+          <div
+            key={shop.name}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "5px",
+              padding: "8px 10px",
+              borderRadius: "10px",
+              background: isBest ? `${style.bg}` : "rgba(255,255,255,0.03)",
+              border: `1px solid ${isBest ? style.color + "44" : "rgba(255,255,255,0.05)"}`,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "8px",
+              }}
+            >
+              <span
+                style={{ display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                <span
+                  style={{
+                    width: "6px",
+                    height: "6px",
+                    borderRadius: "50%",
+                    background: style.color,
+                    flexShrink: 0,
+                    boxShadow: isBest ? `0 0 6px ${style.color}` : "none",
+                  }}
+                />
+                <span
+                  style={{
+                    fontSize: "11px",
+                    fontWeight: isBest ? 700 : 500,
+                    color: isBest ? "#fff" : "rgba(255,255,255,0.55)",
+                    letterSpacing: "-0.01em",
+                  }}
+                >
                   {shop.name === "GeantDrive" ? "Géant Drive" : shop.name}
                 </span>
                 {isBest && (
-                  <span style={{
-                    fontSize: "8px", fontWeight: 800, letterSpacing: "0.08em",
-                    textTransform: "uppercase", color: style.color, opacity: 0.9,
-                  }}>
+                  <span
+                    style={{
+                      fontSize: "8px",
+                      fontWeight: 800,
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      color: style.color,
+                      opacity: 0.9,
+                    }}
+                  >
                     ✓ Meilleur
                   </span>
                 )}
               </span>
-              <span style={{
-                fontSize: "13px", fontWeight: 800,
-                color: isBest ? style.color : "rgba(255,255,255,0.6)",
-                fontFeatureSettings: '"tnum"', letterSpacing: "-0.02em",
-              }}>
+              <span
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 800,
+                  color: isBest ? style.color : "rgba(255,255,255,0.6)",
+                  fontFeatureSettings: '"tnum"',
+                  letterSpacing: "-0.02em",
+                }}
+              >
                 <PriceWithDT value={shop.price} />
               </span>
             </div>
-            <div style={{ height: "3px", borderRadius: "99px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-              <div style={{
-                height: "100%", borderRadius: "99px", width: `${pct}%`,
-                background: isBest
-                  ? `linear-gradient(90deg, ${style.color}, ${style.color}cc)`
-                  : style.color,
-                opacity: isBest ? 1 : 0.35,
-                transition: "width 0.55s cubic-bezier(0.34,1.56,0.64,1)",
-              }} />
+            <div
+              style={{
+                height: "3px",
+                borderRadius: "99px",
+                background: "rgba(255,255,255,0.06)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  height: "100%",
+                  borderRadius: "99px",
+                  width: `${pct}%`,
+                  background: isBest
+                    ? `linear-gradient(90deg, ${style.color}, ${style.color}cc)`
+                    : style.color,
+                  opacity: isBest ? 1 : 0.35,
+                  transition: "width 0.55s cubic-bezier(0.34,1.56,0.64,1)",
+                }}
+              />
             </div>
             {!isBest && saving > 0 && (
-              <span style={{ fontSize: "9px", color: "rgba(255,255,255,0.28)", letterSpacing: "0.02em" }}>
+              <span
+                style={{
+                  fontSize: "9px",
+                  color: "rgba(255,255,255,0.28)",
+                  letterSpacing: "0.02em",
+                }}
+              >
                 +{saving.toFixed(3)} DT vs meilleur prix
               </span>
             )}
@@ -255,13 +545,18 @@ function IngredientCard({
           onToggle();
         }
       }}
-      style={{
-        animationDelay: ingredient.delay,
-        "--accent": ingredient.accent,
-      } as React.CSSProperties}
+      style={
+        {
+          animationDelay: ingredient.delay,
+          "--accent": ingredient.accent,
+        } as React.CSSProperties
+      }
     >
       <div className="ojja-card__shine" />
-      <div className="ojja-card__icon" style={{ "--accent": ingredient.accent } as React.CSSProperties}>
+      <div
+        className="ojja-card__icon"
+        style={{ "--accent": ingredient.accent } as React.CSSProperties}
+      >
         <IngredientIcon kind={ingredient.icon} />
       </div>
       <div className="ojja-card__brand">{ingredient.brand}</div>
@@ -271,7 +566,10 @@ function IngredientCard({
         <span className="ojja-card__badge">{ingredient.badge}</span>
       </div>
       <div className="ojja-card__best">
-        <span className="ojja-dot" style={{ background: shopStyles[best.name].color }} />
+        <span
+          className="ojja-dot"
+          style={{ background: shopStyles[best.name].color }}
+        />
         <PriceWithDT value={best.price} />
         <span className="ojja-card__best-label">meilleur prix</span>
       </div>
@@ -285,7 +583,11 @@ function IngredientCard({
           <PriceBar shops={ingredient.shops} />
         </div>
         <div className="ojja-tooltip__saving">
-          Économie max <PriceWithDT value={sorted[sorted.length - 1].price - sorted[0].price} /> en choisissant le moins cher
+          Économie max{" "}
+          <PriceWithDT
+            value={sorted[sorted.length - 1].price - sorted[0].price}
+          />{" "}
+          en choisissant le moins cher
         </div>
       </div>
     </article>
@@ -295,7 +597,17 @@ function IngredientCard({
 function IngredientCompareContent({ ingredient }: { ingredient: Ingredient }) {
   const sorted = sortShops(ingredient.shops);
   return (
-    <div className="ojja-tooltip" style={{ position: "static", opacity: 1, pointerEvents: "auto", width: "100%", transform: "none", display: "block" }}>
+    <div
+      className="ojja-tooltip"
+      style={{
+        position: "static",
+        opacity: 1,
+        pointerEvents: "auto",
+        width: "100%",
+        transform: "none",
+        display: "block",
+      }}
+    >
       <div className="ojja-tooltip__header">
         <span className="ojja-tooltip__title">Comparaison</span>
         <span className="ojja-tooltip__badge">{ingredient.name}</span>
@@ -304,7 +616,11 @@ function IngredientCompareContent({ ingredient }: { ingredient: Ingredient }) {
         <PriceBar shops={ingredient.shops} />
       </div>
       <div className="ojja-tooltip__saving">
-        Économie max <PriceWithDT value={sorted[sorted.length - 1].price - sorted[0].price} /> en choisissant le moins cher
+        Économie max{" "}
+        <PriceWithDT
+          value={sorted[sorted.length - 1].price - sorted[0].price}
+        />{" "}
+        en choisissant le moins cher
       </div>
     </div>
   );
@@ -314,7 +630,9 @@ export default function OjjaSection() {
   const couffinStats = useMemo(() => computeCouffinStats(ingredients), []);
   const [openIngredient, setOpenIngredient] = useState<string | null>(null);
   const [openDish, setOpenDish] = useState(false);
-  const activeIngredient = openIngredient ? ingredients.find((item) => item.name === openIngredient) || null : null;
+  const activeIngredient = openIngredient
+    ? ingredients.find((item) => item.name === openIngredient) || null
+    : null;
   const totalSaving = ingredients.reduce((acc, ing) => {
     const s = sortShops(ing.shops);
     return acc + (s[s.length - 1].price - s[0].price);
@@ -1251,9 +1569,12 @@ export default function OjjaSection() {
           </div>
 
           <div className="ojja-legend">
-            {shopLegend.map(shop => (
+            {shopLegend.map((shop) => (
               <span key={shop} className="ojja-legend-item">
-                <span className="ojja-dot" style={{ background: shopStyles[shop].color }} />
+                <span
+                  className="ojja-dot"
+                  style={{ background: shopStyles[shop].color }}
+                />
                 {shop}
               </span>
             ))}
@@ -1263,16 +1584,32 @@ export default function OjjaSection() {
             Comparez une{" "}
             <span className="fw-4 fst-italic font-playfair-display animationtext letters rotate-3">
               <span className="cd-words-wrapper">
-                <span className="item-text is-visible"><i className="in">o</i><i className="in">j</i><i className="in">j</i><i className="in">a</i></span>
-                <span className="item-text is-hidden"><i className="out">o</i><i className="out">j</i><i className="out">j</i><i className="out">a</i></span>
-                <span className="item-text is-hidden"><i className="in">o</i><i className="in">j</i><i className="in">j</i><i className="in">a</i></span>
+                <span className="item-text is-visible">
+                  <i className="in">o</i>
+                  <i className="in">j</i>
+                  <i className="in">j</i>
+                  <i className="in">a</i>
+                </span>
+                <span className="item-text is-hidden">
+                  <i className="out">o</i>
+                  <i className="out">j</i>
+                  <i className="out">j</i>
+                  <i className="out">a</i>
+                </span>
+                <span className="item-text is-hidden">
+                  <i className="in">o</i>
+                  <i className="in">j</i>
+                  <i className="in">j</i>
+                  <i className="in">a</i>
+                </span>
               </span>
-            </span>
-            {" "}ingrédient par ingrédient
+            </span>{" "}
+            ingrédient par ingrédient
           </div>
 
           <p className="wow fadeInUp" data-wow-delay="0.2s">
-            Survolez chaque ingrédient pour voir instantanément le classement des prix entre Monoprix, Carrefour et Géant Drive.
+            Survolez chaque ingrédient pour voir instantanément le classement
+            des prix entre Monoprix, Carrefour et Géant Drive.
           </p>
         </div>
 
@@ -1291,7 +1628,11 @@ export default function OjjaSection() {
           {/* 3×3 grid: 4 cards · plate · 4 cards */}
           <div className="ojja-canvas">
             {ingredients.slice(0, 4).map((ing) => (
-              <IngredientCard key={ing.name} ingredient={ing} onToggle={() => setOpenIngredient(ing.name)} />
+              <IngredientCard
+                key={ing.name}
+                ingredient={ing}
+                onToggle={() => setOpenIngredient(ing.name)}
+              />
             ))}
 
             <div className="ojja-plate-wrap">
@@ -1309,7 +1650,11 @@ export default function OjjaSection() {
             </div>
 
             {ingredients.slice(4).map((ing) => (
-              <IngredientCard key={ing.name} ingredient={ing} onToggle={() => setOpenIngredient(ing.name)} />
+              <IngredientCard
+                key={ing.name}
+                ingredient={ing}
+                onToggle={() => setOpenIngredient(ing.name)}
+              />
             ))}
           </div>
         </div>
@@ -1318,32 +1663,60 @@ export default function OjjaSection() {
         <div className="ojja-footer">
           <div className="ojja-footer__stats">
             <div className="ojja-footer__stat">
-              <span className="ojja-footer__stat-value">{ingredients.length}</span>
-              <span className="ojja-footer__stat-label">Ingrédients comparés</span>
+              <span className="ojja-footer__stat-value">
+                {ingredients.length}
+              </span>
+              <span className="ojja-footer__stat-label">
+                Ingrédients comparés
+              </span>
             </div>
             <div className="ojja-footer__stat">
               <span className="ojja-footer__stat-value">3</span>
-              <span className="ojja-footer__stat-label">Boutiques analysées</span>
+              <span className="ojja-footer__stat-label">
+                Boutiques analysées
+              </span>
             </div>
             <div className="ojja-footer__stat">
               <span className="ojja-footer__stat-value">
                 <PriceWithDT value={totalSaving} />
               </span>
-              <span className="ojja-footer__stat-label">Économie totale possible</span>
+              <span className="ojja-footer__stat-label">
+                Économie totale possible
+              </span>
             </div>
           </div>
           <a href="#demo" className="ojja-footer__cta">
             Explorer le panier
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path
+                d="M5 12H19M19 12L12 5M19 12L12 19"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </a>
         </div>
       </div>
       {openDish && (
-        <div className="ojja-dish-modal" role="dialog" aria-modal="true" aria-label="Comparaison couffin tunisien" onClick={() => setOpenDish(false)}>
-          <div className="ojja-dish-modal__card" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="ojja-dish-modal__close" onClick={() => setOpenDish(false)} aria-label="Fermer la popup">
+        <div
+          className="ojja-dish-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Comparaison couffin tunisien"
+          onClick={() => setOpenDish(false)}
+        >
+          <div
+            className="ojja-dish-modal__card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="ojja-dish-modal__close"
+              onClick={() => setOpenDish(false)}
+              aria-label="Fermer la popup"
+            >
               ×
             </button>
             <OjjaDishCompareContent stats={couffinStats} />
@@ -1351,9 +1724,23 @@ export default function OjjaSection() {
         </div>
       )}
       {activeIngredient && (
-        <div className="ojja-dish-modal" role="dialog" aria-modal="true" aria-label="Comparaison ingrédient" onClick={() => setOpenIngredient(null)}>
-          <div className="ojja-dish-modal__card" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="ojja-dish-modal__close" onClick={() => setOpenIngredient(null)} aria-label="Fermer la popup">
+        <div
+          className="ojja-dish-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Comparaison ingrédient"
+          onClick={() => setOpenIngredient(null)}
+        >
+          <div
+            className="ojja-dish-modal__card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="ojja-dish-modal__close"
+              onClick={() => setOpenIngredient(null)}
+              aria-label="Fermer la popup"
+            >
               ×
             </button>
             <IngredientCompareContent ingredient={activeIngredient} />

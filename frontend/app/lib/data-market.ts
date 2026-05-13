@@ -1,4 +1,10 @@
-import { getMergeStats, getPriceAnalytics, getShopDetails, getStoreProductsAdded, getStoreProductsRemoved } from "./api/analytics";
+import {
+  getMergeStats,
+  getPriceAnalytics,
+  getShopDetails,
+  getStoreProductsAdded,
+  getStoreProductsRemoved,
+} from "./demo-data/analytics";
 import {
   getParaCategories,
   getParaCategoryAnalytics,
@@ -12,7 +18,7 @@ import {
   listProducts,
   searchParaProducts,
   searchProducts,
-} from "./api/products";
+} from "./demo-data/catalog";
 import type {
   CategoryAnalytics,
   CatalogProduct,
@@ -23,8 +29,13 @@ import type {
   ShopPrice,
   StoreProductAdded,
   StoreProductsRemovedResponse,
-} from "./api/types";
-import { formatPrice, productCategory, safeImageUrl, sortedShopPrices } from "./product-utils";
+} from "./demo-data/types";
+import {
+  formatPrice,
+  productCategory,
+  safeImageUrl,
+  sortedShopPrices,
+} from "./product-utils";
 
 type SourceKind = "para" | "retail";
 type Accent = "mint" | "blue" | "amber";
@@ -116,7 +127,7 @@ const storeMeta: Record<
     domain?: string;
   }
 > = {
-  "parashop": {
+  parashop: {
     shopName: "Parashop",
     logo: "/images/parashop.png",
     source: "para",
@@ -136,7 +147,7 @@ const storeMeta: Record<
     priceValue: "1,290 DT / month",
     domain: "pharmashop.tn",
   },
-  "parafendri": {
+  parafendri: {
     shopName: "Parafendri",
     logo: "/images/parafendri.jpg",
     source: "para",
@@ -146,9 +157,9 @@ const storeMeta: Record<
     priceValue: "990 DT / month",
     domain: "parafendri.tn",
   },
-  "mytek": {
+  mytek: {
     shopName: "Mytek",
-    logo: "https://www.google.com/s2/favicons?domain=mytek.tn&sz=128",
+    logo: "/images/logo/logo.svg",
     source: "retail",
     datasets: "Electronics pricing, stock gaps, promo monitoring",
     buyerFit: "Tech brands and pricing teams",
@@ -156,9 +167,9 @@ const storeMeta: Record<
     priceValue: "1,790 DT / month",
     domain: "mytek.tn",
   },
-  "spacenet": {
+  spacenet: {
     shopName: "Spacenet",
-    logo: "https://www.google.com/s2/favicons?domain=spacenet.tn&sz=128",
+    logo: "/images/logo/logo.svg",
     source: "retail",
     datasets: "Assortment breadth, promo cadence, price pressure",
     buyerFit: "Retail intelligence and category teams",
@@ -166,9 +177,9 @@ const storeMeta: Record<
     priceValue: "1,690 DT / month",
     domain: "spacenet.tn",
   },
-  "tunisianet": {
+  tunisianet: {
     shopName: "Tunisianet",
-    logo: "https://www.google.com/s2/favicons?domain=tunisianet.com.tn&sz=128",
+    logo: "/images/logo/logo.svg",
     source: "retail",
     datasets: "Price tracking, availability and competing offers",
     buyerFit: "Commercial strategy and brand teams",
@@ -176,7 +187,7 @@ const storeMeta: Record<
     priceValue: "1,640 DT / month",
     domain: "tunisianet.com.tn",
   },
-  "darty": {
+  darty: {
     shopName: "Darty",
     logo: "/images/darty-logo.png",
     source: "retail",
@@ -186,9 +197,9 @@ const storeMeta: Record<
     priceValue: "1,790 DT / month",
     domain: "darty.com.tn",
   },
-  "technopro": {
+  technopro: {
     shopName: "Technopro",
-    logo: "https://www.google.com/s2/favicons?domain=technopro.com.tn&sz=128",
+    logo: "/images/logo/logo.svg",
     source: "retail",
     datasets: "Catalog pricing, stock activity and market comparison",
     buyerFit: "Brand, distribution and reseller teams",
@@ -216,9 +227,19 @@ const includedFields = [
   "shopPrices[].url",
 ];
 
-const fallbackChartData = [{ value: 20 }, { value: 24 }, { value: 30 }, { value: 34 }, { value: 36 }, { value: 42 }];
+const fallbackChartData = [
+  { value: 20 },
+  { value: 24 },
+  { value: 30 },
+  { value: 34 },
+  { value: 36 },
+  { value: 42 },
+];
 
-function buildFallbackSummary(slug: string, index: number): DataMarketStoreSummary {
+function buildFallbackSummary(
+  slug: string,
+  index: number,
+): DataMarketStoreSummary {
   const meta = storeMeta[slug];
 
   return {
@@ -226,11 +247,11 @@ function buildFallbackSummary(slug: string, index: number): DataMarketStoreSumma
     shopName: meta.shopName,
     shopLogo: meta.logo,
     sector: sourceLabel(meta.source),
-    coverage: "Live data unavailable",
-    refreshRate: "Backend offline · static preview",
+    coverage: "Demo data snapshot",
+    refreshRate: "Local preview · static dataset",
     datasets: meta.datasets,
     buyerFit: meta.buyerFit,
-    highlight: `${meta.highlight} Live metrics will appear once the backend is reachable.`,
+    highlight: `${meta.highlight} Demo metrics are generated locally for this preview.`,
     priceLabel: "Full Data Access",
     accent: accentCycle[index % accentCycle.length],
     chartData: fallbackChartData,
@@ -303,7 +324,10 @@ function buildFallbackDetail(store: DataMarketStoreSummary): DataMarketDetail {
 }
 
 function canonicalShopName(value: string) {
-  const normalized = value.toLowerCase().trim().replace(/[_\s]+/g, "-");
+  const normalized = value
+    .toLowerCase()
+    .trim()
+    .replace(/[_\s]+/g, "-");
   if (normalized === "oktek") return "technopro";
   if (normalized === "para-fendri") return "parafendri";
   if (normalized === "pharmashop") return "pharma-shop";
@@ -312,7 +336,10 @@ function canonicalShopName(value: string) {
 
 function displayShopName(value: string) {
   const canonical = canonicalShopName(value);
-  return storeMeta[canonical]?.shopName || canonical.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+  return (
+    storeMeta[canonical]?.shopName ||
+    canonical.replace(/-/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())
+  );
 }
 
 function sourceLabel(source: SourceKind) {
@@ -320,14 +347,28 @@ function sourceLabel(source: SourceKind) {
 }
 
 function formatCompact(value: number) {
-  return new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 }).format(value);
+  return new Intl.NumberFormat("fr-FR", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
 function chartFromAnalytics(detail?: ShopDetailedAnalytics | null) {
-  if (!detail) return [{ value: 20 }, { value: 24 }, { value: 30 }, { value: 34 }, { value: 36 }, { value: 42 }];
+  if (!detail)
+    return [
+      { value: 20 },
+      { value: 24 },
+      { value: 30 },
+      { value: 34 },
+      { value: 36 },
+      { value: 42 },
+    ];
 
   const base = Math.max(12, Math.round(detail.average_price / 18));
-  const availability = detail.product_count > 0 ? Math.round((detail.available_count / detail.product_count) * 100) : 0;
+  const availability =
+    detail.product_count > 0
+      ? Math.round((detail.available_count / detail.product_count) * 100)
+      : 0;
   const discounts = Math.round(detail.discount_count / 12);
   const cheapest = Math.round(detail.cheapest_product_count / 22);
   const promo = Math.round(detail.average_discount_percent * 2);
@@ -343,10 +384,17 @@ function chartFromAnalytics(detail?: ShopDetailedAnalytics | null) {
 }
 
 function findShopPrice(product: CatalogProduct, aliases: string[]) {
-  return (product.shopPrices || []).find((price) => aliases.includes(canonicalShopName(price.shop))) || null;
+  return (
+    (product.shopPrices || []).find((price) =>
+      aliases.includes(canonicalShopName(price.shop)),
+    ) || null
+  );
 }
 
-function toPreviewRow(product: CatalogProduct, shopPrice: ShopPrice): DataMarketPreviewRow {
+function toPreviewRow(
+  product: CatalogProduct,
+  shopPrice: ShopPrice,
+): DataMarketPreviewRow {
   return {
     productId: product.id,
     title: product.name,
@@ -372,7 +420,9 @@ async function getPreviewProducts(source: SourceKind, aliases: string[]) {
       ? await listParaProducts({ page: 1, limit: 24 })
       : await listProducts({ page: 1, limit: 24 });
 
-  let matches = firstPage.products.filter((product) => findShopPrice(product, aliases)).slice(0, 6);
+  let matches = firstPage.products
+    .filter((product) => findShopPrice(product, aliases))
+    .slice(0, 6);
 
   if (matches.length < 4) {
     const secondPage =
@@ -380,7 +430,9 @@ async function getPreviewProducts(source: SourceKind, aliases: string[]) {
         ? await listParaProducts({ page: 2, limit: 24 })
         : await listProducts({ page: 2, limit: 24 });
 
-    const more = secondPage.products.filter((product) => findShopPrice(product, aliases));
+    const more = secondPage.products.filter((product) =>
+      findShopPrice(product, aliases),
+    );
     matches = [...matches, ...more].slice(0, 6);
   }
 
@@ -408,7 +460,7 @@ function buildSummary(
     shopLogo: meta.logo,
     sector: sourceLabel(meta.source),
     coverage: `${formatCompact(coverageValue)} references`,
-    refreshRate: `Live backend sync · ${commonProducts} produits communs`,
+    refreshRate: `Local demo sync · ${commonProducts} produits communs`,
     datasets: meta.datasets,
     buyerFit: meta.buyerFit,
     highlight: `${meta.highlight} Prix moyen observe: ${formatPrice(avgPrice)}.`,
@@ -430,47 +482,85 @@ export async function getDataMarketStores() {
     ]);
 
     const detailByShop = new Map<string, ShopDetailedAnalytics>();
-    shopDetails.para_shops.forEach((shop) => detailByShop.set(canonicalShopName(shop.name), shop));
-    shopDetails.retails_shops.forEach((shop) => detailByShop.set(canonicalShopName(shop.name), shop));
+    shopDetails.para_shops.forEach((shop) =>
+      detailByShop.set(canonicalShopName(shop.name), shop),
+    );
+    shopDetails.retails_shops.forEach((shop) =>
+      detailByShop.set(canonicalShopName(shop.name), shop),
+    );
 
     const priceByShop = new Map<string, number>();
-    priceAnalytics.forEach((shop) => priceByShop.set(canonicalShopName(shop.name), shop.average_price));
+    priceAnalytics.forEach((shop) =>
+      priceByShop.set(canonicalShopName(shop.name), shop.average_price),
+    );
 
     const catalogTotals = new Map<string, number>();
     const commonByShop = new Map<string, number>();
 
     if (mergeStats.para) {
       Object.entries(mergeStats.para.shop_totals).forEach(([name, total]) => {
-        catalogTotals.set(canonicalShopName(name.replace(/_total$/i, "")), total);
+        catalogTotals.set(
+          canonicalShopName(name.replace(/_total$/i, "")),
+          total,
+        );
       });
       shopDetails.para_shops.forEach((shop) => {
-        commonByShop.set(canonicalShopName(shop.name), mergeStats.para?.common_products || 0);
+        commonByShop.set(
+          canonicalShopName(shop.name),
+          mergeStats.para?.common_products || 0,
+        );
       });
     }
 
     if (mergeStats.retails) {
-      Object.entries(mergeStats.retails.shop_totals).forEach(([name, total]) => {
-        catalogTotals.set(canonicalShopName(name.replace(/_total$/i, "")), total);
-      });
+      Object.entries(mergeStats.retails.shop_totals).forEach(
+        ([name, total]) => {
+          catalogTotals.set(
+            canonicalShopName(name.replace(/_total$/i, "")),
+            total,
+          );
+        },
+      );
       shopDetails.retails_shops.forEach((shop) => {
-        commonByShop.set(canonicalShopName(shop.name), mergeStats.retails?.common_products || 0);
+        commonByShop.set(
+          canonicalShopName(shop.name),
+          mergeStats.retails?.common_products || 0,
+        );
       });
     }
 
     const rawNames = new Set<string>();
-    priceAnalytics.forEach((shop) => rawNames.add(canonicalShopName(shop.name)));
-    shopDetails.para_shops.forEach((shop) => rawNames.add(canonicalShopName(shop.name)));
-    shopDetails.retails_shops.forEach((shop) => rawNames.add(canonicalShopName(shop.name)));
+    priceAnalytics.forEach((shop) =>
+      rawNames.add(canonicalShopName(shop.name)),
+    );
+    shopDetails.para_shops.forEach((shop) =>
+      rawNames.add(canonicalShopName(shop.name)),
+    );
+    shopDetails.retails_shops.forEach((shop) =>
+      rawNames.add(canonicalShopName(shop.name)),
+    );
     catalogTotals.forEach((_, key) => rawNames.add(key));
 
-    const slugs = [...rawNames].filter((name) => storeMeta[name]).sort((a, b) => displayShopName(a).localeCompare(displayShopName(b)));
+    const slugs = [...rawNames]
+      .filter((name) => storeMeta[name])
+      .sort((a, b) => displayShopName(a).localeCompare(displayShopName(b)));
 
     return slugs.map((slug, index) => {
       const aliases = slug === "technopro" ? ["technopro", "oktek"] : [slug];
-      return buildSummary(slug, detailByShop, catalogTotals, commonByShop, priceByShop, aliases, index);
+      return buildSummary(
+        slug,
+        detailByShop,
+        catalogTotals,
+        commonByShop,
+        priceByShop,
+        aliases,
+        index,
+      );
     });
   } catch {
-    return Object.keys(storeMeta).map((slug, index) => buildFallbackSummary(slug, index));
+    return Object.keys(storeMeta).map((slug, index) =>
+      buildFallbackSummary(slug, index),
+    );
   }
 }
 
@@ -479,7 +569,9 @@ export async function getDataMarketStore(slug: string) {
   return stores.find((store) => store.slug === slug) || null;
 }
 
-export async function getDataMarketStoreDetail(slug: string): Promise<DataMarketDetail | null> {
+export async function getDataMarketStoreDetail(
+  slug: string,
+): Promise<DataMarketDetail | null> {
   const fallbackStore = buildFallbackSummary(slug, 0);
 
   try {
@@ -493,15 +585,25 @@ export async function getDataMarketStoreDetail(slug: string): Promise<DataMarket
     const activeStore = store || fallbackStore;
     const canonical = activeStore.slug;
     const detail =
-      [...shopDetails.para_shops, ...shopDetails.retails_shops].find((shop) => canonicalShopName(shop.name) === canonical) || null;
+      [...shopDetails.para_shops, ...shopDetails.retails_shops].find(
+        (shop) => canonicalShopName(shop.name) === canonical,
+      ) || null;
 
     const priceAverage =
-      priceAnalytics.find((shop) => canonicalShopName(shop.name) === canonical)?.average_price || detail?.average_price || 0;
+      priceAnalytics.find((shop) => canonicalShopName(shop.name) === canonical)
+        ?.average_price ||
+      detail?.average_price ||
+      0;
 
     const categories =
-      activeStore.source === "para" ? await getParaCategories("top_category") : await getProductCategories("subcategory");
+      activeStore.source === "para"
+        ? await getParaCategories("top_category")
+        : await getProductCategories("subcategory");
 
-    const previewProducts = await getPreviewProducts(activeStore.source, activeStore.aliases);
+    const previewProducts = await getPreviewProducts(
+      activeStore.source,
+      activeStore.aliases,
+    );
     const previewRows = previewProducts
       .map((product) => {
         const price = findShopPrice(product, activeStore.aliases);
@@ -509,29 +611,65 @@ export async function getDataMarketStoreDetail(slug: string): Promise<DataMarket
       })
       .filter((row): row is DataMarketPreviewRow => Boolean(row));
 
-    const selectedCategory = previewProducts[0] ? productCategory(previewProducts[0]) : categories[0] || "Catalogue";
+    const selectedCategory = previewProducts[0]
+      ? productCategory(previewProducts[0])
+      : categories[0] || "Catalogue";
 
-    const [categoryAnalytics, randomProducts, searchResults, productsAddedResult, productsRemovedResult] = await Promise.all([
+    const [
+      categoryAnalytics,
+      randomProducts,
+      searchResults,
+      productsAddedResult,
+      productsRemovedResult,
+    ] = await Promise.all([
       activeStore.source === "para"
         ? getParaCategoryAnalytics(selectedCategory).catch(() => null)
         : getProductCategoryAnalytics(selectedCategory).catch(() => null),
       activeStore.source === "para"
-        ? getRandomParaProducts(selectedCategory, "top_category", 4).catch(() => [] as ParaProduct[])
-        : getRandomProducts(selectedCategory, "subcategory", 4).catch(() => [] as Product[]),
+        ? getRandomParaProducts(selectedCategory, "top_category", 4).catch(
+            () => [] as ParaProduct[],
+          )
+        : getRandomProducts(selectedCategory, "subcategory", 4).catch(
+            () => [] as Product[],
+          ),
       activeStore.source === "para"
-        ? searchParaProducts(pickSearchTerm(selectedCategory, activeStore.shopName), 6, activeStore.slug).catch(() => [] as ProductSearchResult[])
-        : searchProducts(pickSearchTerm(selectedCategory, activeStore.shopName), 6, activeStore.slug).catch(() => [] as ProductSearchResult[]),
+        ? searchParaProducts(
+            pickSearchTerm(selectedCategory, activeStore.shopName),
+            6,
+            activeStore.slug,
+          ).catch(() => [] as ProductSearchResult[])
+        : searchProducts(
+            pickSearchTerm(selectedCategory, activeStore.shopName),
+            6,
+            activeStore.slug,
+          ).catch(() => [] as ProductSearchResult[]),
       getStoreProductsAdded(activeStore.slug, activeStore.source, 8)
         .then((data) => ({ data, error: null as string | null }))
         .catch((error: unknown) => ({
-          data: { shop: activeStore.slug, source: activeStore.source, total: 0, products_added: [] },
-          error: error instanceof Error ? error.message : "Impossible de charger products_added.",
+          data: {
+            shop: activeStore.slug,
+            source: activeStore.source,
+            total: 0,
+            products_added: [],
+          },
+          error:
+            error instanceof Error
+              ? error.message
+              : "Impossible de charger products_added.",
         })),
       getStoreProductsRemoved(activeStore.slug, activeStore.source, 8)
         .then((data) => ({ data, error: null as string | null }))
         .catch((error: unknown) => ({
-          data: { shop: activeStore.slug, source: activeStore.source, total: 0, products_removed: [] } as StoreProductsRemovedResponse,
-          error: error instanceof Error ? error.message : "Impossible de charger products_removed.",
+          data: {
+            shop: activeStore.slug,
+            source: activeStore.source,
+            total: 0,
+            products_removed: [],
+          } as StoreProductsRemovedResponse,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Impossible de charger products_removed.",
         })),
     ]);
 
@@ -566,14 +704,21 @@ export async function getDataMarketStoreDetail(slug: string): Promise<DataMarket
       }
     }
 
-    const commonProducts = activeStore.source === "para" ? mergeStats.para?.common_products || 0 : mergeStats.retails?.common_products || 0;
+    const commonProducts =
+      activeStore.source === "para"
+        ? mergeStats.para?.common_products || 0
+        : mergeStats.retails?.common_products || 0;
 
     const catalogTotal =
       (activeStore.source === "para"
         ? mergeStats.para?.shop_totals
         : mergeStats.retails?.shop_totals)?.[
-        (canonical === "technopro" ? "oktek_total" : canonical.replace(/-/g, "_") + "_total")
-      ] || detail?.product_count || 0;
+        canonical === "technopro"
+          ? "oktek_total"
+          : canonical.replace(/-/g, "_") + "_total"
+      ] ||
+      detail?.product_count ||
+      0;
 
     const dataset = {
       store: {

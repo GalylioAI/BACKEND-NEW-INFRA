@@ -6,45 +6,89 @@ import { useEffect, useMemo, useRef, useState } from "react";
 function useIsLight() {
   const [light, setLight] = useState(false);
   useEffect(() => {
-    const check = () => setLight(document.documentElement.dataset.theme === "light");
+    const check = () =>
+      setLight(document.documentElement.dataset.theme === "light");
     check();
     const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     return () => obs.disconnect();
   }, []);
   return light;
 }
 
 function makeT(light: boolean) {
-  return light ? {
-    teal: "#5B21B6", tealMid: "#7C3AED", lime: "#A78BFA",
-    panel: "#f0f2ef", panelFade: "#f0f2ef", card: "#ffffff",
-    cardBorder: "rgba(91,33,182,0.15)", border: "rgba(91,33,182,0.22)",
-    muted: "rgba(0,0,0,0.45)", text: "#0a0f0d", textSoft: "rgba(0,0,0,0.65)",
-    price: "#5B21B6", ctaText: "#ffffff",
-    rowBest: "rgba(91,33,182,0.08)", rowBestBorder: "rgba(91,33,182,0.28)",
-    rowOther: "rgba(0,0,0,0.03)", chipInactiveBg: "rgba(0,0,0,0.04)", glow: "rgba(91,33,182,0.08)",
-  } : {
-    teal: "#3BDEB9", tealMid: "#77E590", lime: "#CCFF9B",
-    panel: "#000000", panelFade: "#000000", card: "#000000",
-    cardBorder: "rgba(59,222,185,0.15)", border: "rgba(59,222,185,0.22)",
-    muted: "rgba(255,255,255,0.42)", text: "#ffffff", textSoft: "rgba(255,255,255,0.78)",
-    price: "#3BDEB9", ctaText: "#0a140f",
-    rowBest: "rgba(59,222,185,0.12)", rowBestBorder: "rgba(59,222,185,0.35)",
-    rowOther: "rgba(255,255,255,0.04)", chipInactiveBg: "rgba(255,255,255,0.04)", glow: "rgba(59,222,185,0.14)",
-  };
+  return light
+    ? {
+        teal: "#5B21B6",
+        tealMid: "#7C3AED",
+        lime: "#A78BFA",
+        panel: "#f0f2ef",
+        panelFade: "#f0f2ef",
+        card: "#ffffff",
+        cardBorder: "rgba(91,33,182,0.15)",
+        border: "rgba(91,33,182,0.22)",
+        muted: "rgba(0,0,0,0.45)",
+        text: "#0a0f0d",
+        textSoft: "rgba(0,0,0,0.65)",
+        price: "#5B21B6",
+        ctaText: "#ffffff",
+        rowBest: "rgba(91,33,182,0.08)",
+        rowBestBorder: "rgba(91,33,182,0.28)",
+        rowOther: "rgba(0,0,0,0.03)",
+        chipInactiveBg: "rgba(0,0,0,0.04)",
+        glow: "rgba(91,33,182,0.08)",
+      }
+    : {
+        teal: "#3BDEB9",
+        tealMid: "#77E590",
+        lime: "#CCFF9B",
+        panel: "#000000",
+        panelFade: "#000000",
+        card: "#000000",
+        cardBorder: "rgba(59,222,185,0.15)",
+        border: "rgba(59,222,185,0.22)",
+        muted: "rgba(255,255,255,0.42)",
+        text: "#ffffff",
+        textSoft: "rgba(255,255,255,0.78)",
+        price: "#3BDEB9",
+        ctaText: "#0a140f",
+        rowBest: "rgba(59,222,185,0.12)",
+        rowBestBorder: "rgba(59,222,185,0.35)",
+        rowOther: "rgba(255,255,255,0.04)",
+        chipInactiveBg: "rgba(255,255,255,0.04)",
+        glow: "rgba(59,222,185,0.14)",
+      };
 }
-import { enrichCatalogProductImages, listProducts } from "../lib/api/products";
-import type { CatalogProduct } from "../lib/api/types";
-import { SHOWCASE_SECTION_GUTTER_PX, SHOWCASE_SECTION_MAX_WIDTH } from "../lib/showcase-layout";
-import { formatPrice, normalizeShopName, productHref, safeImageUrl, sortedShopPrices } from "../lib/product-utils";
+import {
+  enrichCatalogProductImages,
+  listProducts,
+} from "../lib/demo-data/catalog";
+import type { CatalogProduct } from "../lib/demo-data/types";
+import {
+  SHOWCASE_SECTION_GUTTER_PX,
+  SHOWCASE_SECTION_MAX_WIDTH,
+} from "../lib/showcase-layout";
+import {
+  formatPrice,
+  normalizeShopName,
+  productHref,
+  safeImageUrl,
+  sortedShopPrices,
+} from "../lib/product-utils";
 import type { TrendingProduct } from "./TrendingSection";
 
+const LAVAGE_HERO_IMG = "/images/item-cart.png";
 
-const LAVAGE_HERO_IMG =
-  "https://images.unsplash.com/photo-1626806819282-2c1dc01a5e0c?q=80&w=800&auto=format&fit=crop";
-
-type CompareRow = { name: string; dot: string; price: string; highlight: boolean; ok: boolean };
+type CompareRow = {
+  name: string;
+  dot: string;
+  price: string;
+  highlight: boolean;
+  ok: boolean;
+};
 type CardProduct = TrendingProduct & { compareRows?: CompareRow[] };
 
 /** Chip order: Machine à Laver first. */
@@ -53,41 +97,44 @@ const LAVAGE_SHOWCASE_CATEGORIES = [
     api: "Machine à Laver",
     chip: "Machine à Laver",
     bannerTitle: "Machines à Laver",
-    bannerImg: "https://images.unsplash.com/photo-1626806787461-102c1bfaaea1?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
   {
     api: "PC de Bureau",
     chip: "PC de Bureau",
     bannerTitle: "PC de Bureau",
-    bannerImg: "https://images.unsplash.com/photo-1593640408182-31c228b52b2f?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
   {
     api: "Pc Portable",
     chip: "Pc Portable",
     bannerTitle: "Pc Portables",
-    bannerImg: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
   {
     api: "Imprimante",
     chip: "Imprimante",
     bannerTitle: "Imprimantes",
-    bannerImg: "https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
   {
     api: "Réfrigérateur",
     chip: "Réfrigérateur",
     bannerTitle: "Réfrigérateurs",
-    bannerImg: "https://images.unsplash.com/photo-1571175443880-49e1d25b2bc5?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
   {
     api: "Lave Vaisselle",
     chip: "Lave Vaisselle",
     bannerTitle: "Lave Vaisselles",
-    bannerImg: "https://images.unsplash.com/photo-1585515320310-259814833e62?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
 ] as const;
 
-function catalogToCardProduct(product: CatalogProduct, isLight: boolean): CardProduct {
+function catalogToCardProduct(
+  product: CatalogProduct,
+  isLight: boolean,
+): CardProduct {
   const T = makeT(isLight);
   const stores = sortedShopPrices(product).slice(0, 3);
   return {
@@ -96,7 +143,9 @@ function catalogToCardProduct(product: CatalogProduct, isLight: boolean): CardPr
     name: product.name,
     price: formatPrice(product.bestPrice),
     originalPrice:
-      product.originalPrice && product.originalPrice > product.bestPrice ? formatPrice(product.originalPrice) : undefined,
+      product.originalPrice && product.originalPrice > product.bestPrice
+        ? formatPrice(product.originalPrice)
+        : undefined,
     image: safeImageUrl(product.image),
     inStock: product.inStock,
     href: productHref(product, "retail"),
@@ -108,7 +157,14 @@ function catalogToCardProduct(product: CatalogProduct, isLight: boolean): CardPr
             price: formatPrice(shop.price),
             best: index === 0,
           }))
-        : [{ name: "Meilleur prix", dot: T.teal, price: formatPrice(product.bestPrice), best: true }],
+        : [
+            {
+              name: "Meilleur prix",
+              dot: T.teal,
+              price: formatPrice(product.bestPrice),
+              best: true,
+            },
+          ],
   };
 }
 
@@ -123,7 +179,15 @@ function rowsForProduct(p: CardProduct): CompareRow[] {
   }));
 }
 
-function LavageProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallbackImg: string; isLight: boolean }) {
+function LavageProductCard({
+  p,
+  fallbackImg,
+  isLight,
+}: {
+  p: CardProduct;
+  fallbackImg: string;
+  isLight: boolean;
+}) {
   const T = makeT(isLight);
   const href = p.href || `/products/${p.id}`;
   const rows = rowsForProduct(p);
@@ -144,7 +208,9 @@ function LavageProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallba
         border: `1px solid ${T.cardBorder}`,
         background: T.card,
         padding: 12,
-        boxShadow: isLight ? "0 4px 20px rgba(91,33,182,0.10), 0 1px 4px rgba(0,0,0,0.06)" : "0 8px 32px rgba(0,0,0,0.45)",
+        boxShadow: isLight
+          ? "0 4px 20px rgba(91,33,182,0.10), 0 1px 4px rgba(0,0,0,0.06)"
+          : "0 8px 32px rgba(0,0,0,0.45)",
         transition: "box-shadow 0.2s, transform 0.2s, border-color 0.2s",
       }}
     >
@@ -157,12 +223,24 @@ function LavageProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallba
           width: "100%",
           overflow: "hidden",
           borderRadius: 12,
-          background: isLight ? "linear-gradient(180deg,rgba(91,33,182,0.06),rgba(91,33,182,0.02))" : "linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.03))",
-          border: isLight ? "1px solid rgba(91,33,182,0.15)" : "1px solid rgba(255,255,255,0.1)",
+          background: isLight
+            ? "linear-gradient(180deg,rgba(91,33,182,0.06),rgba(91,33,182,0.02))"
+            : "linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.03))",
+          border: isLight
+            ? "1px solid rgba(91,33,182,0.15)"
+            : "1px solid rgba(255,255,255,0.1)",
           display: "block",
         }}
       >
-        <div style={{ position: "absolute", inset: 4, borderRadius: 10, background: "rgba(255,255,255,0.97)", overflow: "hidden" }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: 4,
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.97)",
+            overflow: "hidden",
+          }}
+        >
           <img
             className="showcase-product-img"
             src={img}
@@ -193,7 +271,9 @@ function LavageProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallba
               padding: "2px 8px",
               fontSize: 9,
               fontWeight: 800,
-              background: isLight ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.88)",
+              background: isLight
+                ? "rgba(255,255,255,0.95)"
+                : "rgba(0,0,0,0.88)",
               border: `1px solid ${isLight ? "rgba(91,33,182,0.35)" : "rgba(59,222,185,0.45)"}`,
               color: T.teal,
               boxShadow: isLight ? "0 2px 8px rgba(91,33,182,0.15)" : "none",
@@ -204,8 +284,18 @@ function LavageProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallba
         )}
       </a>
 
-      <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: T.teal }}>
+      <div
+        style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: T.teal,
+          }}
+        >
           {p.brand}
         </span>
         <a
@@ -225,15 +315,54 @@ function LavageProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallba
         >
           {p.name}
         </a>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 18, fontWeight: 900, color: T.text, whiteSpace: "nowrap" }}>{p.price}</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 18,
+              fontWeight: 900,
+              color: T.text,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {p.price}
+          </span>
           {p.originalPrice && (
-            <span style={{ fontSize: 10, color: T.muted, textDecoration: "line-through" }}>{p.originalPrice}</span>
+            <span
+              style={{
+                fontSize: 10,
+                color: T.muted,
+                textDecoration: "line-through",
+              }}
+            >
+              {p.originalPrice}
+            </span>
           )}
         </div>
 
-        <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: T.muted }}>
+        <div
+          style={{
+            marginTop: 4,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: T.muted,
+            }}
+          >
             Comparer les prix
           </span>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -247,19 +376,53 @@ function LavageProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallba
                   borderRadius: 8,
                   padding: "6px 8px",
                   background: r.highlight ? T.rowBest : T.rowOther,
-                  border: r.highlight ? `1px solid ${T.rowBestBorder}` : `1px solid ${isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.06)"}`,
+                  border: r.highlight
+                    ? `1px solid ${T.rowBestBorder}`
+                    : `1px solid ${isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.06)"}`,
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: r.dot, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, fontWeight: 500, color: r.highlight ? T.text : T.textSoft }}>{r.name}</span>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: r.dot,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: r.highlight ? T.text : T.textSoft,
+                    }}
+                  >
+                    {r.name}
+                  </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: r.highlight ? T.price : T.textSoft }}>{r.price}</span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: r.highlight ? T.price : T.textSoft,
+                    }}
+                  >
+                    {r.price}
+                  </span>
                   {r.ok ? (
-                    <Check size={12} strokeWidth={3} style={{ color: T.teal }} />
+                    <Check
+                      size={12}
+                      strokeWidth={3}
+                      style={{ color: T.teal }}
+                    />
                   ) : (
-                    <X size={12} strokeWidth={3} style={{ color: "rgba(248,113,113,0.85)" }} />
+                    <X
+                      size={12}
+                      strokeWidth={3}
+                      style={{ color: "rgba(248,113,113,0.85)" }}
+                    />
                   )}
                 </div>
               </div>
@@ -302,7 +465,10 @@ export function LavageShowcaseSection() {
   const [products, setProducts] = useState<CardProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const activeCategory = useMemo(() => LAVAGE_SHOWCASE_CATEGORIES[chipIdx], [chipIdx]);
+  const activeCategory = useMemo(
+    () => LAVAGE_SHOWCASE_CATEGORIES[chipIdx],
+    [chipIdx],
+  );
 
   useEffect(() => {
     const ac = new AbortController();
@@ -325,7 +491,9 @@ export function LavageShowcaseSection() {
         const rawList = res.products || [];
         const enriched = await enrichCatalogProductImages(rawList, ac.signal);
         if (!cancelled) {
-          setProducts(enriched.map((product) => catalogToCardProduct(product, isLight)));
+          setProducts(
+            enriched.map((product) => catalogToCardProduct(product, isLight)),
+          );
         }
       } catch {
         if (!cancelled) setProducts([]);
@@ -362,7 +530,8 @@ export function LavageShowcaseSection() {
         background: T.panel,
         borderRadius: 24,
         border: `1px solid ${T.cardBorder}`,
-        boxShadow: "0 16px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+        boxShadow:
+          "0 16px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
         boxSizing: "border-box",
       }}
     >
@@ -554,7 +723,15 @@ export function LavageShowcaseSection() {
         }
       `}</style>
 
-      <div className="lavage-row" style={{ display: "flex", flexDirection: "column", gap: 24, alignItems: "stretch" }}>
+      <div
+        className="lavage-row"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 24,
+          alignItems: "stretch",
+        }}
+      >
         <div className="lavage-banner" style={{ width: 320, flexShrink: 0 }}>
           <div
             className="lavage-banner-group"
@@ -566,7 +743,8 @@ export function LavageShowcaseSection() {
               borderRadius: "2.5rem",
               overflow: "hidden",
               background: "#000000",
-              boxShadow: "0 16px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(59,222,185,0.12)",
+              boxShadow:
+                "0 16px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(59,222,185,0.12)",
             }}
           >
             <img
@@ -590,11 +768,14 @@ export function LavageShowcaseSection() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent 55%)",
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.65), transparent 55%)",
                 pointerEvents: "none",
               }}
             />
-            <div style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>
+            <div
+              style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}
+            >
               <span
                 className="lavage-banner-kicker"
                 style={{
@@ -629,8 +810,24 @@ export function LavageShowcaseSection() {
           </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 24,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 16,
+              flexWrap: "wrap",
+            }}
+          >
             <div
               style={{
                 display: "flex",
@@ -657,15 +854,31 @@ export function LavageShowcaseSection() {
                     whiteSpace: "nowrap",
                     flexShrink: 0,
                     cursor: "pointer",
-                    border: i === chipIdx
-                      ? `1px solid ${isLight ? "rgba(91,33,182,0.4)" : "rgba(255,255,255,0.28)"}`
-                      : `1px solid ${isLight ? "rgba(91,33,182,0.15)" : "rgba(255,255,255,0.1)"}`,
-                    boxShadow: i === chipIdx ? (isLight ? "0 4px 16px rgba(91,33,182,0.18)" : "0 4px 20px rgba(0,0,0,0.3)") : "none",
-                    background: i === chipIdx
-                      ? (isLight ? "rgba(91,33,182,0.12)" : "rgba(255,255,255,0.1)")
-                      : (isLight ? "rgba(91,33,182,0.04)" : "rgba(255,255,255,0.04)"),
-                    color: isLight ? (i === chipIdx ? "#5B21B6" : "rgba(0,0,0,0.6)") : "#fff",
-                    transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                    border:
+                      i === chipIdx
+                        ? `1px solid ${isLight ? "rgba(91,33,182,0.4)" : "rgba(255,255,255,0.28)"}`
+                        : `1px solid ${isLight ? "rgba(91,33,182,0.15)" : "rgba(255,255,255,0.1)"}`,
+                    boxShadow:
+                      i === chipIdx
+                        ? isLight
+                          ? "0 4px 16px rgba(91,33,182,0.18)"
+                          : "0 4px 20px rgba(0,0,0,0.3)"
+                        : "none",
+                    background:
+                      i === chipIdx
+                        ? isLight
+                          ? "rgba(91,33,182,0.12)"
+                          : "rgba(255,255,255,0.1)"
+                        : isLight
+                          ? "rgba(91,33,182,0.04)"
+                          : "rgba(255,255,255,0.04)",
+                    color: isLight
+                      ? i === chipIdx
+                        ? "#5B21B6"
+                        : "rgba(0,0,0,0.6)"
+                      : "#fff",
+                    transition:
+                      "background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
                   }}
                 >
                   {cat.chip}
@@ -780,12 +993,21 @@ export function LavageShowcaseSection() {
                   Aucun produit dans cette catégorie.
                 </div>
               ) : (
-                products.map((p) => <LavageProductCard key={p.id} p={p} fallbackImg={activeCategory.bannerImg} isLight={isLight} />)
+                products.map((p) => (
+                  <LavageProductCard
+                    key={p.id}
+                    p={p}
+                    fallbackImg={activeCategory.bannerImg}
+                    isLight={isLight}
+                  />
+                ))
               )}
             </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+          <div
+            style={{ display: "flex", justifyContent: "center", marginTop: 8 }}
+          >
             <a
               className="lavage-more"
               href={moreHref}
@@ -801,8 +1023,10 @@ export function LavageShowcaseSection() {
                 fontWeight: 800,
                 color: T.text,
                 textDecoration: "none",
-                boxShadow: "0 8px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
-                transition: "box-shadow 0.2s, border-color 0.2s, transform 0.2s",
+                boxShadow:
+                  "0 8px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
+                transition:
+                  "box-shadow 0.2s, border-color 0.2s, transform 0.2s",
               }}
             >
               Voir plus de produits

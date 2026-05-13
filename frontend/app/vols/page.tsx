@@ -1,26 +1,51 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  getDemoHistoryFlights,
+  getDemoLiveFlights,
+} from "../lib/demo-data/flights";
 
 const AIRCRAFT: Record<string, string> = {
-  A19N: "Airbus A319neo", A319: "Airbus A319",
-  A20N: "Airbus A320neo", A320: "Airbus A320",
-  A21N: "Airbus A321neo", A321: "Airbus A321",
-  A332: "Airbus A330-200", A333: "Airbus A330-300",
-  B736: "Boeing 737-600", B737: "Boeing 737-700",
-  B738: "Boeing 737-800", B739: "Boeing 737-900",
-  AT43: "ATR 42-300", AT45: "ATR 42-500", AT46: "ATR 42-600",
-  AT72: "ATR 72", AT75: "ATR 72-500", AT76: "ATR 72-600",
+  A19N: "Airbus A319neo",
+  A319: "Airbus A319",
+  A20N: "Airbus A320neo",
+  A320: "Airbus A320",
+  A21N: "Airbus A321neo",
+  A321: "Airbus A321",
+  A332: "Airbus A330-200",
+  A333: "Airbus A330-300",
+  B736: "Boeing 737-600",
+  B737: "Boeing 737-700",
+  B738: "Boeing 737-800",
+  B739: "Boeing 737-900",
+  AT43: "ATR 42-300",
+  AT45: "ATR 42-500",
+  AT46: "ATR 42-600",
+  AT72: "ATR 72",
+  AT75: "ATR 72-500",
+  AT76: "ATR 72-600",
 };
 
 const AIRPORTS: Record<string, string> = {
-  DTTA: "Tunis-Carthage", DTTJ: "Djerba-Zarzis", DTMB: "Monastir",
-  DTTX: "Sfax-Thyna", LFPG: "Paris CDG", LFPO: "Paris Orly",
-  LFLL: "Lyon St-Exupery", LFML: "Marseille Provence",
-  EGLL: "London Heathrow", LTFM: "Istanbul IST", LTBA: "Istanbul ATK",
-  LIRF: "Rome Fiumicino", LIMC: "Milan Malpensa",
-  EDDF: "Frankfurt", EHAM: "Amsterdam Schiphol",
-  LSZH: "Geneve", EBBR: "Bruxelles", OERK: "Riyad",
+  DTTA: "Tunis-Carthage",
+  DTTJ: "Djerba-Zarzis",
+  DTMB: "Monastir",
+  DTTX: "Sfax-Thyna",
+  LFPG: "Paris CDG",
+  LFPO: "Paris Orly",
+  LFLL: "Lyon St-Exupery",
+  LFML: "Marseille Provence",
+  EGLL: "London Heathrow",
+  LTFM: "Istanbul IST",
+  LTBA: "Istanbul ATK",
+  LIRF: "Rome Fiumicino",
+  LIMC: "Milan Malpensa",
+  EDDF: "Frankfurt",
+  EHAM: "Amsterdam Schiphol",
+  LSZH: "Geneve",
+  EBBR: "Bruxelles",
+  OERK: "Riyad",
 };
 
 interface LiveFlight {
@@ -118,7 +143,8 @@ const altFt = (alt?: number | string) => {
   return Number.isNaN(n) ? "Au sol" : `${n.toLocaleString("fr")} ft`;
 };
 
-const speedKmh = (gs?: number) => gs != null ? `${Math.round(gs * 1.852)} km/h` : "-";
+const speedKmh = (gs?: number) =>
+  gs != null ? `${Math.round(gs * 1.852)} km/h` : "-";
 
 const track2dir = (t?: number) => {
   if (t === undefined) return "";
@@ -134,17 +160,25 @@ const csDisplay = (callsign?: string, fallback = "") => {
 };
 
 const flightStatus = (f: LiveFlight) => {
-  if (isGrounded(f.alt_baro)) return { label: "Au sol", color: "#94A3B8", bg: "rgba(148,163,184,0.10)" };
+  if (isGrounded(f.alt_baro))
+    return { label: "Au sol", color: "#94A3B8", bg: "rgba(148,163,184,0.10)" };
   const n = Number(f.alt_baro);
-  if (n < 4000) return { label: "Approche", color: "#F59E0B", bg: "rgba(245,158,11,0.10)" };
+  if (n < 4000)
+    return { label: "Approche", color: "#F59E0B", bg: "rgba(245,158,11,0.10)" };
   return { label: "En vol", color: "#3BDEB9", bg: "rgba(59,222,185,0.10)" };
 };
 
 const fmtTime = (u: number) =>
-  new Date(u * 1000).toLocaleTimeString("fr-TN", { hour: "2-digit", minute: "2-digit" });
+  new Date(u * 1000).toLocaleTimeString("fr-TN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 const fmtDate = (u: number) =>
-  new Date(u * 1000).toLocaleDateString("fr-TN", { day: "2-digit", month: "short" });
+  new Date(u * 1000).toLocaleDateString("fr-TN", {
+    day: "2-digit",
+    month: "short",
+  });
 
 const fmtDateTime = (u: number) =>
   new Date(u * 1000).toLocaleString("fr-TN", {
@@ -172,19 +206,22 @@ const fmtMinutes = (m: number) => {
   return `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, "0")}`;
 };
 
-const airportLbl = (icao: string | null) => icao ? (AIRPORTS[icao] || icao) : "-";
-const acName = (t?: string, desc?: string) => desc || (t ? (AIRCRAFT[t] || t) : "-");
+const airportLbl = (icao: string | null) =>
+  icao ? AIRPORTS[icao] || icao : "-";
+const acName = (t?: string, desc?: string) =>
+  desc || (t ? AIRCRAFT[t] || t : "-");
 
 // suppress unused warning — kept for potential future use
 void fmtTime;
 void fmtDate;
 
 function AirlinePill({ code }: { code: "TAR" | "LBT" | "OTHER" }) {
-  const cfg = code === "TAR"
-    ? { label: "Tunisair", bg: "#DC2626" }
-    : code === "LBT"
-      ? { label: "Nouvelair", bg: "#1D4ED8" }
-      : { label: "-", bg: "#374151" };
+  const cfg =
+    code === "TAR"
+      ? { label: "Tunisair", bg: "#DC2626" }
+      : code === "LBT"
+        ? { label: "Nouvelair", bg: "#1D4ED8" }
+        : { label: "-", bg: "#374151" };
 
   return (
     <span className="airline-pill" style={{ background: cfg.bg }}>
@@ -194,22 +231,43 @@ function AirlinePill({ code }: { code: "TAR" | "LBT" | "OTHER" }) {
 }
 
 function DelayBadge({ min }: { min?: number }) {
-  if (!min || min <= 0) return <span className="delay-badge good">A l&apos;heure</span>;
+  if (!min || min <= 0)
+    return <span className="delay-badge good">A l&apos;heure</span>;
   if (min > 30) return <span className="delay-badge bad">+{min} min</span>;
   return <span className="delay-badge warn">+{min} min</span>;
 }
 
-function StatCard({ n, l, c, sub }: { n: string | number; l: string; c: string; sub?: string }) {
+function StatCard({
+  n,
+  l,
+  c,
+  sub,
+}: {
+  n: string | number;
+  l: string;
+  c: string;
+  sub?: string;
+}) {
   return (
     <div className="vstat">
-      <div className="vstat-n" style={{ color: c }}>{n}</div>
+      <div className="vstat-n" style={{ color: c }}>
+        {n}
+      </div>
       <div className="vstat-l">{l}</div>
       {sub && <div className="vstat-sub">{sub}</div>}
     </div>
   );
 }
 
-function InfoLine({ label, value, source }: { label: string; value: string | number; source?: string }) {
+function InfoLine({
+  label,
+  value,
+  source,
+}: {
+  label: string;
+  value: string | number;
+  source?: string;
+}) {
   return (
     <div className="info-line">
       <span>{label}</span>
@@ -221,16 +279,31 @@ function InfoLine({ label, value, source }: { label: string; value: string | num
   );
 }
 
-function FlightCard({ f, selected, onSelect }: { f: LiveFlight; selected: boolean; onSelect: () => void }) {
+function FlightCard({
+  f,
+  selected,
+  onSelect,
+}: {
+  f: LiveFlight;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const airline = airlineOfLive(f);
   const st = flightStatus(f);
   const grounded = isGrounded(f.alt_baro);
 
   return (
-    <button className={`vc-card${selected ? " selected" : ""}`} onClick={onSelect} type="button">
+    <button
+      className={`vc-card${selected ? " selected" : ""}`}
+      onClick={onSelect}
+      type="button"
+    >
       <div className="vc-top">
         <AirlinePill code={airline} />
-        <span className="muted-small">{track2dir(f.track)} {f.track != null ? `${Math.round(f.track)} deg` : ""}</span>
+        <span className="muted-small">
+          {track2dir(f.track)}{" "}
+          {f.track != null ? `${Math.round(f.track)} deg` : ""}
+        </span>
       </div>
       <div className="vc-title">{csDisplay(f.flight, f.hex)}</div>
       <InfoLine label="Appareil" value={acName(f.t, f.desc)} />
@@ -240,28 +313,44 @@ function FlightCard({ f, selected, onSelect }: { f: LiveFlight; selected: boolea
         <span>{speedKmh(f.gs)}</span>
       </div>
       <div className="vc-bottom">
-        <span className="status-pill" style={{ color: st.color, background: st.bg }}>{st.label}</span>
-        <span className="muted-small">{grounded ? "surface" : `${Math.round(f.baro_rate || 0)} ft/min`}</span>
+        <span
+          className="status-pill"
+          style={{ color: st.color, background: st.bg }}
+        >
+          {st.label}
+        </span>
+        <span className="muted-small">
+          {grounded ? "surface" : `${Math.round(f.baro_rate || 0)} ft/min`}
+        </span>
       </div>
-      <div className="data-stamp">{f.dataSource || "opensky"} - {fmtDateTimeMs(f.sourceUpdatedAt)}</div>
+      <div className="data-stamp">
+        {f.dataSource || "local demo"} - {fmtDateTimeMs(f.sourceUpdatedAt)}
+      </div>
     </button>
   );
 }
 
 const TILE_SIZE = 256;
 const DEFAULT_MAP_SIZE = { width: 1000, height: 560 };
-const SATELLITE_TILE_URL = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile";
+const LOCAL_TILE_URL =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    "<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><rect width='256' height='256' fill='#06131f'/><path d='M0 190C45 160 84 178 128 146s80-64 128-44v154H0z' fill='#123627'/><path d='M0 92c54 24 88-16 128 8s76 48 128 8V0H0z' fill='#0d2738'/><circle cx='184' cy='78' r='3' fill='#3BDEB9'/></svg>",
+  );
 
-const AIRPORT_COORDS: Record<string, { lat: number; lon: number; label: string }> = {
-  DTTA: { lat: 36.8510, lon: 10.2272, label: "TUN" },
-  DTTJ: { lat: 33.8750, lon: 10.7755, label: "DJE" },
+const AIRPORT_COORDS: Record<
+  string,
+  { lat: number; lon: number; label: string }
+> = {
+  DTTA: { lat: 36.851, lon: 10.2272, label: "TUN" },
+  DTTJ: { lat: 33.875, lon: 10.7755, label: "DJE" },
   DTMB: { lat: 35.7581, lon: 10.7547, label: "MIR" },
   DTTX: { lat: 34.7179, lon: 10.6909, label: "SFA" },
   LFPG: { lat: 49.0097, lon: 2.5479, label: "CDG" },
   LFPO: { lat: 48.7233, lon: 2.3794, label: "ORY" },
   LFLL: { lat: 45.7256, lon: 5.0811, label: "LYS" },
-  LFML: { lat: 43.4367, lon: 5.2150, label: "MRS" },
-  EGLL: { lat: 51.4700, lon: -0.4543, label: "LHR" },
+  LFML: { lat: 43.4367, lon: 5.215, label: "MRS" },
+  EGLL: { lat: 51.47, lon: -0.4543, label: "LHR" },
   LTFM: { lat: 41.2753, lon: 28.7519, label: "IST" },
   LTBA: { lat: 40.9769, lon: 28.8146, label: "IST" },
   LIRF: { lat: 41.8003, lon: 12.2389, label: "FCO" },
@@ -276,7 +365,9 @@ const AIRPORT_COORDS: Record<string, { lat: number; lon: number; label: string }
 
 function latLonToWorld(lat: number, lon: number, zoom: number) {
   const scale = TILE_SIZE * 2 ** zoom;
-  const sin = Math.sin((Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI) / 180);
+  const sin = Math.sin(
+    (Math.max(-85.0511, Math.min(85.0511, lat)) * Math.PI) / 180,
+  );
 
   return {
     x: ((lon + 180) / 360) * scale,
@@ -285,26 +376,36 @@ function latLonToWorld(lat: number, lon: number, zoom: number) {
 }
 
 function mapCenter(flights: LiveFlight[], selectedHex?: string) {
-  const selected = flights.find((f) => f.hex === selectedHex && f.lat != null && f.lon != null);
-  if (selected?.lat != null && selected.lon != null) return { lat: selected.lat, lon: selected.lon };
+  const selected = flights.find(
+    (f) => f.hex === selectedHex && f.lat != null && f.lon != null,
+  );
+  if (selected?.lat != null && selected.lon != null)
+    return { lat: selected.lat, lon: selected.lon };
 
   const positioned = flights.filter((f) => f.lat != null && f.lon != null);
   if (positioned.length === 0) return { lat: 38.2, lon: 10.6 };
 
   return {
-    lat: positioned.reduce((sum, f) => sum + (f.lat || 0), 0) / positioned.length,
-    lon: positioned.reduce((sum, f) => sum + (f.lon || 0), 0) / positioned.length,
+    lat:
+      positioned.reduce((sum, f) => sum + (f.lat || 0), 0) / positioned.length,
+    lon:
+      positioned.reduce((sum, f) => sum + (f.lon || 0), 0) / positioned.length,
   };
 }
 
-function buildTiles(center: { lat: number; lon: number }, zoom: number, mapSize: { width: number; height: number }) {
+function buildTiles(
+  center: { lat: number; lon: number },
+  zoom: number,
+  mapSize: { width: number; height: number },
+) {
   const centerPx = latLonToWorld(center.lat, center.lon, zoom);
   const topLeft = {
     x: centerPx.x - mapSize.width / 2,
     y: centerPx.y - mapSize.height / 2,
   };
   const maxTile = 2 ** zoom;
-  const tiles: Array<{ key: string; url: string; left: number; top: number }> = [];
+  const tiles: Array<{ key: string; url: string; left: number; top: number }> =
+    [];
   const startX = Math.floor(topLeft.x / TILE_SIZE);
   const endX = Math.floor((topLeft.x + mapSize.width) / TILE_SIZE);
   const startY = Math.floor(topLeft.y / TILE_SIZE);
@@ -316,7 +417,7 @@ function buildTiles(center: { lat: number; lon: number }, zoom: number, mapSize:
       const wrappedX = ((x % maxTile) + maxTile) % maxTile;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}-${x}`,
-        url: `${SATELLITE_TILE_URL}/${zoom}/${y}/${wrappedX}`,
+        url: LOCAL_TILE_URL,
         left: x * TILE_SIZE - topLeft.x,
         top: y * TILE_SIZE - topLeft.y,
       });
@@ -326,12 +427,20 @@ function buildTiles(center: { lat: number; lon: number }, zoom: number, mapSize:
   return { tiles, topLeft };
 }
 
-function screenPoint(lat: number, lon: number, zoom: number, topLeft: { x: number; y: number }) {
+function screenPoint(
+  lat: number,
+  lon: number,
+  zoom: number,
+  topLeft: { x: number; y: number },
+) {
   const point = latLonToWorld(lat, lon, zoom);
   return { x: point.x - topLeft.x, y: point.y - topLeft.y };
 }
 
-function routePath(from: { x: number; y: number }, to: { x: number; y: number }) {
+function routePath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+) {
   const midX = (from.x + to.x) / 2;
   const midY = (from.y + to.y) / 2;
   const dx = to.x - from.x;
@@ -367,16 +476,27 @@ function LiveMap({
   const mapGridRef = useRef<HTMLDivElement | null>(null);
   const [mapSize, setMapSize] = useState(DEFAULT_MAP_SIZE);
   const plotted = flights.filter((f) => f.lat != null && f.lon != null);
-  const selectedFlight = plotted.find((f) => f.hex === selectedHex) || plotted[0];
-  const newestPacket = plotted.reduce((max, f) => Math.max(max, f.sourceUpdatedAt || 0), 0);
-  const center = useMemo(() => mapCenter(plotted, selectedHex), [plotted, selectedHex]);
-  const { tiles, topLeft } = useMemo(() => buildTiles(center, zoom, mapSize), [center, zoom, mapSize]);
-  const route = selectedFlight?.depAirport && selectedFlight?.arrAirport
-    ? {
-        dep: AIRPORT_COORDS[selectedFlight.depAirport],
-        arr: AIRPORT_COORDS[selectedFlight.arrAirport],
-      }
-    : null;
+  const selectedFlight =
+    plotted.find((f) => f.hex === selectedHex) || plotted[0];
+  const newestPacket = plotted.reduce(
+    (max, f) => Math.max(max, f.sourceUpdatedAt || 0),
+    0,
+  );
+  const center = useMemo(
+    () => mapCenter(plotted, selectedHex),
+    [plotted, selectedHex],
+  );
+  const { tiles, topLeft } = useMemo(
+    () => buildTiles(center, zoom, mapSize),
+    [center, zoom, mapSize],
+  );
+  const route =
+    selectedFlight?.depAirport && selectedFlight?.arrAirport
+      ? {
+          dep: AIRPORT_COORDS[selectedFlight.depAirport],
+          arr: AIRPORT_COORDS[selectedFlight.arrAirport],
+        }
+      : null;
 
   useEffect(() => {
     const node = mapGridRef.current;
@@ -402,7 +522,10 @@ function LiveMap({
   return (
     <div className="map-panel">
       <div className="map-grid" ref={mapGridRef}>
-        <div className="tile-stage" style={{ width: mapSize.width, height: mapSize.height }}>
+        <div
+          className="tile-stage"
+          style={{ width: mapSize.width, height: mapSize.height }}
+        >
           {tiles.map((tile) => (
             <img
               alt=""
@@ -424,35 +547,93 @@ function LiveMap({
           <span style={{ left: "91%", top: "51%" }}>IST</span>
         </div>
         <div className="map-radar" />
-        {route?.dep && route.arr && selectedFlight?.lat != null && selectedFlight.lon != null && (
-          <svg className="route-overlay" viewBox={`0 0 ${mapSize.width} ${mapSize.height}`} aria-hidden="true">
-            {(() => {
-              const dep = screenPoint(route.dep.lat, route.dep.lon, zoom, topLeft);
-              const live = screenPoint(selectedFlight.lat as number, selectedFlight.lon as number, zoom, topLeft);
-              const arr = screenPoint(route.arr.lat, route.arr.lon, zoom, topLeft);
-              return (
-                <>
-                  <path className="route-path route-done" d={routePath(dep, live)} />
-                  <path className="route-path route-left" d={routePath(live, arr)} />
-                  <circle className="route-dot dep" cx={dep.x} cy={dep.y} r="5" />
-                  <circle className="route-dot arr" cx={arr.x} cy={arr.y} r="5" />
-                  <text className="route-label" x={dep.x + 9} y={dep.y - 9}>{route.dep.label}</text>
-                  <text className="route-label" x={arr.x + 9} y={arr.y - 9}>{route.arr.label}</text>
-                </>
-              );
-            })()}
-          </svg>
-        )}
+        {route?.dep &&
+          route.arr &&
+          selectedFlight?.lat != null &&
+          selectedFlight.lon != null && (
+            <svg
+              className="route-overlay"
+              viewBox={`0 0 ${mapSize.width} ${mapSize.height}`}
+              aria-hidden="true"
+            >
+              {(() => {
+                const dep = screenPoint(
+                  route.dep.lat,
+                  route.dep.lon,
+                  zoom,
+                  topLeft,
+                );
+                const live = screenPoint(
+                  selectedFlight.lat as number,
+                  selectedFlight.lon as number,
+                  zoom,
+                  topLeft,
+                );
+                const arr = screenPoint(
+                  route.arr.lat,
+                  route.arr.lon,
+                  zoom,
+                  topLeft,
+                );
+                return (
+                  <>
+                    <path
+                      className="route-path route-done"
+                      d={routePath(dep, live)}
+                    />
+                    <path
+                      className="route-path route-left"
+                      d={routePath(live, arr)}
+                    />
+                    <circle
+                      className="route-dot dep"
+                      cx={dep.x}
+                      cy={dep.y}
+                      r="5"
+                    />
+                    <circle
+                      className="route-dot arr"
+                      cx={arr.x}
+                      cy={arr.y}
+                      r="5"
+                    />
+                    <text className="route-label" x={dep.x + 9} y={dep.y - 9}>
+                      {route.dep.label}
+                    </text>
+                    <text className="route-label" x={arr.x + 9} y={arr.y - 9}>
+                      {route.arr.label}
+                    </text>
+                  </>
+                );
+              })()}
+            </svg>
+          )}
         <div className="map-tools">
-          <button type="button" onClick={() => setZoom((z) => Math.min(8, z + 1))}>+</button>
-          <button type="button" onClick={() => setZoom((z) => Math.max(3, z - 1))}>-</button>
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.min(8, z + 1))}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => setZoom((z) => Math.max(3, z - 1))}
+          >
+            -
+          </button>
         </div>
         <div className="map-badge">Satellite live</div>
         {plotted.map((f) => {
           const point = latLonToWorld(f.lat as number, f.lon as number, zoom);
           const left = point.x - topLeft.x;
           const top = point.y - topLeft.y;
-          if (left < -50 || left > mapSize.width + 50 || top < -50 || top > mapSize.height + 50) return null;
+          if (
+            left < -50 ||
+            left > mapSize.width + 50 ||
+            top < -50 ||
+            top > mapSize.height + 50
+          )
+            return null;
           const selected = selectedHex === f.hex;
           const airline = airlineOfLive(f);
           return (
@@ -460,11 +641,17 @@ function LiveMap({
               key={f.hex}
               className={`plane-marker ${airline.toLowerCase()}${selected ? " selected" : ""}`}
               onClick={() => onSelect(f.hex)}
-              style={{ left: `${(left / mapSize.width) * 100}%`, top: `${(top / mapSize.height) * 100}%` }}
+              style={{
+                left: `${(left / mapSize.width) * 100}%`,
+                top: `${(top / mapSize.height) * 100}%`,
+              }}
               title={csDisplay(f.flight, f.hex)}
               type="button"
             >
-              <span className="plane-symbol" style={{ transform: `rotate(${(f.track || 0) - 45}deg)` }}>
+              <span
+                className="plane-symbol"
+                style={{ transform: `rotate(${(f.track || 0) - 45}deg)` }}
+              >
                 <PlaneSilhouette />
               </span>
               <span className="plane-label">{csDisplay(f.flight, f.hex)}</span>
@@ -474,8 +661,12 @@ function LiveMap({
       </div>
       <div className="map-foot">
         <span>{plotted.length} positions geolocalisees</span>
-        <span>Derniere donnee: {fmtDateTimeMs(newestPacket || Date.now())}</span>
-        <span>Imagery: Esri, Maxar, Earthstar Geographics, GIS User Community</span>
+        <span>
+          Derniere donnee: {fmtDateTimeMs(newestPacket || Date.now())}
+        </span>
+        <span>
+          Imagery: Esri, Maxar, Earthstar Geographics, GIS User Community
+        </span>
       </div>
     </div>
   );
@@ -486,14 +677,17 @@ function LiveDetails({ flight }: { flight?: LiveFlight }) {
     return (
       <div className="detail-panel">
         <div className="panel-title">Aucun avion selectionne</div>
-        <p className="soft-text">Les positions apparaissent quand les recepteurs ADS-B captent un vol cible.</p>
+        <p className="soft-text">
+          Les positions apparaissent quand les recepteurs demo captent un vol
+          cible.
+        </p>
       </div>
     );
   }
 
   const airline = airlineOfLive(flight);
   const st = flightStatus(flight);
-  const positionSource = `${flight.dataSource || "opensky"} / ${fmtDateTimeMs(flight.sourceUpdatedAt)}`;
+  const positionSource = `${flight.dataSource || "local demo"} / ${fmtDateTimeMs(flight.sourceUpdatedAt)}`;
   const routeSource = flight.routeDataSource
     ? `${flight.routeDataSource} / ${fmtDateTimeMs(flight.routeSourceUpdatedAt)}`
     : undefined;
@@ -502,28 +696,94 @@ function LiveDetails({ flight }: { flight?: LiveFlight }) {
     <div className="detail-panel">
       <div className="detail-head">
         <AirlinePill code={airline} />
-        <span className="status-pill" style={{ color: st.color, background: st.bg }}>{st.label}</span>
+        <span
+          className="status-pill"
+          style={{ color: st.color, background: st.bg }}
+        >
+          {st.label}
+        </span>
       </div>
       <h2>{csDisplay(flight.flight, flight.hex)}</h2>
       <div className="detail-grid">
-        <InfoLine label="Immatriculation" value={flight.r || flight.hex.toUpperCase()} source={positionSource} />
-        <InfoLine label="Hex" value={flight.hex.toUpperCase()} source={positionSource} />
-        <InfoLine label="Route" value={flight.route || "-"} source={routeSource} />
-        <InfoLine label="Appareil" value={acName(flight.t, flight.desc)} source={positionSource} />
-        <InfoLine label="Altitude" value={altFt(flight.alt_baro)} source={positionSource} />
-        <InfoLine label="Vitesse" value={speedKmh(flight.gs)} source={positionSource} />
-        <InfoLine label="Cap" value={`${track2dir(flight.track)} ${flight.track != null ? Math.round(flight.track) : "-"} deg`} source={positionSource} />
-        <InfoLine label="Montee/descente" value={`${Math.round(flight.baro_rate || 0)} ft/min`} source={positionSource} />
-        <InfoLine label="Squawk" value={flight.squawk || "-"} source={positionSource} />
-        <InfoLine label="Dernier signal" value={flight.seen != null ? `${Math.round(flight.seen)} s` : "-"} source={positionSource} />
-        <InfoLine label="Source" value={flight.dataSource || "opensky"} />
-        <InfoLine label="Zone source" value={flight.sourceArea || "Global states"} />
-        <InfoLine label="Date donnee ADS-B" value={fmtDateTimeMs(flight.sourceUpdatedAt)} />
-        <InfoLine label="Capture serveur" value={fmtDateTimeMs(flight.capturedAt)} />
+        <InfoLine
+          label="Immatriculation"
+          value={flight.r || flight.hex.toUpperCase()}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Hex"
+          value={flight.hex.toUpperCase()}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Route"
+          value={flight.route || "-"}
+          source={routeSource}
+        />
+        <InfoLine
+          label="Appareil"
+          value={acName(flight.t, flight.desc)}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Altitude"
+          value={altFt(flight.alt_baro)}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Vitesse"
+          value={speedKmh(flight.gs)}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Cap"
+          value={`${track2dir(flight.track)} ${flight.track != null ? Math.round(flight.track) : "-"} deg`}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Montee/descente"
+          value={`${Math.round(flight.baro_rate || 0)} ft/min`}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Squawk"
+          value={flight.squawk || "-"}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Dernier signal"
+          value={flight.seen != null ? `${Math.round(flight.seen)} s` : "-"}
+          source={positionSource}
+        />
+        <InfoLine label="Source" value={flight.dataSource || "local demo"} />
+        <InfoLine
+          label="Zone source"
+          value={flight.sourceArea || "Global states"}
+        />
+        <InfoLine
+          label="Date donnee demo"
+          value={fmtDateTimeMs(flight.sourceUpdatedAt)}
+        />
+        <InfoLine
+          label="Capture serveur"
+          value={fmtDateTimeMs(flight.capturedAt)}
+        />
         <InfoLine label="Source route" value={flight.routeDataSource || "-"} />
-        <InfoLine label="Messages" value={flight.messages?.toLocaleString("fr") || "-"} source={positionSource} />
-        <InfoLine label="Latitude" value={flight.lat?.toFixed(4) || "-"} source={positionSource} />
-        <InfoLine label="Longitude" value={flight.lon?.toFixed(4) || "-"} source={positionSource} />
+        <InfoLine
+          label="Messages"
+          value={flight.messages?.toLocaleString("fr") || "-"}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Latitude"
+          value={flight.lat?.toFixed(4) || "-"}
+          source={positionSource}
+        />
+        <InfoLine
+          label="Longitude"
+          value={flight.lon?.toFixed(4) || "-"}
+          source={positionSource}
+        />
       </div>
     </div>
   );
@@ -531,7 +791,18 @@ function LiveDetails({ flight }: { flight?: LiveFlight }) {
 
 function SourceCoverage({ sources }: { sources?: SourceStat[] }) {
   const rollup = useMemo(() => {
-    const byName = new Map<string, { name: string; areas: number; total: number; matched: number; latest?: number; failed: number; lastMsg?: string }>();
+    const byName = new Map<
+      string,
+      {
+        name: string;
+        areas: number;
+        total: number;
+        matched: number;
+        latest?: number;
+        failed: number;
+        lastMsg?: string;
+      }
+    >();
 
     for (const source of sources || []) {
       const current = byName.get(source.name) || {
@@ -547,7 +818,8 @@ function SourceCoverage({ sources }: { sources?: SourceStat[] }) {
       current.total += source.total || 0;
       current.matched += source.matched || 0;
       current.failed += source.ok ? 0 : 1;
-      current.latest = Math.max(current.latest || 0, source.updatedAt || 0) || current.latest;
+      current.latest =
+        Math.max(current.latest || 0, source.updatedAt || 0) || current.latest;
       if (!source.ok && source.message) current.lastMsg = source.message;
       byName.set(source.name, current);
     }
@@ -565,13 +837,31 @@ function SourceCoverage({ sources }: { sources?: SourceStat[] }) {
             <strong>{source.name.toUpperCase()}</strong>
             <span>{source.areas} zones</span>
           </div>
-          <InfoLine label="Avions bruts lus" value={source.total.toLocaleString("fr")} />
+          <InfoLine
+            label="Avions bruts lus"
+            value={source.total.toLocaleString("fr")}
+          />
           <InfoLine label="TAR/LBT trouves" value={source.matched} />
-          <InfoLine label="Derniere source" value={fmtDateTimeMs(source.latest)} />
+          <InfoLine
+            label="Derniere source"
+            value={fmtDateTimeMs(source.latest)}
+          />
           {source.failed > 0 && (
             <div className="source-error">
               {source.failed} zone(s) non repondues
-              {source.lastMsg && <span style={{ display: "block", marginTop: 2, color: "#ef4444", fontWeight: 700, textTransform: "none" }}>{source.lastMsg}</span>}
+              {source.lastMsg && (
+                <span
+                  style={{
+                    display: "block",
+                    marginTop: 2,
+                    color: "#ef4444",
+                    fontWeight: 700,
+                    textTransform: "none",
+                  }}
+                >
+                  {source.lastMsg}
+                </span>
+              )}
             </div>
           )}
         </div>
@@ -588,8 +878,14 @@ function fmtDurMin(min: number) {
 }
 
 function DelayBadgeNew({ min }: { min: number | null }) {
-  if (min === null) return <span className="delay-badge" style={{ color: "rgba(255,255,255,0.3)" }}>-</span>;
-  if (min === 0) return <span className="delay-badge good">A l&apos;heure</span>;
+  if (min === null)
+    return (
+      <span className="delay-badge" style={{ color: "rgba(255,255,255,0.3)" }}>
+        -
+      </span>
+    );
+  if (min === 0)
+    return <span className="delay-badge good">A l&apos;heure</span>;
   if (min > 30) return <span className="delay-badge bad">+{min} min</span>;
   return <span className="delay-badge warn">+{min} min</span>;
 }
@@ -597,24 +893,53 @@ function DelayBadgeNew({ min }: { min: number | null }) {
 function HistoryRow({ f }: { f: HistoryFlight }) {
   const airline = histAirline(f.callsign);
   const reg = f.registration || f.icao24 || "-";
-  const acType = f.aircraftType ? (AIRCRAFT[f.aircraftType] || f.aircraftType) : "-";
+  const acType = f.aircraftType
+    ? AIRCRAFT[f.aircraftType] || f.aircraftType
+    : "-";
 
   return (
     <tr className="vh-row">
-      <td><AirlinePill code={airline} /></td>
+      <td>
+        <AirlinePill code={airline} />
+      </td>
       <td className="strong-cell">{csDisplay(f.callsign)}</td>
       <td style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{reg}</td>
-      <td>{airportLbl(f.estDepartureAirport)} <span className="route-arrow">→</span> {airportLbl(f.estArrivalAirport)}</td>
+      <td>
+        {airportLbl(f.estDepartureAirport)}{" "}
+        <span className="route-arrow">→</span> {airportLbl(f.estArrivalAirport)}
+      </td>
       <td style={{ fontSize: 11 }}>{acType}</td>
       <td>{fmtDateTime(f.firstSeen)}</td>
       <td>{fmtDateTime(f.lastSeen)}</td>
       <td className="green-cell">{fmtDurMin(f.actualDurationMin)}</td>
       <td style={{ color: "rgba(255,255,255,0.4)", fontSize: 11 }}>
         {f.expectedDurationMin ? `~${fmtDurMin(f.expectedDurationMin)}` : "-"}
-        {f.distanceKm ? <span style={{ display: "block", fontSize: 9, color: "rgba(255,255,255,0.25)" }}>{f.distanceKm} km</span> : null}
+        {f.distanceKm ? (
+          <span
+            style={{
+              display: "block",
+              fontSize: 9,
+              color: "rgba(255,255,255,0.25)",
+            }}
+          >
+            {f.distanceKm} km
+          </span>
+        ) : null}
       </td>
-      <td><DelayBadgeNew min={f.delayMin} /></td>
-      <td><span className={`status-mini ${f.status === "landed" ? "landed" : "flying"}`}>{f.status === "landed" ? "Atterri" : f.status === "in_flight" ? "En vol" : "-"}</span></td>
+      <td>
+        <DelayBadgeNew min={f.delayMin} />
+      </td>
+      <td>
+        <span
+          className={`status-mini ${f.status === "landed" ? "landed" : "flying"}`}
+        >
+          {f.status === "landed"
+            ? "Atterri"
+            : f.status === "in_flight"
+              ? "En vol"
+              : "-"}
+        </span>
+      </td>
     </tr>
   );
 }
@@ -628,10 +953,22 @@ function buildFleetStats(flights: HistoryFlight[]) {
   return [...groups.entries()]
     .map(([tail, list]) => {
       const sorted = [...list].sort((a, b) => a.firstSeen - b.firstSeen);
-      const rests = sorted.slice(1).map((f, i) => Math.max(0, Math.round((f.firstSeen - sorted[i].lastSeen) / 60)));
-      const flightMinutes = sorted.reduce((sum, f) => sum + f.actualDurationMin, 0);
-      const delayMinutes = sorted.reduce((sum, f) => sum + (f.delayMin ?? 0), 0);
-      const avgRest = rests.length ? Math.round(rests.reduce((a, b) => a + b, 0) / rests.length) : 0;
+      const rests = sorted
+        .slice(1)
+        .map((f, i) =>
+          Math.max(0, Math.round((f.firstSeen - sorted[i].lastSeen) / 60)),
+        );
+      const flightMinutes = sorted.reduce(
+        (sum, f) => sum + f.actualDurationMin,
+        0,
+      );
+      const delayMinutes = sorted.reduce(
+        (sum, f) => sum + (f.delayMin ?? 0),
+        0,
+      );
+      const avgRest = rests.length
+        ? Math.round(rests.reduce((a, b) => a + b, 0) / rests.length)
+        : 0;
       const minRest = rests.length ? Math.min(...rests) : 0;
       const maxRest = rests.length ? Math.max(...rests) : 0;
       return {
@@ -640,7 +977,9 @@ function buildFleetStats(flights: HistoryFlight[]) {
         count: sorted.length,
         flightMinutes,
         delayMinutes,
-        avgRest, minRest, maxRest,
+        avgRest,
+        minRest,
+        maxRest,
         tightTurns: rests.filter((r) => r > 0 && r < 45).length,
         airline: histAirline(sorted[0].callsign),
         type: sorted[0].aircraftType,
@@ -650,8 +989,12 @@ function buildFleetStats(flights: HistoryFlight[]) {
 }
 
 function DelayView({ flights }: { flights: HistoryFlight[] }) {
-  const completed = flights.filter((f) => f.status === "landed" && f.delayMin !== null);
-  const delayed = completed.filter((f) => (f.delayMin ?? 0) > 0).sort((a, b) => (b.delayMin ?? 0) - (a.delayMin ?? 0));
+  const completed = flights.filter(
+    (f) => f.status === "landed" && f.delayMin !== null,
+  );
+  const delayed = completed
+    .filter((f) => (f.delayMin ?? 0) > 0)
+    .sort((a, b) => (b.delayMin ?? 0) - (a.delayMin ?? 0));
   const totalDelay = delayed.reduce((sum, f) => sum + (f.delayMin ?? 0), 0);
   const severe = delayed.filter((f) => (f.delayMin ?? 0) > 30).length;
   const avgDelay = delayed.length ? Math.round(totalDelay / delayed.length) : 0;
@@ -659,37 +1002,75 @@ function DelayView({ flights }: { flights: HistoryFlight[] }) {
   return (
     <>
       <div className="insight-grid">
-        <StatCard n={delayed.length} l="vols en retard" c="#F59E0B" sub={`${severe} > 30 min`} />
+        <StatCard
+          n={delayed.length}
+          l="vols en retard"
+          c="#F59E0B"
+          sub={`${severe} > 30 min`}
+        />
         <StatCard n={fmtDurMin(totalDelay)} l="retard cumule" c="#EF4444" />
         <StatCard n={fmtDurMin(avgDelay)} l="retard moyen" c="#CCFF9B" />
       </div>
       <div className="vols-note evidence-note">
         <span>
-          Retard = duree reelle du vol (premiere detectionADS-B airborne → derniere detection) moins la duree theorique calculee depuis la distance orthodromique au sol entre aeroports (820 km/h + 30 min taxi/montee/descente). Vols termines uniquement. Pas une accusation juridique.
+          Retard = duree reelle du vol (premiere detectiondemo airborne →
+          derniere detection) moins la duree theorique calculee depuis la
+          distance orthodromique au sol entre aeroports (820 km/h + 30 min
+          taxi/montee/descente). Vols termines uniquement. Pas une accusation
+          juridique.
         </span>
       </div>
       {delayed.length === 0 ? (
-        <div className="vols-empty">Aucun retard detecte sur les vols termines. Les vols en cours ne sont pas inclus.</div>
+        <div className="vols-empty">
+          Aucun retard detecte sur les vols termines. Les vols en cours ne sont
+          pas inclus.
+        </div>
       ) : (
         <div className="vh-wrap">
           <table className="vh-table">
             <thead>
               <tr>
-                <th>Rang</th><th>Compagnie</th><th>Vol</th><th>Immat.</th><th>Trajet</th><th>Distance</th><th>Duree reelle</th><th>Duree theorique</th><th>Retard</th>
+                <th>Rang</th>
+                <th>Compagnie</th>
+                <th>Vol</th>
+                <th>Immat.</th>
+                <th>Trajet</th>
+                <th>Distance</th>
+                <th>Duree reelle</th>
+                <th>Duree theorique</th>
+                <th>Retard</th>
               </tr>
             </thead>
             <tbody>
               {delayed.map((f, i) => (
                 <tr className="vh-row" key={`${f.icao24}-${f.callsign}-${i}`}>
                   <td className="strong-cell">#{i + 1}</td>
-                  <td><AirlinePill code={histAirline(f.callsign)} /></td>
+                  <td>
+                    <AirlinePill code={histAirline(f.callsign)} />
+                  </td>
                   <td className="strong-cell">{csDisplay(f.callsign)}</td>
-                  <td style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{f.registration || f.icao24}</td>
-                  <td>{airportLbl(f.estDepartureAirport)} <span className="route-arrow">→</span> {airportLbl(f.estArrivalAirport)}</td>
-                  <td style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{f.distanceKm ? `${f.distanceKm} km` : "-"}</td>
-                  <td className="green-cell">{fmtDurMin(f.actualDurationMin)}</td>
-                  <td style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>{f.expectedDurationMin ? `~${fmtDurMin(f.expectedDurationMin)}` : "-"}</td>
-                  <td><DelayBadgeNew min={f.delayMin} /></td>
+                  <td style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>
+                    {f.registration || f.icao24}
+                  </td>
+                  <td>
+                    {airportLbl(f.estDepartureAirport)}{" "}
+                    <span className="route-arrow">→</span>{" "}
+                    {airportLbl(f.estArrivalAirport)}
+                  </td>
+                  <td style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>
+                    {f.distanceKm ? `${f.distanceKm} km` : "-"}
+                  </td>
+                  <td className="green-cell">
+                    {fmtDurMin(f.actualDurationMin)}
+                  </td>
+                  <td style={{ color: "rgba(255,255,255,0.45)", fontSize: 11 }}>
+                    {f.expectedDurationMin
+                      ? `~${fmtDurMin(f.expectedDurationMin)}`
+                      : "-"}
+                  </td>
+                  <td>
+                    <DelayBadgeNew min={f.delayMin} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -709,11 +1090,24 @@ function FleetView({ flights }: { flights: HistoryFlight[] }) {
     <>
       <div className="insight-grid">
         <StatCard n={fleet.length} l="avions identifies" c="#3BDEB9" />
-        <StatCard n={busiest ? busiest.count : 0} l="max rotations / avion" c="#CCFF9B" sub={busiest?.tail} />
-        <StatCard n={tight} l="repos courts detectes" c="#F59E0B" sub="< 45 min" />
+        <StatCard
+          n={busiest ? busiest.count : 0}
+          l="max rotations / avion"
+          c="#CCFF9B"
+          sub={busiest?.tail}
+        />
+        <StatCard
+          n={tight}
+          l="repos courts detectes"
+          c="#F59E0B"
+          sub="< 45 min"
+        />
       </div>
       <div className="vols-note evidence-note">
-        <span>Rotations calculees depuis les snapshots ADS-B accumules. Source: adsb-snapshots.</span>
+        <span>
+          Rotations calculees depuis les snapshots demo accumules. Source:
+          adsb-snapshots.
+        </span>
       </div>
       <div className="fleet-grid">
         {fleet.map((plane) => (
@@ -727,11 +1121,23 @@ function FleetView({ flights }: { flights: HistoryFlight[] }) {
             </div>
             <div className="fleet-metrics">
               <InfoLine label="Vols" value={plane.count} />
-              <InfoLine label="Temps en vol" value={fmtMinutes(plane.flightMinutes)} />
-              <InfoLine label="Retard cumule" value={fmtMinutes(plane.delayMinutes)} />
+              <InfoLine
+                label="Temps en vol"
+                value={fmtMinutes(plane.flightMinutes)}
+              />
+              <InfoLine
+                label="Retard cumule"
+                value={fmtMinutes(plane.delayMinutes)}
+              />
               <InfoLine label="Repos moyen" value={fmtMinutes(plane.avgRest)} />
-              <InfoLine label="Repos minimum" value={fmtMinutes(plane.minRest)} />
-              <InfoLine label="Repos maximum" value={fmtMinutes(plane.maxRest)} />
+              <InfoLine
+                label="Repos minimum"
+                value={fmtMinutes(plane.minRest)}
+              />
+              <InfoLine
+                label="Repos maximum"
+                value={fmtMinutes(plane.maxRest)}
+              />
             </div>
             <div className="rotation-strip">
               {plane.flights.slice(0, 6).map((flight, index) => (
@@ -760,11 +1166,15 @@ export default function VolsPage() {
 
   const fetchLive = useCallback(async () => {
     try {
-      const r = await fetch("/api/vols/live", { cache: "no-store" });
-      if (!r.ok) return;
-      const d: LiveData = await r.json();
+      const d: LiveData = await getDemoLiveFlights();
       setLive(d);
-      setLastUpdate(new Date(d.timestamp).toLocaleTimeString("fr-TN", { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
+      setLastUpdate(
+        new Date(d.timestamp).toLocaleTimeString("fr-TN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        }),
+      );
       setCountdown(30);
     } finally {
       setLiveLoad(false);
@@ -774,41 +1184,55 @@ export default function VolsPage() {
   const fetchHist = useCallback(async () => {
     setHistLoad(true);
     try {
-      const r = await fetch("/api/vols/history", { cache: "no-store" });
-      if (!r.ok) return;
-      const d = await r.json();
-      setHist(d as HistoryData);
+      const d: HistoryData = await getDemoHistoryFlights();
+      setHist(d);
     } finally {
       setHistLoad(false);
     }
   }, []);
 
-  useEffect(() => { fetchLive(); }, [fetchLive]);
+  useEffect(() => {
+    fetchLive();
+  }, [fetchLive]);
   useEffect(() => {
     const t = setInterval(fetchLive, 30000);
     return () => clearInterval(t);
   }, [fetchLive]);
   useEffect(() => {
-    const t = setInterval(() => setCountdown((c) => c > 0 ? c - 1 : 30), 1000);
+    const t = setInterval(
+      () => setCountdown((c) => (c > 0 ? c - 1 : 30)),
+      1000,
+    );
     return () => clearInterval(t);
   }, []);
   useEffect(() => {
     if (view !== "live" && !hist) fetchHist();
   }, [view, hist, fetchHist]);
 
-  const allLive = useMemo(() => [
-    ...(live?.tunisair || []).map((f) => ({ ...f, _al: "TAR" as const })),
-    ...(live?.nouvelair || []).map((f) => ({ ...f, _al: "LBT" as const })),
-  ], [live]);
+  const allLive = useMemo(
+    () => [
+      ...(live?.tunisair || []).map((f) => ({ ...f, _al: "TAR" as const })),
+      ...(live?.nouvelair || []).map((f) => ({ ...f, _al: "LBT" as const })),
+    ],
+    [live],
+  );
 
-  const shownLive = airline === "all" ? allLive : allLive.filter((f) => f._al === airline);
-  const selectedLive = shownLive.find((f) => f.hex === selectedHex) || shownLive[0];
+  const shownLive =
+    airline === "all" ? allLive : allLive.filter((f) => f._al === airline);
+  const selectedLive =
+    shownLive.find((f) => f.hex === selectedHex) || shownLive[0];
 
   const histFlights = hist?.flights ?? [];
-  const filteredHist = airline === "all" ? histFlights : histFlights.filter((f) => histAirline(f.callsign) === airline);
+  const filteredHist =
+    airline === "all"
+      ? histFlights
+      : histFlights.filter((f) => histAirline(f.callsign) === airline);
   const shownHist = filteredHist.slice(0, 80);
 
-  const delayTotal = filteredHist.reduce((sum, f) => sum + (f.delayMin || 0), 0);
+  const delayTotal = filteredHist.reduce(
+    (sum, f) => sum + (f.delayMin || 0),
+    0,
+  );
   const delayedCount = filteredHist.filter((f) => (f.delayMin || 0) > 0).length;
   const inAir = allLive.filter((f) => !isGrounded(f.alt_baro)).length;
   const onGround = allLive.filter((f) => isGrounded(f.alt_baro)).length;
@@ -1599,8 +2023,20 @@ export default function VolsPage() {
         </div>
         <div className="vols-topbar-right">
           <a href="/" className="vols-nav-btn">
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-              <path d="M12.83 7H1.17M1.17 7L7 1.17M1.17 7L7 12.83" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 14 14"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M12.83 7H1.17M1.17 7L7 1.17M1.17 7L7 12.83"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
             Accueil
           </a>
@@ -1614,18 +2050,24 @@ export default function VolsPage() {
         <div className="vols-orb vols-orb-3" aria-hidden="true" />
 
         <div className="vols-inner">
-
           {/* ── Hero ──────────────────────────────────── */}
           <div className="vols-hero">
             <div className="vols-eyebrow">
               <span className="vols-eyebrow-dot" />
-              Suivi ADS-B temps reel
+              Suivi demo temps reel
             </div>
-            <h1>Vols <span className="grad">Tunisair</span> &amp; Nouvelair</h1>
-            <p>Carte satellite live, details avion, historique, retards calcules sur distance reelle et rotations de flotte — en acces public.</p>
+            <h1>
+              Vols <span className="grad">Tunisair</span> &amp; Nouvelair
+            </h1>
+            <p>
+              Carte satellite live, details avion, historique, retards calcules
+              sur distance reelle et rotations de flotte — en acces public.
+            </p>
             <div className="vols-live-bar">
               <span className="live-dot" />
-              {lastUpdate ? `Mis a jour ${lastUpdate} · refresh dans ${countdown}s` : "Connexion aux sources ADS-B…"}
+              {lastUpdate
+                ? `Mis a jour ${lastUpdate} · refresh dans ${countdown}s`
+                : "Connexion aux sources demo…"}
             </div>
           </div>
 
@@ -1644,19 +2086,35 @@ export default function VolsPage() {
           <div className="vols-ctrl">
             <div className="vtabs">
               {(["all", "TAR", "LBT"] as Airline[]).map((a) => (
-                <button key={a} className={`vtab${airline === a ? " on" : ""}`} onClick={() => setAirline(a)} type="button">
-                  {a === "all" ? "Toutes" : a === "TAR" ? "Tunisair" : "Nouvelair"}
+                <button
+                  key={a}
+                  className={`vtab${airline === a ? " on" : ""}`}
+                  onClick={() => setAirline(a)}
+                  type="button"
+                >
+                  {a === "all"
+                    ? "Toutes"
+                    : a === "TAR"
+                      ? "Tunisair"
+                      : "Nouvelair"}
                 </button>
               ))}
             </div>
             <div className="vview">
-              {([
-                ["live", "Direct + carte"],
-                ["history", "Historique"],
-                ["delays", "Retards"],
-                ["fleet", "Flotte / repos"],
-              ] as Array<[View, string]>).map(([key, label]) => (
-                <button key={key} className={`vview-btn${view === key ? " on" : ""}`} onClick={() => setView(key)} type="button">
+              {(
+                [
+                  ["live", "Direct + carte"],
+                  ["history", "Historique"],
+                  ["delays", "Retards"],
+                  ["fleet", "Flotte / repos"],
+                ] as Array<[View, string]>
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  className={`vview-btn${view === key ? " on" : ""}`}
+                  onClick={() => setView(key)}
+                  type="button"
+                >
                   {label}
                 </button>
               ))}
@@ -1664,65 +2122,127 @@ export default function VolsPage() {
           </div>
 
           {/* ── Live view ─────────────────────────────── */}
-          {view === "live" && (
-            liveLoad
-              ? <div className="vols-spin"><div className="spin-ring" /></div>
-              : shownLive.length === 0
-                ? <div className="vols-empty">Aucun vol detecte en ce moment. La couverture ADS-B peut etre partielle.</div>
-                : (
-                  <>
-                    <div className="live-layout">
-                      <LiveMap flights={shownLive} selectedHex={selectedLive?.hex} onSelect={setSelectedHex} />
-                      <LiveDetails flight={selectedLive} />
-                    </div>
-                    <div className="vols-grid">
-                      {shownLive.map((f) => (
-                        <FlightCard key={f.hex} f={f} selected={selectedLive?.hex === f.hex} onSelect={() => setSelectedHex(f.hex)} />
-                      ))}
-                    </div>
-                  </>
-                )
-          )}
+          {view === "live" &&
+            (liveLoad ? (
+              <div className="vols-spin">
+                <div className="spin-ring" />
+              </div>
+            ) : shownLive.length === 0 ? (
+              <div className="vols-empty">
+                Aucun vol detecte en ce moment. La couverture demo peut etre
+                partielle.
+              </div>
+            ) : (
+              <>
+                <div className="live-layout">
+                  <LiveMap
+                    flights={shownLive}
+                    selectedHex={selectedLive?.hex}
+                    onSelect={setSelectedHex}
+                  />
+                  <LiveDetails flight={selectedLive} />
+                </div>
+                <div className="vols-grid">
+                  {shownLive.map((f) => (
+                    <FlightCard
+                      key={f.hex}
+                      f={f}
+                      selected={selectedLive?.hex === f.hex}
+                      onSelect={() => setSelectedHex(f.hex)}
+                    />
+                  ))}
+                </div>
+              </>
+            ))}
 
           {/* ── History/fleet loading ─────────────────── */}
-          {view !== "live" && histLoad && <div className="vols-spin"><div className="spin-ring" /></div>}
+          {view !== "live" && histLoad && (
+            <div className="vols-spin">
+              <div className="spin-ring" />
+            </div>
+          )}
 
           {/* ── History view ──────────────────────────── */}
           {view === "history" && !histLoad && (
             <>
               <div className="insight-grid">
-                <StatCard n={hist?.total ?? filteredHist.length} l="vols detectes" c="#3BDEB9" sub="adsb-snapshots" />
+                <StatCard
+                  n={hist?.total ?? filteredHist.length}
+                  l="vols detectes"
+                  c="#3BDEB9"
+                  sub="adsb-snapshots"
+                />
                 <StatCard n={delayedCount} l="avec retard" c="#F59E0B" />
-                <StatCard n={fmtMinutes(delayTotal)} l="retard cumule" c="#EF4444" />
+                <StatCard
+                  n={fmtMinutes(delayTotal)}
+                  l="retard cumule"
+                  c="#EF4444"
+                />
               </div>
               <div className="vols-note evidence-note">
-                <span>Historique base sur les snapshots ADS-B accumules. Charge le {fmtDateTimeMs(hist?.timestamp)}.</span>
+                <span>
+                  Historique base sur les snapshots demo accumules. Charge le{" "}
+                  {fmtDateTimeMs(hist?.timestamp)}.
+                </span>
               </div>
-              {shownHist.length === 0
-                ? <div className="vols-empty">Aucune donnee historique disponible. Laissez le systeme collecter quelques vols.</div>
-                : (
-                  <div className="vh-wrap">
-                    <table className="vh-table">
-                      <thead>
-                        <tr>
-                          <th>Compagnie</th><th>Vol</th><th>Immat.</th><th>Trajet</th><th>Type</th><th>Depart</th><th>Arrivee</th><th>Duree reelle</th><th>Theorique</th><th>Retard</th><th>Statut</th>
-                        </tr>
-                      </thead>
-                      <tbody>{shownHist.map((f, i) => <HistoryRow key={`${f.icao24}-${f.callsign}-${i}`} f={f} />)}</tbody>
-                    </table>
-                  </div>
-                )}
+              {shownHist.length === 0 ? (
+                <div className="vols-empty">
+                  Aucune donnee historique disponible. Laissez le systeme
+                  collecter quelques vols.
+                </div>
+              ) : (
+                <div className="vh-wrap">
+                  <table className="vh-table">
+                    <thead>
+                      <tr>
+                        <th>Compagnie</th>
+                        <th>Vol</th>
+                        <th>Immat.</th>
+                        <th>Trajet</th>
+                        <th>Type</th>
+                        <th>Depart</th>
+                        <th>Arrivee</th>
+                        <th>Duree reelle</th>
+                        <th>Theorique</th>
+                        <th>Retard</th>
+                        <th>Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownHist.map((f, i) => (
+                        <HistoryRow
+                          key={`${f.icao24}-${f.callsign}-${i}`}
+                          f={f}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           )}
 
           {/* ── Delays & Fleet ────────────────────────── */}
-          {view === "delays" && !histLoad && <DelayView flights={filteredHist} />}
-          {view === "fleet" && !histLoad && <FleetView flights={filteredHist} />}
+          {view === "delays" && !histLoad && (
+            <DelayView flights={filteredHist} />
+          )}
+          {view === "fleet" && !histLoad && (
+            <FleetView flights={filteredHist} />
+          )}
 
-          <div style={{ textAlign:"center", marginTop:64, fontSize:10, color:"rgba(255,255,255,.13)", fontWeight:700, letterSpacing:".07em", textTransform:"uppercase" }}>
-            ADS-B : ADSB.LOL · ADSB.FI · EZZ456CH · AIRPLANES.LIVE · OPENSKY · FR24
+          <div
+            style={{
+              textAlign: "center",
+              marginTop: 64,
+              fontSize: 10,
+              color: "rgba(255,255,255,.13)",
+              fontWeight: 700,
+              letterSpacing: ".07em",
+              textTransform: "uppercase",
+            }}
+          >
+            demo : DEMO.LOL · DEMO.FI · EZZ456CH · AIRPLANES.LIVE · LOCAL · DEMO
           </div>
-
         </div>
       </div>
     </>

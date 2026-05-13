@@ -1,5 +1,5 @@
-import { getPublicBlogBySlug, getPublicBlogs } from "./api/blogs";
-import type { BlogArticle } from "./api/types";
+import { getPublicBlogBySlug, getPublicBlogs } from "./demo-data/blogs";
+import type { BlogArticle } from "./demo-data/types";
 import { articles } from "./articles";
 
 function fallbackBlogs(): BlogArticle[] {
@@ -25,7 +25,7 @@ export async function loadBlogs() {
     const blogs = await getPublicBlogs();
     if (blogs.length > 0) return blogs;
   } catch {
-    // fall back to local articles when the backend is unavailable
+    // Keep the article flow backed by local demo content.
   }
   return fallbackBlogs();
 }

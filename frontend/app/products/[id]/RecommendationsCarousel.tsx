@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import type { CatalogProduct, CatalogSource } from "../../lib/api/types";
+import type { CatalogProduct, CatalogSource } from "../../lib/demo-data/types";
 import { formatPrice, productHref, sourceLabel } from "../../lib/product-utils";
 import ProductImage from "./ProductImage";
 
@@ -19,7 +19,11 @@ interface RecommendationsCarouselProps {
   theme: Theme;
 }
 
-export default function RecommendationsCarousel({ recommendations, source, theme }: RecommendationsCarouselProps) {
+export default function RecommendationsCarousel({
+  recommendations,
+  source,
+  theme,
+}: RecommendationsCarouselProps) {
   const railRef = useRef<HTMLDivElement | null>(null);
 
   const scrollRail = (dir: "left" | "right") => {
@@ -141,34 +145,130 @@ export default function RecommendationsCarousel({ recommendations, source, theme
 
       <div className="rec-mobile-wrap">
         <div className="rec-mobile-controls">
-          <button type="button" className="rec-mobile-arrow" aria-label="Produits precedents" onClick={() => scrollRail("left")}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
+          <button
+            type="button"
+            className="rec-mobile-arrow"
+            aria-label="Produits precedents"
+            onClick={() => scrollRail("left")}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </button>
-          <button type="button" className="rec-mobile-arrow" aria-label="Produits suivants" onClick={() => scrollRail("right")}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6" /></svg>
+          <button
+            type="button"
+            className="rec-mobile-arrow"
+            aria-label="Produits suivants"
+            onClick={() => scrollRail("right")}
+          >
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </button>
         </div>
 
         <div ref={railRef} className="rec-mobile-rail">
           {recommendations.map((item) => (
-            <a key={item.id} href={productHref(item, source)} className="rec-mobile-card">
+            <a
+              key={item.id}
+              href={productHref(item, source)}
+              className="rec-mobile-card"
+            >
               <div className="rec-mobile-media">
-                <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 40%, rgba(59,222,185,0.04), transparent 60%)" }} />
-                <ProductImage src={item.image || ""} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "radial-gradient(circle at 50% 40%, rgba(59,222,185,0.04), transparent 60%)",
+                  }}
+                />
+                <ProductImage
+                  src={item.image || ""}
+                  alt={item.name}
+                  style={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "contain",
+                  }}
+                />
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
-                <span className="rec-mobile-brand" style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: theme.teal }}>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  flex: 1,
+                }}
+              >
+                <span
+                  className="rec-mobile-brand"
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: theme.teal,
+                  }}
+                >
                   {item.brand || sourceLabel(source)}
                 </span>
-                <span className="rec-mobile-name" style={{ fontSize: 13, lineHeight: 1.45, color: theme.text, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+                <span
+                  className="rec-mobile-name"
+                  style={{
+                    fontSize: 13,
+                    lineHeight: 1.45,
+                    color: theme.text,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
                   {item.name}
                 </span>
               </div>
 
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 8, borderTop: `1px solid ${theme.border}` }}>
-                <span className="rec-mobile-price" style={{ fontSize: 15, fontWeight: 800, color: theme.text }}>{formatPrice(item.bestPrice)}</span>
-                <span className="rec-mobile-link" style={{ fontSize: 11, color: theme.teal, fontWeight: 700 }}>Voir →</span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  paddingTop: 8,
+                  borderTop: `1px solid ${theme.border}`,
+                }}
+              >
+                <span
+                  className="rec-mobile-price"
+                  style={{ fontSize: 15, fontWeight: 800, color: theme.text }}
+                >
+                  {formatPrice(item.bestPrice)}
+                </span>
+                <span
+                  className="rec-mobile-link"
+                  style={{ fontSize: 11, color: theme.teal, fontWeight: 700 }}
+                >
+                  Voir →
+                </span>
               </div>
             </a>
           ))}

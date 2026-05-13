@@ -2,12 +2,37 @@
 import { useEffect, useState } from "react";
 
 const boostRows = [
-  { items: ["Comparaison de Prix", "Veille Concurrentielle", "Alertes Prix"], reverse: false, duration: "30s" },
-  { items: ["Détection Faux Prix", "Benchmarking", "50K+ Produits", "10+ Magasins"], reverse: true, duration: "38s" },
-  { items: ["Prédiction IA", "Supermarché", "Parapharmacie", "Électroménager"], reverse: false, duration: "40s" },
+  {
+    items: ["Comparaison de Prix", "Veille Concurrentielle", "Alertes Prix"],
+    reverse: false,
+    duration: "30s",
+  },
+  {
+    items: [
+      "Détection Faux Prix",
+      "Benchmarking",
+      "50K+ Produits",
+      "10+ Magasins",
+    ],
+    reverse: true,
+    duration: "38s",
+  },
+  {
+    items: ["Prédiction IA", "Supermarché", "Parapharmacie", "Électroménager"],
+    reverse: false,
+    duration: "40s",
+  },
 ];
 
-function BoostRow({ items, reverse, duration }: { items: string[]; reverse: boolean; duration: string }) {
+function BoostRow({
+  items,
+  reverse,
+  duration,
+}: {
+  items: string[];
+  reverse: boolean;
+  duration: string;
+}) {
   const repeated = [...items, ...items, ...items, ...items];
   return (
     <div style={{ overflow: "hidden" }}>
@@ -22,7 +47,11 @@ function BoostRow({ items, reverse, duration }: { items: string[]; reverse: bool
         }}
       >
         {repeated.map((text, i) => (
-          <div key={i} className="brand-item boost-item" style={{ flex: "0 0 auto" }}>
+          <div
+            key={i}
+            className="brand-item boost-item"
+            style={{ flex: "0 0 auto" }}
+          >
             <div className="text-gradient">{text}</div>
           </div>
         ))}
@@ -32,7 +61,10 @@ function BoostRow({ items, reverse, duration }: { items: string[]; reverse: bool
 }
 
 // French tokens: strings or {highlight: true, text: string} or {br: true}
-type FrToken = { type: "text"; val: string } | { type: "highlight"; val: string } | { type: "br" };
+type FrToken =
+  | { type: "text"; val: string }
+  | { type: "highlight"; val: string }
+  | { type: "br" };
 
 const frTokens: FrToken[] = [
   { type: "text", val: "Surveillez" },
@@ -59,7 +91,7 @@ export default function DevelopedSection() {
 
     if (phase === "typing-fr") {
       if (frCount < frTokens.length) {
-        id = setTimeout(() => setFrCount(c => c + 1), 260);
+        id = setTimeout(() => setFrCount((c) => c + 1), 260);
       } else {
         id = setTimeout(() => setPhase("hold-fr"), 1400);
       }
@@ -67,7 +99,7 @@ export default function DevelopedSection() {
       id = setTimeout(() => setPhase("typing-ar"), 100);
     } else if (phase === "typing-ar") {
       if (arCount < arWords.length) {
-        id = setTimeout(() => setArCount(c => c + 1), 320);
+        id = setTimeout(() => setArCount((c) => c + 1), 320);
       } else {
         id = setTimeout(() => setPhase("hold-ar"), 2200);
       }
@@ -81,7 +113,6 @@ export default function DevelopedSection() {
 
     return () => clearTimeout(id);
   }, [phase, frCount, arCount]);
-
 
   return (
     <section className="section-developed">
@@ -524,16 +555,20 @@ export default function DevelopedSection() {
 
       <div className="container">
         <div className="row">
-
           {/* ── Left: Alert Screen ── */}
           <div className="col-md-8">
             <div className="alert-screen-wrap wow fadeInUp" data-wow-delay="0s">
-              <div className="alert-corner tl" /><div className="alert-corner tr" />
-              <div className="alert-corner bl" /><div className="alert-corner br" />
+              <div className="alert-corner tl" />
+              <div className="alert-corner tr" />
+              <div className="alert-corner bl" />
+              <div className="alert-corner br" />
 
               <div className="alert-screen-inner">
                 <div className="alert-badge-row">
-                  <div className="alert-badge"><span className="alert-badge-dot" />Alerte Prix</div>
+                  <div className="alert-badge">
+                    <span className="alert-badge-dot" />
+                    Alerte Prix
+                  </div>
                   <div className="alert-badge-line" />
                   <span className="alert-screen-id">HTTPS://1111.TN</span>
                 </div>
@@ -542,7 +577,12 @@ export default function DevelopedSection() {
                 <div className="alert-headline">
                   {frTokens.slice(0, frCount).map((tok, i) => {
                     if (tok.type === "br") return <br key={i} />;
-                    if (tok.type === "highlight") return <span key={i} className="alert-highlight">{tok.val}</span>;
+                    if (tok.type === "highlight")
+                      return (
+                        <span key={i} className="alert-highlight">
+                          {tok.val}
+                        </span>
+                      );
                     return <span key={i}>{tok.val}</span>;
                   })}
                   {phase === "typing-fr" && <span className="alert-cursor" />}
@@ -551,21 +591,35 @@ export default function DevelopedSection() {
                 {/* Animated Arabic */}
                 <div className="alert-arabic">
                   {arWords.slice(0, arCount).join("")}
-                  {(phase === "typing-ar") && <span className="alert-cursor" />}
+                  {phase === "typing-ar" && <span className="alert-cursor" />}
                 </div>
 
                 <div className="alert-divider" />
 
                 <p className="alert-sub">
-                  1111.tn scanne en temps réel les prix de <strong>10+ enseignes tunisiennes</strong> et détecte
-                  automatiquement les hausses abusives, les fausses promos et les prix gonflés.
+                  1111.tn scanne en temps réel les prix de{" "}
+                  <strong>10+ enseignes tunisiennes</strong> et détecte
+                  automatiquement les hausses abusives, les fausses promos et
+                  les prix gonflés.
                 </p>
 
                 <div className="alert-stats">
-                  <div className="alert-stat"><span className="alert-stat-val">50K+</span><span className="alert-stat-label">Produits suivis</span></div>
-                  <div className="alert-stat"><span className="alert-stat-val">&gt;30%</span><span className="alert-stat-label">Économies</span></div>
-                  <div className="alert-stat"><span className="alert-stat-val">10+</span><span className="alert-stat-label">Magasins</span></div>
-                  <div className="alert-stat"><span className="alert-stat-val">24/7</span><span className="alert-stat-label">Surveillance</span></div>
+                  <div className="alert-stat">
+                    <span className="alert-stat-val">50K+</span>
+                    <span className="alert-stat-label">Produits suivis</span>
+                  </div>
+                  <div className="alert-stat">
+                    <span className="alert-stat-val">&gt;30%</span>
+                    <span className="alert-stat-label">Économies</span>
+                  </div>
+                  <div className="alert-stat">
+                    <span className="alert-stat-val">10+</span>
+                    <span className="alert-stat-label">Magasins</span>
+                  </div>
+                  <div className="alert-stat">
+                    <span className="alert-stat-val">24/7</span>
+                    <span className="alert-stat-label">Surveillance</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -573,9 +627,15 @@ export default function DevelopedSection() {
 
           {/* ── Right: Features screen ── */}
           <div className="col-md-4">
-            <div className="alert-screen-wrap wow fadeInUp" data-wow-delay="0.1s" style={{ padding: 0 }}>
-              <div className="alert-corner tl" /><div className="alert-corner tr" />
-              <div className="alert-corner bl" /><div className="alert-corner br" />
+            <div
+              className="alert-screen-wrap wow fadeInUp"
+              data-wow-delay="0.1s"
+              style={{ padding: 0 }}
+            >
+              <div className="alert-corner tl" />
+              <div className="alert-corner tr" />
+              <div className="alert-corner bl" />
+              <div className="alert-corner br" />
 
               <div className="alert-screen-inner boost-screen-wrap">
                 <div className="boost-screen-header">
@@ -583,8 +643,14 @@ export default function DevelopedSection() {
                     <span className="boost-screen-badge-dot" />
                     Fonctionnalités
                   </div>
-                  <div className="boost-screen-title">Tout inclus,<br />dès le départ.</div>
-                  <div className="boost-screen-sub">Aucun abonnement requis</div>
+                  <div className="boost-screen-title">
+                    Tout inclus,
+                    <br />
+                    dès le départ.
+                  </div>
+                  <div className="boost-screen-sub">
+                    Aucun abonnement requis
+                  </div>
                 </div>
 
                 <div className="boost-screen-rows">
@@ -594,13 +660,14 @@ export default function DevelopedSection() {
                 </div>
 
                 <div className="boost-screen-footer">
-                  <span className="boost-screen-footer-label">Fonctionnalités incluses</span>
+                  <span className="boost-screen-footer-label">
+                    Fonctionnalités incluses
+                  </span>
                   <span className="boost-screen-count">10+ outils</span>
                 </div>
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </section>

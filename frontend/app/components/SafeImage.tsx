@@ -10,7 +10,13 @@ interface SafeImageProps {
   style?: React.CSSProperties;
 }
 
-export default function SafeImage({ src, fallbackSrc, alt, className, style }: SafeImageProps) {
+export default function SafeImage({
+  src,
+  fallbackSrc,
+  alt,
+  className,
+  style,
+}: SafeImageProps) {
   const [imageSrc, setImageSrc] = useState(src || fallbackSrc);
 
   useEffect(() => {

@@ -91,9 +91,24 @@ export default function GetSection() {
           filter: hue-rotate(230deg) saturate(0.86) brightness(1.05);
         }
       `}</style>
-      <img loading="lazy" className="item-1 item-circle-1" src="/images/item/item-circle.webp" alt="Visual element for 1111.tn price comparison" />
-      <img loading="lazy" className="item-2 item-circle-1" src="/images/item/item-circle.webp" alt="Visual element for 1111.tn price comparison" />
-      <img loading="lazy" className="item-3 item-circle-1" src="/images/item/item-circle.webp" alt="Visual element for 1111.tn price comparison" />
+      <img
+        loading="lazy"
+        className="item-1 item-circle-1"
+        src="/images/item/item-circle.webp"
+        alt="Visual element for 1111.tn price comparison"
+      />
+      <img
+        loading="lazy"
+        className="item-2 item-circle-1"
+        src="/images/item/item-circle.webp"
+        alt="Visual element for 1111.tn price comparison"
+      />
+      <img
+        loading="lazy"
+        className="item-3 item-circle-1"
+        src="/images/item/item-circle.webp"
+        alt="Visual element for 1111.tn price comparison"
+      />
       <div className="container">
         <div className="row">
           <div className="col-lg-5">
@@ -107,24 +122,79 @@ export default function GetSection() {
                   Comparez les{" "}
                   <span className="fw-4 fst-italic font-playfair-display animationtext letters rotate-3">
                     <span className="cd-words-wrapper">
-                      <span className="item-text is-visible"><i className="in">p</i><i className="in">r</i><i className="in">i</i><i className="in">x</i></span>
-                      <span className="item-text is-hidden"><i className="out">d</i><i className="out">e</i><i className="out">a</i><i className="out">l</i><i className="out">s</i></span>
-                      <span className="item-text is-hidden"><i className="out">p</i><i className="out">r</i><i className="out">o</i><i className="out">m</i><i className="out">o</i><i className="out">s</i></span>
+                      <span className="item-text is-visible">
+                        <i className="in">p</i>
+                        <i className="in">r</i>
+                        <i className="in">i</i>
+                        <i className="in">x</i>
+                      </span>
+                      <span className="item-text is-hidden">
+                        <i className="out">d</i>
+                        <i className="out">e</i>
+                        <i className="out">a</i>
+                        <i className="out">l</i>
+                        <i className="out">s</i>
+                      </span>
+                      <span className="item-text is-hidden">
+                        <i className="out">p</i>
+                        <i className="out">r</i>
+                        <i className="out">o</i>
+                        <i className="out">m</i>
+                        <i className="out">o</i>
+                        <i className="out">s</i>
+                      </span>
                     </span>
-                  </span>
-                  {" "}dans{" "}
+                  </span>{" "}
+                  dans{" "}
                   <span className="fw-4 fst-italic font-playfair-display animationtext letters rotate-3 d-inline-flex">
                     <span className="cd-words-wrapper">
-                      <span className="item-text is-visible"><i className="in">T</i><i className="in">u</i><i className="in">n</i><i className="in">i</i><i className="in">s</i><i className="in">i</i><i className="in">e</i></span>
-                      <span className="item-text is-hidden"><i className="in">m</i><i className="in">a</i><i className="in">g</i><i className="in">a</i><i className="in">s</i><i className="in">i</i><i className="in">n</i><i className="in">s</i></span>
-                      <span className="item-text is-hidden"><i className="out">e</i><i className="out">n</i><i className="out"> </i><i className="out">l</i><i className="out">i</i><i className="out">g</i><i className="out">n</i><i className="out">e</i></span>
+                      <span className="item-text is-visible">
+                        <i className="in">T</i>
+                        <i className="in">u</i>
+                        <i className="in">n</i>
+                        <i className="in">i</i>
+                        <i className="in">s</i>
+                        <i className="in">i</i>
+                        <i className="in">e</i>
+                      </span>
+                      <span className="item-text is-hidden">
+                        <i className="in">m</i>
+                        <i className="in">a</i>
+                        <i className="in">g</i>
+                        <i className="in">a</i>
+                        <i className="in">s</i>
+                        <i className="in">i</i>
+                        <i className="in">n</i>
+                        <i className="in">s</i>
+                      </span>
+                      <span className="item-text is-hidden">
+                        <i className="out">e</i>
+                        <i className="out">n</i>
+                        <i className="out"> </i>
+                        <i className="out">l</i>
+                        <i className="out">i</i>
+                        <i className="out">g</i>
+                        <i className="out">n</i>
+                        <i className="out">e</i>
+                      </span>
                     </span>
-                  </span>!
+                  </span>
+                  !
                 </div>
-                <p className="wow fadeInUp" data-wow-delay="0.2s">Trouvez le meilleur prix sur vos produits en quelques secondes. <br /> Comparez entre magasins physiques et en ligne, en temps reel.</p>
+                <p className="wow fadeInUp" data-wow-delay="0.2s">
+                  Trouvez le meilleur prix sur vos produits en quelques
+                  secondes. <br /> Comparez entre magasins physiques et en
+                  ligne, en temps reel.
+                </p>
               </div>
               <div className="wow fadeInUp" data-wow-delay="0.3s">
-                <a href="#" className="tf-btn-4 performance-cta light_skew_hover type-white wow fadeInUp" data-wow-delay="0.2s">Comparer maintenant</a>
+                <a
+                  href="#"
+                  className="tf-btn-4 performance-cta light_skew_hover type-white wow fadeInUp"
+                  data-wow-delay="0.2s"
+                >
+                  Comparer maintenant
+                </a>
               </div>
             </div>
           </div>
@@ -138,7 +208,8 @@ export default function GetSection() {
                   width: "664px",
                   height: "469px",
                   backgroundColor: "#edf3ff",
-                  backgroundImage: "radial-gradient(circle at 20% 15%, #ffffff 0%, #f3f6ff 56%, #eaf0ff 100%)",
+                  backgroundImage:
+                    "radial-gradient(circle at 20% 15%, #ffffff 0%, #f3f6ff 56%, #eaf0ff 100%)",
                 }}
               ></canvas>
             </div>

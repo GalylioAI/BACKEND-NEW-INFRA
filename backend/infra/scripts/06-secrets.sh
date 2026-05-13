@@ -22,18 +22,30 @@ APP_INTERNAL_NETWORK=app_internal
 APP_DOCKER_SUBNET=172.18.0.0/16
 APP_DOCKER_GATEWAY=172.18.0.1
 
-# Deploy uses 127.0.0.1 when Nginx is active.
-# If Nginx is not active, deploy overrides this to 0.0.0.0 for direct IP testing.
-# For direct IP testing, open the port once on the VPS: sudo ufw allow 8080/tcp
+# Public traffic must enter through Nginx. Keep app ports on localhost.
+FRONTEND_BIND_IP=127.0.0.1
 GATEWAY_BIND_IP=127.0.0.1
 TRUSTED_PROXY_CIDRS=127.0.0.1/32,::1/128
 DOCS_ENABLED=true
 
 # --- Domain and cookies ---
-DOMAIN=api.yourdomain.com
-COOKIE_DOMAIN=.yourdomain.com
+FRONTEND_DOMAIN=1111.tn
+BACKEND_DOMAIN=backend.1111.tn
+DOMAIN=backend.1111.tn
+BASE_API_URL=https://backend.1111.tn
+FRONTEND_URL=https://1111.tn
+NEXT_PUBLIC_API_BASE_URL=https://backend.1111.tn
+NEXT_PUBLIC_APP_URL=https://1111.tn
+COOKIE_DOMAIN=backend.1111.tn
 COOKIE_SECURE=true
-CORS_ALLOWED_ORIGINS=https://yourdomain.com
+REFRESH_COOKIE_NAME=refresh_token
+REFRESH_COOKIE_DOMAIN=backend.1111.tn
+REFRESH_COOKIE_PATH=/auth
+REFRESH_COOKIE_SAMESITE=Lax
+REFRESH_COOKIE_SECURE=true
+REFRESH_COOKIE_HTTPONLY=true
+CORS_ALLOWED_ORIGINS=https://1111.tn
+CORS_ALLOW_CREDENTIALS=true
 
 # --- JWT ---
 JWT_ISSUER=your-app-name
@@ -83,7 +95,7 @@ SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
 SENDGRID_API_KEY=
-MAIL_FROM=noreply@yourdomain.com
+MAIL_FROM=noreply@1111.tn
 APP_NAME=1111
 ENVEOF
 

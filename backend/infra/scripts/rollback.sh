@@ -2,10 +2,11 @@
 # Roll back all containers to the previously deployed image tag.
 set -euo pipefail
 
-COMPOSE="/opt/app/docker-compose.prod.yml"
+DEPLOY_PATH="${DEPLOY_PATH:-/opt/1111}"
+COMPOSE="${DEPLOY_PATH}/docker-compose.prod.yml"
 ENV_FILE="/etc/app/secrets/.env"
-LAST_TAG_FILE="/opt/app/.last_deployed_tag"
-PREV_TAG_FILE="/opt/app/.previous_tag"
+LAST_TAG_FILE="${DEPLOY_PATH}/.last_deployed_tag"
+PREV_TAG_FILE="${DEPLOY_PATH}/.previous_tag"
 
 [ -f "${LAST_TAG_FILE}" ] || { echo "No deployment record found."; exit 1; }
 [ -f "${PREV_TAG_FILE}" ] || { echo "No previous tag; cannot roll back."; exit 1; }
@@ -33,14 +34,11 @@ APP_DOCKER_SUBNET="${APP_DOCKER_SUBNET:-172.18.0.0/16}"
 APP_DOCKER_GATEWAY="$(get_env_value APP_DOCKER_GATEWAY)"
 APP_DOCKER_GATEWAY="${APP_DOCKER_GATEWAY:-172.18.0.1}"
 GATEWAY_BIND_IP="$(get_env_value GATEWAY_BIND_IP)"
-if systemctl is-active --quiet nginx; then
-  GATEWAY_BIND_IP="${GATEWAY_BIND_IP:-127.0.0.1}"
-else
-  GATEWAY_BIND_IP="0.0.0.0"
-  echo "Nginx is not active; exposing api-gateway on 0.0.0.0:8080 for direct IP testing."
-fi
+GATEWAY_BIND_IP="${GATEWAY_BIND_IP:-127.0.0.1}"
+FRONTEND_BIND_IP="$(get_env_value FRONTEND_BIND_IP)"
+FRONTEND_BIND_IP="${FRONTEND_BIND_IP:-127.0.0.1}"
 
-export APP_INTERNAL_NETWORK APP_DOCKER_SUBNET APP_DOCKER_GATEWAY GATEWAY_BIND_IP
+export APP_INTERNAL_NETWORK APP_DOCKER_SUBNET APP_DOCKER_GATEWAY GATEWAY_BIND_IP FRONTEND_BIND_IP
 
 if ! docker network inspect "${APP_INTERNAL_NETWORK}" >/dev/null 2>&1; then
   docker network create \
@@ -56,4 +54,4 @@ echo "${ROLLBACK}" > "${LAST_TAG_FILE}"
 echo "${CURRENT}" > "${PREV_TAG_FILE}"
 
 echo "=== Rollback complete ==="
-bash /opt/app/infra/scripts/health-check.sh
+bash "${DEPLOY_PATH}/infra/scripts/health-check.sh"

@@ -34,7 +34,10 @@ function useDropdownContext() {
   return context;
 }
 
-function composeHandlers<T extends MouseEvent<HTMLElement>>(first?: (event: T) => void, second?: (event: T) => void) {
+function composeHandlers<T extends MouseEvent<HTMLElement>>(
+  first?: (event: T) => void,
+  second?: (event: T) => void,
+) {
   return (event: T) => {
     first?.(event);
     if (!event.defaultPrevented) {
@@ -45,7 +48,10 @@ function composeHandlers<T extends MouseEvent<HTMLElement>>(first?: (event: T) =
 
 export function DropdownMenu({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const triggerId = useMemo(() => `dropdown-trigger-${Math.random().toString(36).slice(2)}`, []);
+  const triggerId = useMemo(
+    () => `dropdown-trigger-${Math.random().toString(36).slice(2)}`,
+    [],
+  );
 
   useEffect(() => {
     const onClose = () => setOpen(false);
@@ -53,10 +59,20 @@ export function DropdownMenu({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onClose);
   }, []);
 
-  return <DropdownContext.Provider value={{ open, setOpen, triggerId }}>{children}</DropdownContext.Provider>;
+  return (
+    <DropdownContext.Provider value={{ open, setOpen, triggerId }}>
+      {children}
+    </DropdownContext.Provider>
+  );
 }
 
-export function DropdownMenuTrigger({ asChild = false, children }: { asChild?: boolean; children: ReactNode }) {
+export function DropdownMenuTrigger({
+  asChild = false,
+  children,
+}: {
+  asChild?: boolean;
+  children: ReactNode;
+}) {
   const { open, setOpen, triggerId } = useDropdownContext();
 
   if (asChild && isValidElement(children)) {
@@ -71,13 +87,23 @@ export function DropdownMenuTrigger({ asChild = false, children }: { asChild?: b
   }
 
   return (
-    <button type="button" id={triggerId} aria-expanded={open} aria-haspopup="true" onClick={() => setOpen(!open)}>
+    <button
+      type="button"
+      id={triggerId}
+      aria-expanded={open}
+      aria-haspopup="true"
+      onClick={() => setOpen(!open)}
+    >
       {children}
     </button>
   );
 }
 
-export function DropdownMenuContent({ align = "start", className, children }: HTMLAttributes<HTMLDivElement> & { align?: "start" | "end" }) {
+export function DropdownMenuContent({
+  align = "start",
+  className,
+  children,
+}: HTMLAttributes<HTMLDivElement> & { align?: "start" | "end" }) {
   const { open } = useDropdownContext();
 
   if (!open) {
@@ -97,7 +123,12 @@ export function DropdownMenuContent({ align = "start", className, children }: HT
   );
 }
 
-export function DropdownMenuItem({ asChild = false, className, children, ...props }: HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
+export function DropdownMenuItem({
+  asChild = false,
+  className,
+  children,
+  ...props
+}: HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
   const { setOpen } = useDropdownContext();
 
   if (asChild && isValidElement(children)) {
@@ -111,7 +142,10 @@ export function DropdownMenuItem({ asChild = false, className, children, ...prop
   return (
     <div
       role="menuitem"
-      className={cn("cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-muted", className)}
+      className={cn(
+        "cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-muted",
+        className,
+      )}
       onClick={() => setOpen(false)}
       {...props}
     >
@@ -120,6 +154,9 @@ export function DropdownMenuItem({ asChild = false, className, children, ...prop
   );
 }
 
-export function DropdownMenuSeparator({ className, ...props }: HTMLAttributes<HTMLHRElement>) {
+export function DropdownMenuSeparator({
+  className,
+  ...props
+}: HTMLAttributes<HTMLHRElement>) {
   return <hr className={cn("my-1 border-border", className)} {...props} />;
 }

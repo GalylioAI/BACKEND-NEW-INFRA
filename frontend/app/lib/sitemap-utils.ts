@@ -3,8 +3,12 @@ import {
   getParaCategories,
   getProductCategories,
   listCatalogProducts,
-} from "./api/products";
-import type { CatalogProduct, CatalogSource, CategoryType } from "./api/types";
+} from "./demo-data/catalog";
+import type {
+  CatalogProduct,
+  CatalogSource,
+  CategoryType,
+} from "./demo-data/types";
 import { productHref } from "./product-utils";
 
 export const SITEMAP_REVALIDATE_SECONDS = 86400;
@@ -32,11 +36,7 @@ export interface SitemapReference {
   lastmod?: string | Date;
 }
 
-export const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.SITE_URL ||
-  "https://1111.tn"
-).replace(/\/$/, "");
+export const SITE_URL = "http://localhost:3000";
 
 export function absoluteUrl(path: string) {
   return new URL(path, SITE_URL).toString();
@@ -88,7 +88,9 @@ export function renderUrlSet(urls: SitemapUrl[]) {
         ? `<changefreq>${xmlEscape(url.changefreq)}</changefreq>`
         : "";
       const priority =
-        typeof url.priority === "number" ? `<priority>${url.priority}</priority>` : "";
+        typeof url.priority === "number"
+          ? `<priority>${url.priority}</priority>`
+          : "";
 
       return `<url><loc>${xmlEscape(url.loc)}</loc>${lastmod}${changefreq}${priority}</url>`;
     })
@@ -126,7 +128,12 @@ export function staticPageUrls(): SitemapUrl[] {
 
 export function blogUrls(): SitemapUrl[] {
   return articles.map((article) =>
-    sitemapUrl(`/blog/${article.slug}`, 0.72, "monthly", articleLastModified(article.date)),
+    sitemapUrl(
+      `/blog/${article.slug}`,
+      0.72,
+      "monthly",
+      articleLastModified(article.date),
+    ),
   );
 }
 
@@ -140,9 +147,9 @@ function articleLastModified(date: string) {
     jan: "01",
     janvier: "01",
     fev: "02",
-    "fév": "02",
+    fév: "02",
     fevrier: "02",
-    "février": "02",
+    février: "02",
     mar: "03",
     mars: "03",
     avr: "04",
@@ -153,7 +160,7 @@ function articleLastModified(date: string) {
     jul: "07",
     juillet: "07",
     aout: "08",
-    "août": "08",
+    août: "08",
     sep: "09",
     septembre: "09",
     oct: "10",
@@ -161,9 +168,9 @@ function articleLastModified(date: string) {
     nov: "11",
     novembre: "11",
     dec: "12",
-    "déc": "12",
+    déc: "12",
     decembre: "12",
-    "décembre": "12",
+    décembre: "12",
   };
 
   const monthNumber = monthByLabel[month];
@@ -181,7 +188,10 @@ export async function safeFetch<T>(
   }
 }
 
-async function getCategories(source: CatalogSource, categoryType: CategoryType) {
+async function getCategories(
+  source: CatalogSource,
+  categoryType: CategoryType,
+) {
   return safeFetch(
     () =>
       source === "para"
@@ -200,7 +210,11 @@ export async function categoryUrls(): Promise<SitemapUrl[]> {
     { source: "retail", categoryType: "top_category", basePath: "/products" },
     { source: "retail", categoryType: "subcategory", basePath: "/products" },
     { source: "retail", categoryType: "low_category", basePath: "/products" },
-    { source: "para", categoryType: "top_category", basePath: "/parapharmacie" },
+    {
+      source: "para",
+      categoryType: "top_category",
+      basePath: "/parapharmacie",
+    },
     { source: "para", categoryType: "subcategory", basePath: "/parapharmacie" },
   ];
 
@@ -226,7 +240,9 @@ export async function categoryUrls(): Promise<SitemapUrl[]> {
   return results.flat();
 }
 
-export async function productUrls(source: CatalogSource): Promise<SitemapUrl[]> {
+export async function productUrls(
+  source: CatalogSource,
+): Promise<SitemapUrl[]> {
   const products: CatalogProduct[] = [];
 
   for (let page = 1; page <= MAX_PRODUCT_PAGES_PER_SOURCE; page += 1) {

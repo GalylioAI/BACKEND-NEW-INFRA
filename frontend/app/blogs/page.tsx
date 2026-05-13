@@ -14,7 +14,8 @@ const BLOG_FALLBACK_IMG = "/images/innerpage/Blog_list_v1.jpg";
 export default async function BlogsPage() {
   const articles = await loadBlogs();
   const featuredArticle = articles[0];
-  const categoryCount = new Set(articles.map((article) => article.category)).size;
+  const categoryCount = new Set(articles.map((article) => article.category))
+    .size;
 
   if (!featuredArticle) return null;
 
@@ -458,14 +459,20 @@ export default async function BlogsPage() {
                 <div className="blogs-hero-grid">
                   <div className="blogs-copy">
                     <span className="blogs-kicker">1111.tn Blog</span>
-                    <h1>Guides, tests et comparatifs pour acheter plus malin.</h1>
+                    <h1>
+                      Guides, tests et comparatifs pour acheter plus malin.
+                    </h1>
                     <p>
-                      Retrouvez nos guides sur la comparaison de prix, les smartphones, le gaming, les
-                      laptops, les TV, l&apos;electromenager et les achats du quotidien.
+                      Retrouvez nos guides sur la comparaison de prix, les
+                      smartphones, le gaming, les laptops, les TV,
+                      l&apos;electromenager et les achats du quotidien.
                     </p>
 
                     <div className="blogs-hero-actions">
-                      <a href={`/blog/${featuredArticle.slug}`} className="tf-btn-1 light_skew_hover">
+                      <a
+                        href={`/blog/${featuredArticle.slug}`}
+                        className="tf-btn-1 light_skew_hover"
+                      >
                         <div>Lire l&apos;article a la une</div>
                       </a>
                       <a href="/" className="blogs-secondary-link">
@@ -489,9 +496,15 @@ export default async function BlogsPage() {
                     </div>
                   </div>
 
-                  <a href={`/blog/${featuredArticle.slug}`} className="blogs-featured">
+                  <a
+                    href={`/blog/${featuredArticle.slug}`}
+                    className="blogs-featured"
+                  >
                     <div className="blogs-featured-media">
-                      <span className="blogs-featured-badge" style={{ background: featuredArticle.categoryColor }}>
+                      <span
+                        className="blogs-featured-badge"
+                        style={{ background: featuredArticle.categoryColor }}
+                      >
                         A la une
                       </span>
                       <SafeImage
@@ -522,15 +535,25 @@ export default async function BlogsPage() {
                 <div className="blogs-grid-head">
                   <div>
                     <h2>Tous les articles</h2>
-                    <p>Chaque carte vous emmene directement vers la page complete de l&apos;article.</p>
+                    <p>
+                      Chaque carte vous emmene directement vers la page complete
+                      de l&apos;article.
+                    </p>
                   </div>
                 </div>
 
                 <div className="blogs-grid">
                   {articles.map((article) => (
-                    <a key={article.slug} href={`/blog/${article.slug}`} className="blogs-card">
+                    <a
+                      key={article.slug}
+                      href={`/blog/${article.slug}`}
+                      className="blogs-card"
+                    >
                       <div className="blogs-card-media">
-                        <span className="blogs-card-badge" style={{ background: article.categoryColor }}>
+                        <span
+                          className="blogs-card-badge"
+                          style={{ background: article.categoryColor }}
+                        >
                           {article.category}
                         </span>
                         <SafeImage
@@ -548,7 +571,9 @@ export default async function BlogsPage() {
                         </div>
                         <h3>{article.title}</h3>
                         <p>{article.desc}</p>
-                        <div className="blogs-link-row">Ouvrir l&apos;article</div>
+                        <div className="blogs-link-row">
+                          Ouvrir l&apos;article
+                        </div>
                       </div>
                     </a>
                   ))}

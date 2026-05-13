@@ -2,7 +2,7 @@ import type {
   DetailedAnalyticsResponse,
   MergeStatsResponse,
   ShopDetailedAnalytics,
-} from "./api/types";
+} from "./demo-data/types";
 
 export interface DashboardShopMetric extends ShopDetailedAnalytics {
   id: string;
@@ -34,7 +34,10 @@ export interface DashboardSummary {
   focusProgress: number;
 }
 
-export function formatDashboardNumber(value: number, options?: Intl.NumberFormatOptions) {
+export function formatDashboardNumber(
+  value: number,
+  options?: Intl.NumberFormatOptions,
+) {
   return value.toLocaleString("fr-FR", options);
 }
 
@@ -78,9 +81,18 @@ function buildSectorMetrics(
     sector,
     catalogTotal,
     commonProducts,
-    availabilityRate: shop.product_count > 0 ? (shop.available_count / shop.product_count) * 100 : 0,
-    discountRate: shop.product_count > 0 ? (shop.discount_count / shop.product_count) * 100 : 0,
-    cheapestRate: shop.product_count > 0 ? (shop.cheapest_product_count / shop.product_count) * 100 : 0,
+    availabilityRate:
+      shop.product_count > 0
+        ? (shop.available_count / shop.product_count) * 100
+        : 0,
+    discountRate:
+      shop.product_count > 0
+        ? (shop.discount_count / shop.product_count) * 100
+        : 0,
+    cheapestRate:
+      shop.product_count > 0
+        ? (shop.cheapest_product_count / shop.product_count) * 100
+        : 0,
     signal: computeSignal(shop),
   }));
 }
@@ -90,10 +102,16 @@ export function buildDashboardShops(
   details: DetailedAnalyticsResponse | null,
 ) {
   const paraCatalogTotal = mergeStats?.para
-    ? Object.values(mergeStats.para.shop_totals).reduce((sum, value) => sum + value, 0)
+    ? Object.values(mergeStats.para.shop_totals).reduce(
+        (sum, value) => sum + value,
+        0,
+      )
     : 0;
   const retailCatalogTotal = mergeStats?.retails
-    ? Object.values(mergeStats.retails.shop_totals).reduce((sum, value) => sum + value, 0)
+    ? Object.values(mergeStats.retails.shop_totals).reduce(
+        (sum, value) => sum + value,
+        0,
+      )
     : 0;
 
   const paraShops = buildSectorMetrics(
@@ -117,26 +135,61 @@ export function buildDashboardSummary(
   shops: DashboardShopMetric[],
 ): DashboardSummary {
   const paraProducts = mergeStats?.para
-    ? Object.values(mergeStats.para.shop_totals).reduce((sum, value) => sum + value, 0)
+    ? Object.values(mergeStats.para.shop_totals).reduce(
+        (sum, value) => sum + value,
+        0,
+      )
     : 0;
   const retailProducts = mergeStats?.retails
-    ? Object.values(mergeStats.retails.shop_totals).reduce((sum, value) => sum + value, 0)
+    ? Object.values(mergeStats.retails.shop_totals).reduce(
+        (sum, value) => sum + value,
+        0,
+      )
     : 0;
   const totalProducts = paraProducts + retailProducts;
-  const totalCommon = (mergeStats?.para?.common_products || 0) + (mergeStats?.retails?.common_products || 0);
-  const totalAvailable = shops.reduce((sum, shop) => sum + shop.available_count, 0);
-  const totalDiscounts = shops.reduce((sum, shop) => sum + shop.discount_count, 0);
-  const totalDiscountValue = shops.reduce((sum, shop) => sum + shop.total_discount_value, 0);
-  const weightedPriceTotal = shops.reduce((sum, shop) => sum + shop.average_price * shop.product_count, 0);
-  const weightedProductTotal = shops.reduce((sum, shop) => sum + shop.product_count, 0);
-  const weightedAveragePrice = weightedProductTotal > 0 ? weightedPriceTotal / weightedProductTotal : 0;
-  const availabilityRate = weightedProductTotal > 0 ? (totalAvailable / weightedProductTotal) * 100 : 0;
+  const totalCommon =
+    (mergeStats?.para?.common_products || 0) +
+    (mergeStats?.retails?.common_products || 0);
+  const totalAvailable = shops.reduce(
+    (sum, shop) => sum + shop.available_count,
+    0,
+  );
+  const totalDiscounts = shops.reduce(
+    (sum, shop) => sum + shop.discount_count,
+    0,
+  );
+  const totalDiscountValue = shops.reduce(
+    (sum, shop) => sum + shop.total_discount_value,
+    0,
+  );
+  const weightedPriceTotal = shops.reduce(
+    (sum, shop) => sum + shop.average_price * shop.product_count,
+    0,
+  );
+  const weightedProductTotal = shops.reduce(
+    (sum, shop) => sum + shop.product_count,
+    0,
+  );
+  const weightedAveragePrice =
+    weightedProductTotal > 0 ? weightedPriceTotal / weightedProductTotal : 0;
+  const availabilityRate =
+    weightedProductTotal > 0
+      ? (totalAvailable / weightedProductTotal) * 100
+      : 0;
   const totalShops = shops.length;
-  const paraShops = shops.filter((shop) => shop.sector === "Parapharmacie").length;
-  const retailShops = shops.filter((shop) => shop.sector === "E-commerce").length;
-  const leaderSector = paraProducts >= retailProducts ? "parapharmacie" : "e-commerce";
+  const paraShops = shops.filter(
+    (shop) => shop.sector === "Parapharmacie",
+  ).length;
+  const retailShops = shops.filter(
+    (shop) => shop.sector === "E-commerce",
+  ).length;
+  const leaderSector =
+    paraProducts >= retailProducts ? "parapharmacie" : "e-commerce";
   const leaderVolume = Math.max(paraProducts, retailProducts);
-  const focusProgress = totalProducts > 0 ? Math.min(100, Math.round((leaderVolume / totalProducts) * 100)) : 0;
+  const focusProgress =
+    totalProducts > 0
+      ? Math.min(100, Math.round((leaderVolume / totalProducts) * 100))
+      : 0;
 
   return {
     totalProducts,

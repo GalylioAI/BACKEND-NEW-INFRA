@@ -1,27 +1,78 @@
 "use client";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { BlogArticle, CatalogProduct, CatalogSource, ProductSearchResult } from "../lib/api/types";
-import { formatPrice, productCategory, sortedShopPrices } from "../lib/product-utils";
-import { searchParaProducts, searchProducts } from "../lib/api/products";
+import type {
+  BlogArticle,
+  CatalogProduct,
+  CatalogSource,
+  ProductSearchResult,
+} from "../lib/demo-data/types";
+import {
+  formatPrice,
+  productCategory,
+  sortedShopPrices,
+} from "../lib/product-utils";
+import { searchParaProducts, searchProducts } from "../lib/demo-data/catalog";
 import { articles } from "../lib/articles";
 
 type SearchHit = ProductSearchResult & { source: CatalogSource };
 
 const SparkleIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M15.5001 11.1518L14.5786 11.6126C14.3018 11.7502 14.0778 11.9742 13.9402 12.251L13.4794 13.1726C13.4138 13.3054 13.225 13.3054 13.1594 13.1726L12.6986 12.251C12.561 11.9742 12.337 11.7502 12.0602 11.6126L11.1387 11.1518C11.0059 11.0862 11.0059 10.8974 11.1387 10.8318L12.0602 10.371C12.337 10.2335 12.561 10.0095 12.6986 9.73266L13.1594 8.81109C13.225 8.67829 13.4138 8.67829 13.4794 8.81109L13.9402 9.73266C14.0778 10.0095 14.3018 10.2335 14.5786 10.371L15.5001 10.8318C15.6329 10.8974 15.6329 11.0862 15.5001 11.1518Z" fill="url(#spark0)" />
-    <path d="M10.8092 8.37279L8.65888 9.44796C8.01409 9.77116 7.49091 10.2943 7.16772 10.9391L6.09255 13.0895C5.93895 13.3967 5.50057 13.3967 5.34697 13.0895L4.2718 10.9391C3.94861 10.2943 3.42542 9.77116 2.78064 9.44796L0.630294 8.37279C0.323105 8.2192 0.323105 7.78081 0.630294 7.62721L2.78064 6.55204C3.42542 6.22885 3.94861 5.70566 4.2718 5.06088L5.34697 2.91054C5.50057 2.60334 5.93895 2.60334 6.09255 2.91054L7.16772 5.06088C7.49091 5.70566 8.01409 6.22885 8.65888 6.55204L10.8092 7.62721C11.1164 7.78081 11.1164 8.2192 10.8092 8.37279Z" fill="url(#spark1)" />
-    <path d="M11.1151 3.83366L11.5706 3.60595C11.7074 3.53795 11.8181 3.42725 11.8861 3.29046L12.1138 2.83503C12.1462 2.7694 12.2395 2.7694 12.2719 2.83503L12.4996 3.29046C12.5676 3.42725 12.6783 3.53795 12.8151 3.60595L13.2706 3.83366C13.3362 3.86608 13.3362 3.95938 13.2706 3.9918L12.8151 4.21952C12.6783 4.28752 12.5676 4.39821 12.4996 4.535L12.2719 4.99044C12.2395 5.05527 12.1462 5.05527 12.1138 4.99044L11.8861 4.535C11.8181 4.39821 11.7074 4.28752 11.5706 4.21952L11.1151 3.9918C11.0495 3.95938 11.0495 3.86608 11.1151 3.83366Z" fill="url(#spark2)" />
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M15.5001 11.1518L14.5786 11.6126C14.3018 11.7502 14.0778 11.9742 13.9402 12.251L13.4794 13.1726C13.4138 13.3054 13.225 13.3054 13.1594 13.1726L12.6986 12.251C12.561 11.9742 12.337 11.7502 12.0602 11.6126L11.1387 11.1518C11.0059 11.0862 11.0059 10.8974 11.1387 10.8318L12.0602 10.371C12.337 10.2335 12.561 10.0095 12.6986 9.73266L13.1594 8.81109C13.225 8.67829 13.4138 8.67829 13.4794 8.81109L13.9402 9.73266C14.0778 10.0095 14.3018 10.2335 14.5786 10.371L15.5001 10.8318C15.6329 10.8974 15.6329 11.0862 15.5001 11.1518Z"
+      fill="url(#spark0)"
+    />
+    <path
+      d="M10.8092 8.37279L8.65888 9.44796C8.01409 9.77116 7.49091 10.2943 7.16772 10.9391L6.09255 13.0895C5.93895 13.3967 5.50057 13.3967 5.34697 13.0895L4.2718 10.9391C3.94861 10.2943 3.42542 9.77116 2.78064 9.44796L0.630294 8.37279C0.323105 8.2192 0.323105 7.78081 0.630294 7.62721L2.78064 6.55204C3.42542 6.22885 3.94861 5.70566 4.2718 5.06088L5.34697 2.91054C5.50057 2.60334 5.93895 2.60334 6.09255 2.91054L7.16772 5.06088C7.49091 5.70566 8.01409 6.22885 8.65888 6.55204L10.8092 7.62721C11.1164 7.78081 11.1164 8.2192 10.8092 8.37279Z"
+      fill="url(#spark1)"
+    />
+    <path
+      d="M11.1151 3.83366L11.5706 3.60595C11.7074 3.53795 11.8181 3.42725 11.8861 3.29046L12.1138 2.83503C12.1462 2.7694 12.2395 2.7694 12.2719 2.83503L12.4996 3.29046C12.5676 3.42725 12.6783 3.53795 12.8151 3.60595L13.2706 3.83366C13.3362 3.86608 13.3362 3.95938 13.2706 3.9918L12.8151 4.21952C12.6783 4.28752 12.5676 4.39821 12.4996 4.535L12.2719 4.99044C12.2395 5.05527 12.1462 5.05527 12.1138 4.99044L11.8861 4.535C11.8181 4.39821 11.7074 4.28752 11.5706 4.21952L11.1151 3.9918C11.0495 3.95938 11.0495 3.86608 11.1151 3.83366Z"
+      fill="url(#spark2)"
+    />
     <defs>
-      <linearGradient id="spark0" x1="15.5997" y1="13.2722" x2="10.1035" y2="10.7515" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#3BDEB9" /><stop offset="0.5" stopColor="#77E590" /><stop offset="1" stopColor="#CCFF9B" />
+      <linearGradient
+        id="spark0"
+        x1="15.5997"
+        y1="13.2722"
+        x2="10.1035"
+        y2="10.7515"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#3BDEB9" />
+        <stop offset="0.5" stopColor="#77E590" />
+        <stop offset="1" stopColor="#CCFF9B" />
       </linearGradient>
-      <linearGradient id="spark1" x1="11.0396" y1="13.3199" x2="-1.78273" y2="7.43927" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#3BDEB9" /><stop offset="0.5" stopColor="#77E590" /><stop offset="1" stopColor="#CCFF9B" />
+      <linearGradient
+        id="spark1"
+        x1="11.0396"
+        y1="13.3199"
+        x2="-1.78273"
+        y2="7.43927"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#3BDEB9" />
+        <stop offset="0.5" stopColor="#77E590" />
+        <stop offset="1" stopColor="#CCFF9B" />
       </linearGradient>
-      <linearGradient id="spark2" x1="13.3198" y1="5.03906" x2="10.6038" y2="3.79314" gradientUnits="userSpaceOnUse">
-        <stop stopColor="#3BDEB9" /><stop offset="0.5" stopColor="#77E590" /><stop offset="1" stopColor="#CCFF9B" />
+      <linearGradient
+        id="spark2"
+        x1="13.3198"
+        y1="5.03906"
+        x2="10.6038"
+        y2="3.79314"
+        gradientUnits="userSpaceOnUse"
+      >
+        <stop stopColor="#3BDEB9" />
+        <stop offset="0.5" stopColor="#77E590" />
+        <stop offset="1" stopColor="#CCFF9B" />
       </linearGradient>
     </defs>
   </svg>
@@ -29,20 +80,42 @@ const SparkleIcon = () => (
 
 const CheckIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M20 6L9 17L4 12"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
 const ArrowRightIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-    <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path
+      d="M5 12H19M19 12L12 5M19 12L12 19"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
   </svg>
 );
 
 const TrophyIcon = () => (
   <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-    <path d="M8 21h8M12 17v4M5 3H3a2 2 0 000 4h2M19 3h2a2 2 0 010 4h-2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-    <path d="M5 3v8a7 7 0 0014 0V3H5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+    <path
+      d="M8 21h8M12 17v4M5 3H3a2 2 0 000 4h2M19 3h2a2 2 0 010 4h-2"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
+    <path
+      d="M5 3v8a7 7 0 0014 0V3H5z"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
@@ -54,23 +127,23 @@ const fallbackHeroProducts = [
     tag: "TENDANCE",
     savings: "101 DT",
     stores: [
-      { name: "Mytek",      price: "1 249",  unit: "DT", best: true,  pct: 68  },
-      { name: "Tunisianet", price: "1 289",  unit: "DT", best: false, pct: 78  },
-      { name: "Spacenet",   price: "1 319",  unit: "DT", best: false, pct: 88  },
-      { name: "TechnoPro",  price: "1 350",  unit: "DT", best: false, pct: 100 },
+      { name: "Mytek", price: "1 249", unit: "DT", best: true, pct: 68 },
+      { name: "Tunisianet", price: "1 289", unit: "DT", best: false, pct: 78 },
+      { name: "Spacenet", price: "1 319", unit: "DT", best: false, pct: 88 },
+      { name: "TechnoPro", price: "1 350", unit: "DT", best: false, pct: 100 },
     ],
   },
   {
-    name: "LG OLED C3 55\"",
+    name: 'LG OLED C3 55"',
     spec: "4K · 120Hz · HDR10+ · WebOS",
     category: "Télévisions",
     tag: "POPULAIRE",
     savings: "210 DT",
     stores: [
-      { name: "Mytek",      price: "3 190",  unit: "DT", best: true,  pct: 64  },
-      { name: "Géant",      price: "3 290",  unit: "DT", best: false, pct: 72  },
-      { name: "Tunisianet", price: "3 350",  unit: "DT", best: false, pct: 85  },
-      { name: "TechnoPro",  price: "3 400",  unit: "DT", best: false, pct: 100 },
+      { name: "Mytek", price: "3 190", unit: "DT", best: true, pct: 64 },
+      { name: "Géant", price: "3 290", unit: "DT", best: false, pct: 72 },
+      { name: "Tunisianet", price: "3 350", unit: "DT", best: false, pct: 85 },
+      { name: "TechnoPro", price: "3 400", unit: "DT", best: false, pct: 100 },
     ],
   },
   {
@@ -80,10 +153,10 @@ const fallbackHeroProducts = [
     tag: "PRO",
     savings: "85 DT",
     stores: [
-      { name: "Tunisianet", price: "890",    unit: "DT", best: true,  pct: 70  },
-      { name: "Mytek",      price: "930",    unit: "DT", best: false, pct: 82  },
-      { name: "Spacenet",   price: "950",    unit: "DT", best: false, pct: 90  },
-      { name: "TechnoPro",  price: "975",    unit: "DT", best: false, pct: 100 },
+      { name: "Tunisianet", price: "890", unit: "DT", best: true, pct: 70 },
+      { name: "Mytek", price: "930", unit: "DT", best: false, pct: 82 },
+      { name: "Spacenet", price: "950", unit: "DT", best: false, pct: 90 },
+      { name: "TechnoPro", price: "975", unit: "DT", best: false, pct: 100 },
     ],
   },
   {
@@ -93,18 +166,18 @@ const fallbackHeroProducts = [
     tag: "TOP VENTE",
     savings: "175 DT",
     stores: [
-      { name: "Géant",      price: "1 850",  unit: "DT", best: true,  pct: 60  },
-      { name: "Carrefour",  price: "1 950",  unit: "DT", best: false, pct: 75  },
-      { name: "Mytek",      price: "1 990",  unit: "DT", best: false, pct: 88  },
-      { name: "TechnoPro",  price: "2 025",  unit: "DT", best: false, pct: 100 },
+      { name: "Géant", price: "1 850", unit: "DT", best: true, pct: 60 },
+      { name: "Carrefour", price: "1 950", unit: "DT", best: false, pct: 75 },
+      { name: "Mytek", price: "1 990", unit: "DT", best: false, pct: 88 },
+      { name: "TechnoPro", price: "2 025", unit: "DT", best: false, pct: 100 },
     ],
   },
 ];
 
 const fallbackHeroStats = [
   { value: "50K+", label: "Produits comparés" },
-  { value: "10+",  label: "Magasins indexés" },
-  { value: "40%",  label: "Économies possibles" },
+  { value: "10+", label: "Magasins indexés" },
+  { value: "40%", label: "Économies possibles" },
 ];
 
 const DURATION = 4500;
@@ -153,18 +226,31 @@ function comparableText(value?: string | null) {
 
 function productSpec(product: CatalogProduct) {
   const description = cleanText(product.description);
-  if (description && comparableText(description) !== comparableText(product.name)) return description;
-  return [product.brand, productCategory(product)].filter(Boolean).join(" - ") || "Produit compare depuis le backend";
+  if (
+    description &&
+    comparableText(description) !== comparableText(product.name)
+  )
+    return description;
+  return (
+    [product.brand, productCategory(product)].filter(Boolean).join(" - ") ||
+    "Produit compare depuis les donnees demo"
+  );
 }
 
-function toHeroProduct(product: CatalogProduct, productPool: CatalogProduct[]): HeroProduct {
-  const currentPrice = product.bestPrice || sortedShopPrices(product)[0]?.price || 0;
+function toHeroProduct(
+  product: CatalogProduct,
+  productPool: CatalogProduct[],
+): HeroProduct {
+  const currentPrice =
+    product.bestPrice || sortedShopPrices(product)[0]?.price || 0;
   const alternatives = productPool
     .filter((item) => item.id !== product.id)
     .filter((item) => item.bestPrice > 0)
     .slice(0, 3);
   const comparisonProducts = [product, ...alternatives].slice(0, 4);
-  const prices = comparisonProducts.map((item) => item.bestPrice || sortedShopPrices(item)[0]?.price || 0).filter((price) => price > 0);
+  const prices = comparisonProducts
+    .map((item) => item.bestPrice || sortedShopPrices(item)[0]?.price || 0)
+    .filter((price) => price > 0);
   const maxPrice = Math.max(...prices, currentPrice, 1);
   const minPrice = Math.min(...prices, currentPrice || maxPrice);
   const saving = Math.max(0, currentPrice - minPrice);
@@ -187,7 +273,10 @@ function toHeroProduct(product: CatalogProduct, productPool: CatalogProduct[]): 
         unit: parts.unit,
         best: price === minPrice,
         current: item.id === product.id,
-        pct: maxPrice > 0 ? Math.max(28, Math.round((price / maxPrice) * 100)) : 100,
+        pct:
+          maxPrice > 0
+            ? Math.max(28, Math.round((price / maxPrice) * 100))
+            : 100,
       };
     }),
   };
@@ -196,17 +285,20 @@ function toHeroProduct(product: CatalogProduct, productPool: CatalogProduct[]): 
 function createHeroBlogCard(latestBlog?: BlogArticle | null): HeroProduct {
   const latestArticle = latestBlog || {
     ...articles[0],
-    sections: articles[0]?.sections.map((section) => ({
-      type: section.type,
-      text: section.text ?? null,
-      items: section.items ?? [],
-    })) || [],
+    sections:
+      articles[0]?.sections.map((section) => ({
+        type: section.type,
+        text: section.text ?? null,
+        items: section.items ?? [],
+      })) || [],
   };
 
   return {
     id: "hero-blog",
     name: latestArticle?.title || "Nouveau blog 1111.tn",
-    spec: latestArticle?.desc || "Guides, comparatifs et conseils pour acheter plus malin en Tunisie.",
+    spec:
+      latestArticle?.desc ||
+      "Guides, comparatifs et conseils pour acheter plus malin en Tunisie.",
     category: latestArticle?.category || "Blog",
     tag: "NOUVEAU",
     savings: "",
@@ -217,7 +309,9 @@ function createHeroBlogCard(latestBlog?: BlogArticle | null): HeroProduct {
       {
         id: "blog-guide-1",
         name: latestArticle?.category || "Guides d'achat et comparatifs",
-        meta: latestArticle?.date ? `${latestArticle.date} · ${latestArticle.read}` : "Retrouvez les meilleurs conseils du moment",
+        meta: latestArticle?.date
+          ? `${latestArticle.date} · ${latestArticle.read}`
+          : "Retrouvez les meilleurs conseils du moment",
         price: "Voir",
         unit: "",
         best: true,
@@ -228,10 +322,16 @@ function createHeroBlogCard(latestBlog?: BlogArticle | null): HeroProduct {
   };
 }
 
-export default function HeroSection({ products: apiProducts = [], stats, latestBlog = null }: HeroSectionProps) {
+export default function HeroSection({
+  products: apiProducts = [],
+  stats,
+  latestBlog = null,
+}: HeroSectionProps) {
   const products = useMemo<HeroProduct[]>(
     () => [
-      ...(apiProducts.length > 0 ? apiProducts.map((product) => toHeroProduct(product, apiProducts)) : fallbackHeroProducts),
+      ...(apiProducts.length > 0
+        ? apiProducts.map((product) => toHeroProduct(product, apiProducts))
+        : fallbackHeroProducts),
       createHeroBlogCard(latestBlog),
     ],
     [apiProducts, latestBlog],
@@ -263,7 +363,7 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
 
     const step = 50;
     progressRef.current = setInterval(() => {
-      setProgress(p => Math.min(p + (step / DURATION) * 100, 100));
+      setProgress((p) => Math.min(p + (step / DURATION) * 100, 100));
     }, step);
 
     timerRef.current = setTimeout(() => {
@@ -306,10 +406,17 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
       if (controller.signal.aborted) return;
       const merged: SearchHit[] = [];
       if (retail.status === "fulfilled") {
-        merged.push(...retail.value.map(r => ({ ...r, source: "retail" as CatalogSource })));
+        merged.push(
+          ...retail.value.map((r) => ({
+            ...r,
+            source: "retail" as CatalogSource,
+          })),
+        );
       }
       if (para.status === "fulfilled") {
-        merged.push(...para.value.map(r => ({ ...r, source: "para" as CatalogSource })));
+        merged.push(
+          ...para.value.map((r) => ({ ...r, source: "para" as CatalogSource })),
+        );
       }
       merged.sort((a, b) => (b.relevance ?? 0) - (a.relevance ?? 0));
       setSearchResults(merged.slice(0, 8));
@@ -321,7 +428,10 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
-      if (searchWrapRef.current && !searchWrapRef.current.contains(e.target as Node)) {
+      if (
+        searchWrapRef.current &&
+        !searchWrapRef.current.contains(e.target as Node)
+      ) {
         setSearchOpen(false);
       }
     };
@@ -341,7 +451,9 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
 
   const submitSearch = () => {
     if (searchResults.length > 0) {
-      goToProduct(searchResults[Math.min(searchHighlight, searchResults.length - 1)]);
+      goToProduct(
+        searchResults[Math.min(searchHighlight, searchResults.length - 1)],
+      );
     }
   };
 
@@ -1281,17 +1393,42 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
         <div className="hero-ambient-blob b2" />
         <div className="hero-ambient-blob b3" />
       </div>
-      <img loading="lazy" decoding="async" fetchPriority="low" className="item-1 item-circle-2" src="/images/item/item-circle-blur.webp" alt="" />
-      <img loading="lazy" decoding="async" fetchPriority="low" className="item-circle-1" src="/images/item/item-circle.webp" alt="" />
-      <img loading="lazy" decoding="async" fetchPriority="low" className="item-circle-3" src="/images/item/item-circle.webp" alt="" />
+      <img
+        loading="lazy"
+        decoding="async"
+        fetchPriority="low"
+        className="item-1 item-circle-2"
+        src="/images/item/item-circle-blur.webp"
+        alt=""
+      />
+      <img
+        loading="lazy"
+        decoding="async"
+        fetchPriority="low"
+        className="item-circle-1"
+        src="/images/item/item-circle.webp"
+        alt=""
+      />
+      <img
+        loading="lazy"
+        decoding="async"
+        fetchPriority="low"
+        className="item-circle-3"
+        src="/images/item/item-circle.webp"
+        alt=""
+      />
 
-      <div className="slider-inner" style={{ alignItems: "center", gap: "48px" }}>
-
+      <div
+        className="slider-inner"
+        style={{ alignItems: "center", gap: "48px" }}
+      >
         {/* ── Left ── */}
         <div className="inner-content" style={{ flex: "1 1 0", minWidth: 0 }}>
           <div className="sub-title box-tag wow fadeInUp">
             <SparkleIcon />
-            <span className="text-gradient style-2">Tunisie · Comparateur #1</span>
+            <span className="text-gradient style-2">
+              Tunisie · Comparateur #1
+            </span>
             <span className="eff"></span>
           </div>
 
@@ -1300,43 +1437,95 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
             <br />
             <span className="fw-4 fst-italic font-playfair-display animationtext letters rotate-3">
               <span className="cd-words-wrapper">
-                <span className="item-text is-visible"><i className="in">é</i><i className="in">c</i><i className="in">o</i><i className="in">n</i><i className="in">o</i><i className="in">m</i><i className="in">i</i><i className="in">s</i><i className="in">e</i><i className="in">z</i></span>
-                <span className="item-text is-hidden"><i className="out">é</i><i className="out">c</i><i className="out">o</i><i className="out">n</i><i className="out">o</i><i className="out">m</i><i className="out">i</i><i className="out">s</i><i className="out">e</i><i className="out">z</i></span>
-                <span className="item-text is-hidden"><i className="in">é</i><i className="in">c</i><i className="in">o</i><i className="in">n</i><i className="in">o</i><i className="in">m</i><i className="in">i</i><i className="in">s</i><i className="in">e</i><i className="in">z</i></span>
+                <span className="item-text is-visible">
+                  <i className="in">é</i>
+                  <i className="in">c</i>
+                  <i className="in">o</i>
+                  <i className="in">n</i>
+                  <i className="in">o</i>
+                  <i className="in">m</i>
+                  <i className="in">i</i>
+                  <i className="in">s</i>
+                  <i className="in">e</i>
+                  <i className="in">z</i>
+                </span>
+                <span className="item-text is-hidden">
+                  <i className="out">é</i>
+                  <i className="out">c</i>
+                  <i className="out">o</i>
+                  <i className="out">n</i>
+                  <i className="out">o</i>
+                  <i className="out">m</i>
+                  <i className="out">i</i>
+                  <i className="out">s</i>
+                  <i className="out">e</i>
+                  <i className="out">z</i>
+                </span>
+                <span className="item-text is-hidden">
+                  <i className="in">é</i>
+                  <i className="in">c</i>
+                  <i className="in">o</i>
+                  <i className="in">n</i>
+                  <i className="in">o</i>
+                  <i className="in">m</i>
+                  <i className="in">i</i>
+                  <i className="in">s</i>
+                  <i className="in">e</i>
+                  <i className="in">z</i>
+                </span>
               </span>
-            </span> vraiment.
+            </span>{" "}
+            vraiment.
           </div>
 
           <p className="text wow fadeInUp" data-wow-delay="0.2s">
             50 000+ produits. 10+ magasins. Des prix transparents en temps réel.
-            <br />On dévoile les vrais prix — et les mensonges.
+            <br />
+            On dévoile les vrais prix — et les mensonges.
           </p>
 
-          <div className="hero-search-wrap wow fadeInUp" data-wow-delay="0.25s" ref={searchWrapRef}>
+          <div
+            className="hero-search-wrap wow fadeInUp"
+            data-wow-delay="0.25s"
+            ref={searchWrapRef}
+          >
             <div className="hero-search-bar">
               <input
                 type="text"
                 placeholder="Rechercher un produit, une marque…"
                 value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchOpen(true);
+                }}
                 onFocus={() => setSearchOpen(true)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") { e.preventDefault(); submitSearch(); }
-                  else if (e.key === "Escape") { setSearchOpen(false); }
-                  else if (e.key === "ArrowDown") {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    submitSearch();
+                  } else if (e.key === "Escape") {
+                    setSearchOpen(false);
+                  } else if (e.key === "ArrowDown") {
                     e.preventDefault();
                     setSearchOpen(true);
-                    setSearchHighlight(h => Math.min(h + 1, Math.max(searchResults.length - 1, 0)));
-                  }
-                  else if (e.key === "ArrowUp") {
+                    setSearchHighlight((h) =>
+                      Math.min(h + 1, Math.max(searchResults.length - 1, 0)),
+                    );
+                  } else if (e.key === "ArrowUp") {
                     e.preventDefault();
-                    setSearchHighlight(h => Math.max(h - 1, 0));
+                    setSearchHighlight((h) => Math.max(h - 1, 0));
                   }
                 }}
                 aria-autocomplete="list"
                 aria-expanded={searchOpen}
               />
-              <button type="button" className="hero-compare-btn" onClick={submitSearch}><ArrowRightIcon /> Comparer</button>
+              <button
+                type="button"
+                className="hero-compare-btn"
+                onClick={submitSearch}
+              >
+                <ArrowRightIcon /> Comparer
+              </button>
             </div>
             {searchOpen && searchQuery.trim().length >= 2 && (
               <div className="hero-search-dropdown" role="listbox">
@@ -1344,7 +1533,9 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
                   <div className="hsd-status">Recherche en cours…</div>
                 )}
                 {!searchLoading && searchResults.length === 0 && (
-                  <div className="hsd-status">Aucun produit trouvé pour « {searchQuery.trim()} »</div>
+                  <div className="hsd-status">
+                    Aucun produit trouvé pour « {searchQuery.trim()} »
+                  </div>
                 )}
                 {searchResults.map((hit, i) => (
                   <button
@@ -1357,16 +1548,31 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
                     onClick={() => goToProduct(hit)}
                   >
                     <div className="hsd-thumb">
-                      {hit.image ? <img src={hit.image} alt="" loading="lazy" decoding="async" fetchPriority="low" sizes="56px" /> : <span className="hsd-thumb-fallback" />}
+                      {hit.image ? (
+                        <img
+                          src={hit.image}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          fetchPriority="low"
+                          sizes="56px"
+                        />
+                      ) : (
+                        <span className="hsd-thumb-fallback" />
+                      )}
                     </div>
                     <div className="hsd-info">
                       <span className="hsd-name">{hit.name}</span>
                       <span className="hsd-meta">
                         {hit.brand && <>{hit.brand} · </>}
                         <span className={`hsd-source hsd-source-${hit.source}`}>
-                          {hit.source === "para" ? "Parapharmacie" : "Électroménager"}
+                          {hit.source === "para"
+                            ? "Parapharmacie"
+                            : "Électroménager"}
                         </span>
-                        {!hit.inStock && <span className="hsd-out"> · Rupture</span>}
+                        {!hit.inStock && (
+                          <span className="hsd-out"> · Rupture</span>
+                        )}
                       </span>
                     </div>
                     <div className="hsd-price">
@@ -1379,17 +1585,37 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
           </div>
 
           <div className="hero-trust-row wow fadeInUp" data-wow-delay="0.3s">
-            <span className="check"><CheckIcon /></span> Gratuit
+            <span className="check">
+              <CheckIcon />
+            </span>{" "}
+            Gratuit
             <span style={{ margin: "0 6px", opacity: 0.3 }}>·</span>
-            <span className="check"><CheckIcon /></span> Sans inscription
+            <span className="check">
+              <CheckIcon />
+            </span>{" "}
+            Sans inscription
             <span style={{ margin: "0 6px", opacity: 0.3 }}>·</span>
-            <span className="check"><CheckIcon /></span> Mis à jour en temps réel
+            <span className="check">
+              <CheckIcon />
+            </span>{" "}
+            Mis à jour en temps réel
           </div>
 
-          <div className="wow fadeInUp" data-wow-delay="0.4s"
-            style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "32px" }}>
+          <div
+            className="wow fadeInUp"
+            data-wow-delay="0.4s"
+            style={{
+              display: "flex",
+              gap: "12px",
+              flexWrap: "wrap",
+              marginTop: "32px",
+            }}
+          >
             {heroStats.map((s, index) => (
-              <div key={`${s.label}-${s.value}-${index}`} className="hero-stat-pill">
+              <div
+                key={`${s.label}-${s.value}-${index}`}
+                className="hero-stat-pill"
+              >
                 <span className="stat-val">{s.value}</span>
                 <span className="stat-lbl">{s.label}</span>
               </div>
@@ -1398,22 +1624,40 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
         </div>
 
         {/* ── Right: Price Card ── */}
-        <div className="hero-right-panel wow fadeInUp" data-wow-delay="0.2s"
-          style={{ flex: "0 0 auto", display: "flex", alignItems: "center", justifyContent: "center", transform: "translateX(-90px)" }}>
+        <div
+          className="hero-right-panel wow fadeInUp"
+          data-wow-delay="0.2s"
+          style={{
+            flex: "0 0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transform: "translateX(-90px)",
+          }}
+        >
           <div
             className={`hero-price-card${p.href ? " is-clickable" : ""}${p.backgroundImage ? " with-cover" : ""}`}
-            style={p.backgroundImage ? { backgroundImage: `linear-gradient(180deg, rgba(6,10,14,0.34) 0%, rgba(7,10,14,0.72) 40%, rgba(8,12,17,0.96) 100%), url(${p.backgroundImage})` } : undefined}
+            style={
+              p.backgroundImage
+                ? {
+                    backgroundImage: `linear-gradient(180deg, rgba(6,10,14,0.34) 0%, rgba(7,10,14,0.72) 40%, rgba(8,12,17,0.96) 100%), url(${p.backgroundImage})`,
+                  }
+                : undefined
+            }
             onClick={p.href ? openHeroCard : undefined}
             role={p.href ? "link" : undefined}
             tabIndex={p.href ? 0 : undefined}
-            onKeyDown={p.href ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                openHeroCard();
-              }
-            } : undefined}
+            onKeyDown={
+              p.href
+                ? (event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openHeroCard();
+                    }
+                  }
+                : undefined
+            }
           >
-
             {/* Top bar */}
             <div className="hpc-topbar">
               <div className="hpc-live-pill">
@@ -1422,49 +1666,86 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
               </div>
               <div className="hpc-nav-dots">
                 {products.map((_, i) => (
-                  <button key={i} className={`hpc-nav-dot${i === current ? " active" : ""}`}
+                  <button
+                    key={i}
+                    className={`hpc-nav-dot${i === current ? " active" : ""}`}
                     onClick={(event) => {
                       event.stopPropagation();
                       goTo(i);
-                    }} aria-label={`Produit ${i + 1}`} />
+                    }}
+                    aria-label={`Produit ${i + 1}`}
+                  />
                 ))}
               </div>
             </div>
 
             {/* Auto-progress bar */}
             <div className="hpc-progress-track">
-              <div className="hpc-progress-fill" style={{ width: `${progress}%` }} />
+              <div
+                className="hpc-progress-fill"
+                style={{ width: `${progress}%` }}
+              />
             </div>
 
             {/* Product info */}
-            <div className="hpc-product-section" style={{ opacity: fading ? 0 : 1 }}>
+            <div
+              className="hpc-product-section"
+              style={{ opacity: fading ? 0 : 1 }}
+            >
               <div className="hpc-meta">
                 <span className="hpc-category-label">{p.category}</span>
                 <span className="hpc-tag">{p.tag}</span>
               </div>
               <div className="hpc-product-name">{p.name}</div>
-              <div className={`hpc-product-spec${p.href ? " is-visible" : ""}`}>{p.spec}</div>
+              <div className={`hpc-product-spec${p.href ? " is-visible" : ""}`}>
+                {p.spec}
+              </div>
             </div>
 
             <div className="hpc-divider" />
 
             {/* Product comparison rows */}
-            <div className="hpc-stores" style={{ opacity: fading ? 0 : 1, transition: "opacity 0.34s ease", paddingBottom: p.href ? "82px" : "20px" }}>
+            <div
+              className="hpc-stores"
+              style={{
+                opacity: fading ? 0 : 1,
+                transition: "opacity 0.34s ease",
+                paddingBottom: p.href ? "82px" : "20px",
+              }}
+            >
               {p.stores.slice(0, p.href ? 1 : 3).map((s, i) => {
                 return (
-                  <div key={s.id || s.name} className={`hpc-store-row${s.current ? " best" : ""}`}>
-                    <div className="hpc-bar-bg" style={{ width: `${s.pct}%` }} />
+                  <div
+                    key={s.id || s.name}
+                    className={`hpc-store-row${s.current ? " best" : ""}`}
+                  >
+                    <div
+                      className="hpc-bar-bg"
+                      style={{ width: `${s.pct}%` }}
+                    />
                     <div className="hpc-row-inner">
                       <div className="hpc-store-info">
                         <span className="hpc-store-name">{s.name}</span>
-                        <span className={`hpc-product-meta${p.href ? " is-visible" : ""}`}>{s.meta}</span>
+                        <span
+                          className={`hpc-product-meta${p.href ? " is-visible" : ""}`}
+                        >
+                          {s.meta}
+                        </span>
                         {i === 0 && (
                           <span className="hpc-best-badge hpc-rank-badge rank-1">
                             <TrophyIcon /> Meilleur prix
                           </span>
                         )}
-                        {i === 1 && <span className="hpc-best-badge hpc-rank-badge rank-2">Deuxieme choix</span>}
-                        {i === 2 && <span className="hpc-best-badge hpc-rank-badge rank-3">Troisieme choix</span>}
+                        {i === 1 && (
+                          <span className="hpc-best-badge hpc-rank-badge rank-2">
+                            Deuxieme choix
+                          </span>
+                        )}
+                        {i === 2 && (
+                          <span className="hpc-best-badge hpc-rank-badge rank-3">
+                            Troisieme choix
+                          </span>
+                        )}
                       </div>
                       <div className="hpc-price-group">
                         <span className="hpc-price-num">{s.price}</span>
@@ -1483,7 +1764,6 @@ export default function HeroSection({ products: apiProducts = [], stats, latestB
             )}
           </div>
         </div>
-
       </div>
     </section>
   );

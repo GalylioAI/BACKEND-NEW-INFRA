@@ -45,6 +45,10 @@ env_value() {
 }
 
 DOMAIN="$(env_value DOMAIN)"
+FRONTEND_DOMAIN="$(env_value FRONTEND_DOMAIN)"
+BACKEND_DOMAIN="$(env_value BACKEND_DOMAIN)"
+FRONTEND_DOMAIN="${FRONTEND_DOMAIN:-1111.tn}"
+BACKEND_DOMAIN="${BACKEND_DOMAIN:-${DOMAIN}}"
 GATEWAY_BIND_IP="$(env_value GATEWAY_BIND_IP)"
 GATEWAY_BIND_IP="${GATEWAY_BIND_IP:-127.0.0.1}"
 NGINX_ACTIVE=false
@@ -78,7 +82,7 @@ echo ""
 echo "===================================="
 echo "  DOCKER CONTAINERS"
 echo "===================================="
-for svc in api-gateway auth-service user-service otp-service \
+for svc in frontend api-gateway auth-service user-service otp-service \
             favorites-service alerts-service mail-service; do
   if docker_cmd ps --format '{{.Names}}' --filter "name=${svc}" --filter "status=running" | grep -q .; then
     ok "${svc}"
@@ -91,11 +95,12 @@ echo ""
 echo "===================================="
 echo "  GATEWAY + HTTPS"
 echo "===================================="
+check "Frontend HTTP" curl -sf http://127.0.0.1:3000/ -o /dev/null
 check "Gateway HTTP" curl -sf http://127.0.0.1:8080/health -o /dev/null
 
 if [ "${NGINX_ACTIVE}" = "true" ] && [ "${DOMAIN_IS_PLACEHOLDER}" = "false" ]; then
-  check "HTTPS responds" curl -sf --max-time 10 "https://${DOMAIN}/health" -o /dev/null
-  check "TLS cert valid" curl -sf --max-time 10 "https://${DOMAIN}/health" -o /dev/null
+  check "Frontend HTTPS responds" curl -sf --max-time 10 "https://${FRONTEND_DOMAIN}" -o /dev/null
+  check "Backend HTTPS health" curl -sf --max-time 10 "https://${BACKEND_DOMAIN}/health" -o /dev/null
 else
   warn "HTTPS skipped (Nginx/domain is not configured)"
 fi

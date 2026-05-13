@@ -1,8 +1,4 @@
-import {
-  blogUrls,
-  renderUrlSet,
-  sitemapResponse,
-} from "../lib/sitemap-utils";
+import { blogUrls, renderUrlSet, sitemapResponse } from "../lib/sitemap-utils";
 
 export const revalidate = 86400;
 

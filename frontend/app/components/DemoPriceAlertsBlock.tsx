@@ -22,130 +22,194 @@ type AlertProduct = {
 
 const ALERT_PRODUCTS: AlertProduct[] = [
   {
-    productImage: "https://www.mytek.tn/media/catalog/product/2/_/2_574_1.jpg",
+    productImage: "/images/item-cart.png",
     productAlt: "Toner Original KONICA MINOLTA TN-328 - Cyan (TN-328C)",
-    shopLogo: "https://www.mytek.tn/favicon.ico",
+    shopLogo: "/products/favicon.ico",
     shopName: "mytek",
     brand: "konica-minolta",
     title: "Toner Original KONICA MINOLTA TN-328 - Cyan (TN-328C)",
     category: "Toner Photocopieur",
     oldReal: { crossed: "599.000 DT", promo: "494.000 DT" },
     newSuspect: { crossed: "599.000 DT", promo: "519.000 DT" },
-    metrics: { displayedPct: "-13.4%", inflatedPct: "+21.3%", inflatedDt: "105.000 DT", realHikePct: "+5.1%" },
+    metrics: {
+      displayedPct: "-13.4%",
+      inflatedPct: "+21.3%",
+      inflatedDt: "105.000 DT",
+      realHikePct: "+5.1%",
+    },
   },
   {
-    productImage: "https://spacenet.tn/themes/medicine_theme_5/assets/img/refrigerateur.png",
+    productImage: "/images/item-cart.png",
     productAlt: "Réfrigérateur Side By Side Hyundai 549L NoFrost Inox",
-    shopLogo: "https://spacenet.tn/favicon.ico",
+    shopLogo: "/images/item-cart.png",
     shopName: "spacenet",
     brand: "HYUNDAI",
     title: "Réfrigérateur Side By Side Hyundai 549L NoFrost Inox",
     category: "Réfrigérateur",
     oldReal: { crossed: "2899.000 DT", promo: "2699.000 DT" },
     newSuspect: { crossed: "2999.000 DT", promo: "2799.000 DT" },
-    metrics: { displayedPct: "-6.7%", inflatedPct: "+11.1%", inflatedDt: "300.000 DT", realHikePct: "+3.7%" },
+    metrics: {
+      displayedPct: "-6.7%",
+      inflatedPct: "+11.1%",
+      inflatedDt: "300.000 DT",
+      realHikePct: "+3.7%",
+    },
   },
   {
-    productImage: "https://spacenet.tn/200436-large_default/montre-connectee-smartberry-a56-plus-gold.jpg",
+    productImage: "/images/item-cart.png",
     productAlt: "Montre Connectée Smartbarry A56 Plus Gold",
-    shopLogo: "https://spacenet.tn/favicon.ico",
+    shopLogo: "/images/item-cart.png",
     shopName: "spacenet",
     brand: "Smartbarry",
     title: "Montre Connectée Smartbarry A56 Plus Gold",
     category: "SmartWatch Femme",
     oldReal: { crossed: "199.000 DT", promo: "89.000 DT" },
     newSuspect: { crossed: "209.000 DT", promo: "99.000 DT" },
-    metrics: { displayedPct: "-52.6%", inflatedPct: "+134.8%", inflatedDt: "120.000 DT", realHikePct: "+11.2%" },
+    metrics: {
+      displayedPct: "-52.6%",
+      inflatedPct: "+134.8%",
+      inflatedDt: "120.000 DT",
+      realHikePct: "+11.2%",
+    },
   },
   {
-    productImage: "https://spacenet.tn/199656-large_default/casque-bluetooth-p9-pro-max-bleu.jpg",
+    productImage: "/images/item-cart.png",
     productAlt: "Casque Bluetooth P9 Pro Max Bleu",
-    shopLogo: "https://spacenet.tn/favicon.ico",
+    shopLogo: "/images/item-cart.png",
     shopName: "spacenet",
     brand: "sans Marque",
     title: "Casque Bluetooth P9 Pro Max Bleu",
     category: "Casques Audio & Sans Fil",
     oldReal: { crossed: "69.000 DT", promo: "20.900 DT" },
     newSuspect: { crossed: "69.000 DT", promo: "24.900 DT" },
-    metrics: { displayedPct: "-63.9%", inflatedPct: "+230.1%", inflatedDt: "48.100 DT", realHikePct: "+19.1%" },
+    metrics: {
+      displayedPct: "-63.9%",
+      inflatedPct: "+230.1%",
+      inflatedDt: "48.100 DT",
+      realHikePct: "+19.1%",
+    },
   },
   {
-    productImage: "https://www.mytek.tn/media/catalog/product/c/o/compteuse-de-billets-olympia-nc-520-plus-universel_1.jpg",
+    productImage: "/images/item-cart.png",
     productAlt: "Compteuse de Billets OLYMPIA NC 520 Plus Universel",
-    shopLogo: "https://www.mytek.tn/favicon.ico",
+    shopLogo: "/products/favicon.ico",
     shopName: "mytek",
     brand: "olympia",
     title: "Compteuse de Billets OLYMPIA NC 520 Plus Universel",
     category: "Compteuse de Billets",
     oldReal: { crossed: "599.000 DT", promo: "555.000 DT" },
     newSuspect: { crossed: "599.000 DT", promo: "579.000 DT" },
-    metrics: { displayedPct: "-3.3%", inflatedPct: "+7.9%", inflatedDt: "44.000 DT", realHikePct: "+4.3%" },
+    metrics: {
+      displayedPct: "-3.3%",
+      inflatedPct: "+7.9%",
+      inflatedDt: "44.000 DT",
+      realHikePct: "+4.3%",
+    },
   },
   {
-    productImage: "https://www.mytek.tn/media/catalog/product/s/m/smartphone_samsung_galaxy_a26_5g_8go_256go_-_blanc_1_.jpg",
+    productImage: "/images/item-cart.png",
     productAlt: "Smartphone SAMSUNG Galaxy A26 5G 16Go 256Go - Blanc",
-    shopLogo: "https://www.mytek.tn/favicon.ico",
+    shopLogo: "/products/favicon.ico",
     shopName: "mytek",
     brand: "samsung",
     title: "Smartphone SAMSUNG Galaxy A26 5G 16Go 256Go - Blanc",
     category: "Smartphone",
     oldReal: { crossed: "1299.000 DT", promo: "1099.000 DT" },
     newSuspect: { crossed: "1299.000 DT", promo: "1269.000 DT" },
-    metrics: { displayedPct: "-2.3%", inflatedPct: "+18.2%", inflatedDt: "200.000 DT", realHikePct: "+15.5%" },
+    metrics: {
+      displayedPct: "-2.3%",
+      inflatedPct: "+18.2%",
+      inflatedDt: "200.000 DT",
+      realHikePct: "+15.5%",
+    },
   },
   {
-    productImage: "https://www.tunisianet.com.tn/427688-large/pc-portable-dell-latitude-5450-ultra-5-125u-24-go-ddr5-512-go-ssd-silver.jpg",
-    productAlt: "PC PORTABLE DELL LATITUDE 5450 / ULTRA 5 125U / 24 Go DDR5 / 512 GO SSD / SILVER",
-    shopLogo: "https://www.tunisianet.com.tn/favicon.ico",
+    productImage: "/images/item-cart.png",
+    productAlt:
+      "PC PORTABLE DELL LATITUDE 5450 / ULTRA 5 125U / 24 Go DDR5 / 512 GO SSD / SILVER",
+    shopLogo: "/images/item-cart.png",
     shopName: "tunisianet",
     brand: "Dell",
-    title: "PC PORTABLE DELL LATITUDE 5450 / ULTRA 5 125U / 24 Go DDR5 / 512 GO SSD / SILVER",
+    title:
+      "PC PORTABLE DELL LATITUDE 5450 / ULTRA 5 125U / 24 Go DDR5 / 512 GO SSD / SILVER",
     category: "Pc Portable",
     oldReal: { crossed: "3369.000 DT", promo: "3199.000 DT" },
     newSuspect: { crossed: "3569.000 DT", promo: "3399.000 DT" },
-    metrics: { displayedPct: "-4.8%", inflatedPct: "+11.6%", inflatedDt: "370.000 DT", realHikePct: "+6.3%" },
+    metrics: {
+      displayedPct: "-4.8%",
+      inflatedPct: "+11.6%",
+      inflatedDt: "370.000 DT",
+      realHikePct: "+6.3%",
+    },
   },
   {
     productImage: "/images/item-cart.webp",
     productAlt: "LAVE VAISSELLE CANDY 13 Couverts + AFF / Silver / CF3E7L0S",
-    shopLogo: "https://www.tunisianet.com.tn/favicon.ico",
+    shopLogo: "/images/item-cart.png",
     shopName: "tunisianet",
     brand: "Candy",
     title: "LAVE VAISSELLE CANDY 13 Couverts + AFF / Silver / CF3E7L0S",
     category: "Lave vaisselle",
     oldReal: { crossed: "1499.000 DT", promo: "1259.000 DT" },
     newSuspect: { crossed: "1499.000 DT", promo: "1299.000 DT" },
-    metrics: { displayedPct: "-13.3%", inflatedPct: "+19.1%", inflatedDt: "240.000 DT", realHikePct: "+3.2%" },
+    metrics: {
+      displayedPct: "-13.3%",
+      inflatedPct: "+19.1%",
+      inflatedDt: "240.000 DT",
+      realHikePct: "+3.2%",
+    },
   },
   {
-    productImage: "https://spacenet.tn/274322-large_default/processeur-intel-core-i7-14700k-56-ghz-lga-1700-box.jpg",
+    productImage: "/images/item-cart.png",
     productAlt: "Processeur Intel Core i7-14700K 5.6 GHz LGA 1700 Box",
-    shopLogo: "https://spacenet.tn/favicon.ico",
+    shopLogo: "/images/item-cart.png",
     shopName: "spacenet",
     brand: "Intel",
     title: "Processeur Intel Core i7-14700K 5.6 GHz LGA 1700 Box",
     category: "Processeur",
     oldReal: { crossed: "1619.000 DT", promo: "1419.000 DT" },
     newSuspect: { crossed: "1619.000 DT", promo: "1519.000 DT" },
-    metrics: { displayedPct: "-6.2%", inflatedPct: "+14.1%", inflatedDt: "200.000 DT", realHikePct: "+7.0%" },
+    metrics: {
+      displayedPct: "-6.2%",
+      inflatedPct: "+14.1%",
+      inflatedDt: "200.000 DT",
+      realHikePct: "+7.0%",
+    },
   },
   {
-    productImage: "https://spacenet.tn/339009-large_default/bicyclette-enfant-best-bike-b-16-16-vert.jpg",
-    productAlt: "Bicyclette Enfant Best Bike B-16 16\" Vert",
-    shopLogo: "https://spacenet.tn/favicon.ico",
+    productImage: "/images/item-cart.png",
+    productAlt: 'Bicyclette Enfant Best Bike B-16 16" Vert',
+    shopLogo: "/images/item-cart.png",
     shopName: "spacenet",
     brand: "Best Bike",
-    title: "Bicyclette Enfant Best Bike B-16 16\" Vert",
+    title: 'Bicyclette Enfant Best Bike B-16 16" Vert',
     category: "Bicyclette Enfant",
     oldReal: { crossed: "329.000 DT", promo: "289.000 DT" },
     newSuspect: { crossed: "329.000 DT", promo: "309.000 DT" },
-    metrics: { displayedPct: "-6.1%", inflatedPct: "+13.8%", inflatedDt: "40.000 DT", realHikePct: "+6.9%" },
+    metrics: {
+      displayedPct: "-6.1%",
+      inflatedPct: "+13.8%",
+      inflatedDt: "40.000 DT",
+      realHikePct: "+6.9%",
+    },
   },
 ];
 
 function IconTriangleAlert({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
       <path d="M12 9v4" />
       <path d="M12 17h.01" />
@@ -159,12 +223,46 @@ function IconTriangleAlert({ className }: { className?: string }) {
  */
 function IconHeroPriceAudit({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-      <path d="M7 15.75V13" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" opacity="0.28" />
-      <path d="M17 15.75v-4.25" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" opacity="0.28" />
-      <path d="M12 15.75V7.85" stroke="currentColor" strokeWidth="1.85" strokeLinecap="round" />
-      <circle cx="11.85" cy="11.35" r="7.35" stroke="currentColor" strokeWidth="1.5" />
-      <path d="M17.1 16.6 20.85 20.35" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+      aria-hidden="true"
+    >
+      <path
+        d="M7 15.75V13"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+        opacity="0.28"
+      />
+      <path
+        d="M17 15.75v-4.25"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+        opacity="0.28"
+      />
+      <path
+        d="M12 15.75V7.85"
+        stroke="currentColor"
+        strokeWidth="1.85"
+        strokeLinecap="round"
+      />
+      <circle
+        cx="11.85"
+        cy="11.35"
+        r="7.35"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M17.1 16.6 20.85 20.35"
+        stroke="currentColor"
+        strokeWidth="1.65"
+        strokeLinecap="round"
+      />
       <circle cx="12" cy="7.15" r="1.15" fill="currentColor" opacity="0.92" />
     </svg>
   );
@@ -172,7 +270,19 @@ function IconHeroPriceAudit({ className }: { className?: string }) {
 
 function IconEye({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -181,15 +291,42 @@ function IconEye({ className }: { className?: string }) {
 
 function IconChevron({ dir }: { dir: "left" | "right" }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {dir === "left" ? <path d="m15 18-6-6 6-6" /> : <path d="m9 18 6-6-6-6" />}
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {dir === "left" ? (
+        <path d="m15 18-6-6 6-6" />
+      ) : (
+        <path d="m9 18 6-6-6-6" />
+      )}
     </svg>
   );
 }
 
 function IconArrowRight({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
       <path d="M5 12h14" />
       <path d="m12 5 7 7-7 7" />
     </svg>
@@ -1255,15 +1392,23 @@ export default function DemoPriceAlertsBlock() {
                     <span className="is-visible pa-hero-accent-anim-root">
                       <span className="pa-hero-title-accent fst-italic font-playfair-display animationtext letters rotate-3">
                         <span className="cd-words-wrapper">
-                          <span className="item-text is-visible">Faux Prix !</span>
-                          <span className="item-text is-hidden">Arnaques promo</span>
-                          <span className="item-text is-hidden">Prix trompeurs</span>
+                          <span className="item-text is-visible">
+                            Faux Prix !
+                          </span>
+                          <span className="item-text is-hidden">
+                            Arnaques promo
+                          </span>
+                          <span className="item-text is-hidden">
+                            Prix trompeurs
+                          </span>
                         </span>
                       </span>
                     </span>
                   </h2>
                   <p className="pa-hero-sub">
-                    Nous détectons les fausses promotions avec des prix d&apos;origine gonflés artificiellement — avant que vous ne passiez à la caisse.
+                    Nous détectons les fausses promotions avec des prix
+                    d&apos;origine gonflés artificiellement — avant que vous ne
+                    passiez à la caisse.
                   </p>
                 </div>
               </div>
@@ -1289,103 +1434,136 @@ export default function DemoPriceAlertsBlock() {
               <IconEye />
             </div>
             <div className="pa-info-body">
-              <strong>Notre algorithme croise l&apos;historique des prix pour repérer les promotions trompeuses.</strong>
+              <strong>
+                Notre algorithme croise l&apos;historique des prix pour repérer
+                les promotions trompeuses.
+              </strong>
               <span>Comparaison multi-magasins, mise à jour continue.</span>
             </div>
             <div className="pa-info-stat">
               <span className="pa-info-stat-num">10</span>
-              <span className="pa-info-stat-label">détections cette semaine</span>
+              <span className="pa-info-stat-label">
+                détections cette semaine
+              </span>
             </div>
           </div>
 
           <div className="pa-carousel-block">
             <div className="pa-carousel-head">
               <h3 className="pa-carousel-title">Exemples récents</h3>
-              <p className="pa-carousel-sub">Ancienne promotion réelle face à la nouvelle offre suspecte — les métriques parlent d&apos;elles-mêmes.</p>
+              <p className="pa-carousel-sub">
+                Ancienne promotion réelle face à la nouvelle offre suspecte —
+                les métriques parlent d&apos;elles-mêmes.
+              </p>
             </div>
             <div className="pa-carousel-wrap">
-          <button type="button" className="pa-nav pa-nav--prev" aria-label="Voir les précédents" onClick={() => scrollBy(-360)}>
-            <IconChevron dir="left" />
-          </button>
-          <button type="button" className="pa-nav pa-nav--next" aria-label="Voir les suivants" onClick={() => scrollBy(360)}>
-            <IconChevron dir="right" />
-          </button>
-          <div ref={scrollerRef} className="pa-scroller">
-            {ALERT_PRODUCTS.map((item) => (
-              <article key={item.title} className="pa-card">
-                <div className="pa-card-flag">
-                  <IconTriangleAlert />
-                  Faux prix détecté
-                </div>
-                <div className="pa-card-body">
-                  <div className="pa-card-top">
-                    <div className="pa-thumb">
-                      <img src={item.productImage} alt={item.productAlt} loading="lazy" decoding="async" />
+              <button
+                type="button"
+                className="pa-nav pa-nav--prev"
+                aria-label="Voir les précédents"
+                onClick={() => scrollBy(-360)}
+              >
+                <IconChevron dir="left" />
+              </button>
+              <button
+                type="button"
+                className="pa-nav pa-nav--next"
+                aria-label="Voir les suivants"
+                onClick={() => scrollBy(360)}
+              >
+                <IconChevron dir="right" />
+              </button>
+              <div ref={scrollerRef} className="pa-scroller">
+                {ALERT_PRODUCTS.map((item) => (
+                  <article key={item.title} className="pa-card">
+                    <div className="pa-card-flag">
+                      <IconTriangleAlert />
+                      Faux prix détecté
                     </div>
-                    <div className="pa-card-meta">
-                      <div className="pa-shop-row">
-                        <div className="pa-shop-logo">
-                          <img src={item.shopLogo} alt="" />
+                    <div className="pa-card-body">
+                      <div className="pa-card-top">
+                        <div className="pa-thumb">
+                          <img
+                            src={item.productImage}
+                            alt={item.productAlt}
+                            loading="lazy"
+                            decoding="async"
+                          />
                         </div>
-                        <span className="pa-shop-name">{item.shopName}</span>
-                      </div>
-                      <p className="pa-brand">{item.brand}</p>
-                      <h3 className="pa-card-title">{item.title}</h3>
-                      <p className="pa-card-cat">{item.category}</p>
-                    </div>
-                  </div>
-                  <div className="pa-compare">
-                    <div className="pa-compare-old">
-                      <p className="pa-compare-old-label">Ancienne promo (réelle)</p>
-                      <div className="pa-compare-row">
-                        <div className="pa-price-col">
-                          <p>Prix barré</p>
-                          <span className="pa-strike">{item.oldReal.crossed}</span>
-                        </div>
-                        <span className="pa-arrow">→</span>
-                        <div className="pa-price-col">
-                          <p>Prix promo</p>
-                          <span>{item.oldReal.promo}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="pa-compare-new">
-                      <p className="pa-compare-new-label">Nouvelle promo (suspecte)</p>
-                      <div className="pa-compare-row">
-                        <div className="pa-price-col">
-                          <p>Prix barré</p>
-                          <span className="pa-strike">{item.newSuspect.crossed}</span>
-                        </div>
-                        <span className="pa-arrow">→</span>
-                        <div className="pa-price-col">
-                          <p>Prix promo</p>
-                          <span>{item.newSuspect.promo}</span>
+                        <div className="pa-card-meta">
+                          <div className="pa-shop-row">
+                            <div className="pa-shop-logo">
+                              <img src={item.shopLogo} alt="" />
+                            </div>
+                            <span className="pa-shop-name">
+                              {item.shopName}
+                            </span>
+                          </div>
+                          <p className="pa-brand">{item.brand}</p>
+                          <h3 className="pa-card-title">{item.title}</h3>
+                          <p className="pa-card-cat">{item.category}</p>
                         </div>
                       </div>
+                      <div className="pa-compare">
+                        <div className="pa-compare-old">
+                          <p className="pa-compare-old-label">
+                            Ancienne promo (réelle)
+                          </p>
+                          <div className="pa-compare-row">
+                            <div className="pa-price-col">
+                              <p>Prix barré</p>
+                              <span className="pa-strike">
+                                {item.oldReal.crossed}
+                              </span>
+                            </div>
+                            <span className="pa-arrow">→</span>
+                            <div className="pa-price-col">
+                              <p>Prix promo</p>
+                              <span>{item.oldReal.promo}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="pa-compare-new">
+                          <p className="pa-compare-new-label">
+                            Nouvelle promo (suspecte)
+                          </p>
+                          <div className="pa-compare-row">
+                            <div className="pa-price-col">
+                              <p>Prix barré</p>
+                              <span className="pa-strike">
+                                {item.newSuspect.crossed}
+                              </span>
+                            </div>
+                            <span className="pa-arrow">→</span>
+                            <div className="pa-price-col">
+                              <p>Prix promo</p>
+                              <span>{item.newSuspect.promo}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pa-metrics">
+                        <div className="pa-metric pa-metric--red">
+                          <p>Réduction affichée</p>
+                          <p>{item.metrics.displayedPct}</p>
+                          <p>FAUX</p>
+                        </div>
+                        <div className="pa-metric pa-metric--amber">
+                          <p>Prix gonflé de</p>
+                          <p>{item.metrics.inflatedPct}</p>
+                          <p>{item.metrics.inflatedDt}</p>
+                        </div>
+                        <div className="pa-metric pa-metric--teal">
+                          <p>Hausse réelle</p>
+                          <p>{item.metrics.realHikePct}</p>
+                          <p>ÉCART</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="pa-metrics">
-                    <div className="pa-metric pa-metric--red">
-                      <p>Réduction affichée</p>
-                      <p>{item.metrics.displayedPct}</p>
-                      <p>FAUX</p>
-                    </div>
-                    <div className="pa-metric pa-metric--amber">
-                      <p>Prix gonflé de</p>
-                      <p>{item.metrics.inflatedPct}</p>
-                      <p>{item.metrics.inflatedDt}</p>
-                    </div>
-                    <div className="pa-metric pa-metric--teal">
-                      <p>Hausse réelle</p>
-                      <p>{item.metrics.realHikePct}</p>
-                      <p>ÉCART</p>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            ))}
+                  </article>
+                ))}
+              </div>
             </div>
-          </div>
           </div>
 
           <div className="pa-cta-wrap">

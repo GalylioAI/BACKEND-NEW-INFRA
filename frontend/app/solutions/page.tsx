@@ -123,8 +123,20 @@ export default function SolutionsPage() {
         <div id="pagee">
           <Header />
 
-          <main style={{ background: "linear-gradient(180deg, #070b14 0%, #0b1220 55%, #0a0f1a 100%)" }}>
-            <section className="solutions-hero" style={{ padding: "170px 0 90px", position: "relative", overflow: "hidden" }}>
+          <main
+            style={{
+              background:
+                "linear-gradient(180deg, #070b14 0%, #0b1220 55%, #0a0f1a 100%)",
+            }}
+          >
+            <section
+              className="solutions-hero"
+              style={{
+                padding: "170px 0 90px",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
               <div
                 style={{
                   position: "absolute",
@@ -149,7 +161,10 @@ export default function SolutionsPage() {
                   filter: "blur(30px)",
                 }}
               />
-              <div className="container" style={{ position: "relative", textAlign: "center" }}>
+              <div
+                className="container"
+                style={{ position: "relative", textAlign: "center" }}
+              >
                 <div
                   className="solutions-hero-badge"
                   style={{
@@ -165,16 +180,46 @@ export default function SolutionsPage() {
                 >
                   Plateforme de comparaison de prix #1 en Tunisie
                 </div>
-                <h1 className="solutions-hero-title" style={{ fontSize: "clamp(34px, 5vw, 62px)", lineHeight: 1.1, fontWeight: 900, color: "#ffffff", WebkitTextFillColor: "#ffffff", textShadow: "0 2px 10px rgba(0,0,0,0.28)" }}>
+                <h1
+                  className="solutions-hero-title"
+                  style={{
+                    fontSize: "clamp(34px, 5vw, 62px)",
+                    lineHeight: 1.1,
+                    fontWeight: 900,
+                    color: "#ffffff",
+                    WebkitTextFillColor: "#ffffff",
+                    textShadow: "0 2px 10px rgba(0,0,0,0.28)",
+                  }}
+                >
                   Economisez sur chaque achat
                   <br />
                   en Tunisie
                 </h1>
-                <p className="solutions-hero-text" style={{ maxWidth: "860px", margin: "24px auto 0", fontSize: "19px", color: "#ffffff", WebkitTextFillColor: "#ffffff", textShadow: "0 1px 8px rgba(0,0,0,0.22)" }}>
-                  111.tn compare les prix de milliers de produits dans les meilleures boutiques tunisiennes pour vous
-                  aider a trouver les meilleures offres en quelques secondes.
+                <p
+                  className="solutions-hero-text"
+                  style={{
+                    maxWidth: "860px",
+                    margin: "24px auto 0",
+                    fontSize: "19px",
+                    color: "#ffffff",
+                    WebkitTextFillColor: "#ffffff",
+                    textShadow: "0 1px 8px rgba(0,0,0,0.22)",
+                  }}
+                >
+                  111.tn compare les prix de milliers de produits dans les
+                  meilleures boutiques tunisiennes pour vous aider a trouver les
+                  meilleures offres en quelques secondes.
                 </p>
-                <div className="solutions-hero-cta" style={{ marginTop: "30px", display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
+                <div
+                  className="solutions-hero-cta"
+                  style={{
+                    marginTop: "30px",
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
                   <a
                     href="/products"
                     style={{
@@ -226,70 +271,191 @@ export default function SolutionsPage() {
                 >
                   {stats.map((stat) => (
                     <div key={stat.label} style={{ textAlign: "center" }}>
-                      <div className="solutions-stat-value" style={{ fontSize: "42px", fontWeight: 900, color: "#2563eb", lineHeight: 1 }}>{stat.value}</div>
-                      <div className="solutions-stat-label" style={{ marginTop: "6px", color: "#9db0c9", fontSize: "14px" }}>{stat.label}</div>
+                      <div
+                        className="solutions-stat-value"
+                        style={{
+                          fontSize: "42px",
+                          fontWeight: 900,
+                          color: "#2563eb",
+                          lineHeight: 1,
+                        }}
+                      >
+                        {stat.value}
+                      </div>
+                      <div
+                        className="solutions-stat-label"
+                        style={{
+                          marginTop: "6px",
+                          color: "#9db0c9",
+                          fontSize: "14px",
+                        }}
+                      >
+                        {stat.label}
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
             </section>
 
-            <section className="solutions-features" style={{ padding: "85px 0" }}>
+            <section
+              className="solutions-features"
+              style={{ padding: "85px 0" }}
+            >
               <div className="container">
-                <div className="solutions-heading-wrap" style={{ textAlign: "center", marginBottom: "34px" }}>
-                  <h2 className="solutions-heading" style={{ fontSize: "clamp(28px, 4vw, 44px)", color: "#f8fafc", fontWeight: 900 }}>Fonctionnalites puissantes</h2>
-                  <p className="solutions-subheading" style={{ color: "#9db0c9", marginTop: "8px" }}>
-                    Des outils intelligents pour vous aider a prendre les meilleures decisions d'achat.
+                <div
+                  className="solutions-heading-wrap"
+                  style={{ textAlign: "center", marginBottom: "34px" }}
+                >
+                  <h2
+                    className="solutions-heading"
+                    style={{
+                      fontSize: "clamp(28px, 4vw, 44px)",
+                      color: "#f8fafc",
+                      fontWeight: 900,
+                    }}
+                  >
+                    Fonctionnalites puissantes
+                  </h2>
+                  <p
+                    className="solutions-subheading"
+                    style={{ color: "#9db0c9", marginTop: "8px" }}
+                  >
+                    Des outils intelligents pour vous aider a prendre les
+                    meilleures decisions d'achat.
                   </p>
                 </div>
-                <div className="solutions-feature-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "16px" }}>
+                <div
+                  className="solutions-feature-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                    gap: "16px",
+                  }}
+                >
                   {features.map((feature) => (
                     <article
                       key={feature.title}
                       className="solutions-feature-card"
                       style={{
-                        background: "linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(10,16,30,0.9) 100%)",
+                        background:
+                          "linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(10,16,30,0.9) 100%)",
                         border: "1px solid rgba(148,163,184,0.2)",
                         borderRadius: "22px",
                         padding: "22px",
                         boxShadow: "0 10px 28px rgba(0,0,0,0.35)",
                       }}
                     >
-                      <h3 className="solutions-feature-title" style={{ fontSize: "21px", color: "#f8fafc", fontWeight: 800, marginBottom: "8px" }}>{feature.title}</h3>
-                      <p className="solutions-feature-text" style={{ margin: 0, color: "#a3b3c9", fontSize: "15px" }}>{feature.text}</p>
+                      <h3
+                        className="solutions-feature-title"
+                        style={{
+                          fontSize: "21px",
+                          color: "#f8fafc",
+                          fontWeight: 800,
+                          marginBottom: "8px",
+                        }}
+                      >
+                        {feature.title}
+                      </h3>
+                      <p
+                        className="solutions-feature-text"
+                        style={{
+                          margin: 0,
+                          color: "#a3b3c9",
+                          fontSize: "15px",
+                        }}
+                      >
+                        {feature.text}
+                      </p>
                     </article>
                   ))}
                 </div>
               </div>
             </section>
 
-            <section className="solutions-categories" style={{ padding: "85px 0", background: "linear-gradient(180deg, #090f1c 0%, #0a1222 100%)" }}>
+            <section
+              className="solutions-categories"
+              style={{
+                padding: "85px 0",
+                background: "linear-gradient(180deg, #090f1c 0%, #0a1222 100%)",
+              }}
+            >
               <div className="container">
-                <div className="solutions-heading-wrap" style={{ textAlign: "center", marginBottom: "34px" }}>
-                  <h2 className="solutions-heading" style={{ fontSize: "clamp(28px, 4vw, 44px)", color: "#f8fafc", fontWeight: 900 }}>Categories couvertes</h2>
-                  <p className="solutions-subheading" style={{ color: "#9db0c9", marginTop: "8px" }}>
-                    Nous comparons les prix dans les principales boutiques tunisiennes.
+                <div
+                  className="solutions-heading-wrap"
+                  style={{ textAlign: "center", marginBottom: "34px" }}
+                >
+                  <h2
+                    className="solutions-heading"
+                    style={{
+                      fontSize: "clamp(28px, 4vw, 44px)",
+                      color: "#f8fafc",
+                      fontWeight: 900,
+                    }}
+                  >
+                    Categories couvertes
+                  </h2>
+                  <p
+                    className="solutions-subheading"
+                    style={{ color: "#9db0c9", marginTop: "8px" }}
+                  >
+                    Nous comparons les prix dans les principales boutiques
+                    tunisiennes.
                   </p>
                 </div>
-                <div className="solutions-category-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "16px" }}>
+                <div
+                  className="solutions-category-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                    gap: "16px",
+                  }}
+                >
                   {categories.map((category) => (
                     <article
                       key={category.name}
                       className="solutions-category-card"
                       style={{
-                        background: "linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(10,16,30,0.9) 100%)",
+                        background:
+                          "linear-gradient(180deg, rgba(15,23,42,0.9) 0%, rgba(10,16,30,0.9) 100%)",
                         border: "1px solid rgba(148,163,184,0.2)",
                         borderRadius: "22px",
                         padding: "22px",
                         boxShadow: "0 10px 28px rgba(0,0,0,0.3)",
                       }}
                     >
-                      <h3 className="solutions-category-title" style={{ fontSize: "22px", color: "#f8fafc", fontWeight: 800, marginBottom: "12px" }}>{category.name}</h3>
+                      <h3
+                        className="solutions-category-title"
+                        style={{
+                          fontSize: "22px",
+                          color: "#f8fafc",
+                          fontWeight: 800,
+                          marginBottom: "12px",
+                        }}
+                      >
+                        {category.name}
+                      </h3>
 
-                      <p style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 700, color: "#9db0c9", letterSpacing: "0.08em" }}>
+                      <p
+                        style={{
+                          margin: "0 0 8px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: "#9db0c9",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
                         BOUTIQUES
                       </p>
-                      <div className="solutions-chip-wrap" style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "14px" }}>
+                      <div
+                        className="solutions-chip-wrap"
+                        style={{
+                          display: "flex",
+                          flexWrap: "wrap",
+                          gap: "8px",
+                          marginBottom: "14px",
+                        }}
+                      >
                         {category.stores.map((store) => (
                           <span
                             key={store}
@@ -308,10 +474,25 @@ export default function SolutionsPage() {
                         ))}
                       </div>
 
-                      <p style={{ margin: "0 0 8px", fontSize: "12px", fontWeight: 700, color: "#9db0c9", letterSpacing: "0.08em" }}>
+                      <p
+                        style={{
+                          margin: "0 0 8px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          color: "#9db0c9",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
                         PRODUITS
                       </p>
-                      <ul className="solutions-category-list" style={{ margin: 0, paddingLeft: "18px", color: "#c5d3e8" }}>
+                      <ul
+                        className="solutions-category-list"
+                        style={{
+                          margin: 0,
+                          paddingLeft: "18px",
+                          color: "#c5d3e8",
+                        }}
+                      >
                         {category.products.map((product) => (
                           <li key={product} style={{ marginBottom: "6px" }}>
                             {product}
@@ -324,7 +505,10 @@ export default function SolutionsPage() {
               </div>
             </section>
 
-            <section className="solutions-mission-wrap" style={{ padding: "80px 0 95px" }}>
+            <section
+              className="solutions-mission-wrap"
+              style={{ padding: "80px 0 95px" }}
+            >
               <div className="container">
                 <div
                   className="solutions-mission-card"
@@ -336,12 +520,35 @@ export default function SolutionsPage() {
                     color: "#ffffff",
                   }}
                 >
-                  <h2 className="solutions-heading" style={{ fontSize: "clamp(28px, 4vw, 44px)", fontWeight: 900, color: "#fff" }}>Notre mission</h2>
-                  <p className="solutions-mission-text" style={{ maxWidth: "900px", margin: "14px auto 22px", fontSize: "18px", opacity: 0.94 }}>
-                    Aider les consommateurs tunisiens a faire des achats intelligents avec une comparaison de prix
-                    transparente et en temps reel.
+                  <h2
+                    className="solutions-heading"
+                    style={{
+                      fontSize: "clamp(28px, 4vw, 44px)",
+                      fontWeight: 900,
+                      color: "#fff",
+                    }}
+                  >
+                    Notre mission
+                  </h2>
+                  <p
+                    className="solutions-mission-text"
+                    style={{
+                      maxWidth: "900px",
+                      margin: "14px auto 22px",
+                      fontSize: "18px",
+                      opacity: 0.94,
+                    }}
+                  >
+                    Aider les consommateurs tunisiens a faire des achats
+                    intelligents avec une comparaison de prix transparente et en
+                    temps reel.
                   </p>
-                  <div className="solutions-mission-foot" style={{ opacity: 0.92, fontWeight: 600 }}>Developpe en Tunisie, pour les Tunisiens</div>
+                  <div
+                    className="solutions-mission-foot"
+                    style={{ opacity: 0.92, fontWeight: 600 }}
+                  >
+                    Developpe en Tunisie, pour les Tunisiens
+                  </div>
                 </div>
               </div>
             </section>

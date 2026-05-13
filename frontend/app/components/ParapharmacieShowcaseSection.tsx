@@ -6,42 +6,86 @@ import { useEffect, useMemo, useRef, useState } from "react";
 function useIsLight() {
   const [light, setLight] = useState(false);
   useEffect(() => {
-    const check = () => setLight(document.documentElement.dataset.theme === "light");
+    const check = () =>
+      setLight(document.documentElement.dataset.theme === "light");
     check();
     const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     return () => obs.disconnect();
   }, []);
   return light;
 }
 
 function makeT(light: boolean) {
-  return light ? {
-    teal: "#5B21B6", tealMid: "#7C3AED", lime: "#A78BFA",
-    bg: "#f0f2ef", panel: "#f0f2ef", panelFade: "#f0f2ef", card: "#ffffff",
-    cardBorder: "rgba(91,33,182,0.15)", border: "rgba(91,33,182,0.22)",
-    muted: "rgba(0,0,0,0.45)", text: "#0a0f0d", textSoft: "rgba(0,0,0,0.65)",
-    price: "#5B21B6", ctaText: "#ffffff",
-    rowBest: "rgba(91,33,182,0.08)", rowBestBorder: "rgba(91,33,182,0.28)",
-    rowOther: "rgba(0,0,0,0.03)", chipInactiveBg: "rgba(0,0,0,0.04)", glow: "rgba(91,33,182,0.08)",
-  } : {
-    teal: "#3BDEB9", tealMid: "#77E590", lime: "#CCFF9B",
-    bg: "#000000", panel: "#000000", panelFade: "#000000", card: "#000000",
-    cardBorder: "rgba(59,222,185,0.15)", border: "rgba(59,222,185,0.22)",
-    muted: "rgba(255,255,255,0.42)", text: "#ffffff", textSoft: "rgba(255,255,255,0.78)",
-    price: "#3BDEB9", ctaText: "#0a140f",
-    rowBest: "rgba(59,222,185,0.12)", rowBestBorder: "rgba(59,222,185,0.35)",
-    rowOther: "rgba(255,255,255,0.04)", chipInactiveBg: "rgba(255,255,255,0.04)", glow: "rgba(59,222,185,0.14)",
-  };
+  return light
+    ? {
+        teal: "#5B21B6",
+        tealMid: "#7C3AED",
+        lime: "#A78BFA",
+        bg: "#f0f2ef",
+        panel: "#f0f2ef",
+        panelFade: "#f0f2ef",
+        card: "#ffffff",
+        cardBorder: "rgba(91,33,182,0.15)",
+        border: "rgba(91,33,182,0.22)",
+        muted: "rgba(0,0,0,0.45)",
+        text: "#0a0f0d",
+        textSoft: "rgba(0,0,0,0.65)",
+        price: "#5B21B6",
+        ctaText: "#ffffff",
+        rowBest: "rgba(91,33,182,0.08)",
+        rowBestBorder: "rgba(91,33,182,0.28)",
+        rowOther: "rgba(0,0,0,0.03)",
+        chipInactiveBg: "rgba(0,0,0,0.04)",
+        glow: "rgba(91,33,182,0.08)",
+      }
+    : {
+        teal: "#3BDEB9",
+        tealMid: "#77E590",
+        lime: "#CCFF9B",
+        bg: "#000000",
+        panel: "#000000",
+        panelFade: "#000000",
+        card: "#000000",
+        cardBorder: "rgba(59,222,185,0.15)",
+        border: "rgba(59,222,185,0.22)",
+        muted: "rgba(255,255,255,0.42)",
+        text: "#ffffff",
+        textSoft: "rgba(255,255,255,0.78)",
+        price: "#3BDEB9",
+        ctaText: "#0a140f",
+        rowBest: "rgba(59,222,185,0.12)",
+        rowBestBorder: "rgba(59,222,185,0.35)",
+        rowOther: "rgba(255,255,255,0.04)",
+        chipInactiveBg: "rgba(255,255,255,0.04)",
+        glow: "rgba(59,222,185,0.14)",
+      };
 }
-import { getParaCategories, listParaProducts } from "../lib/api/products";
-import type { ParaProduct } from "../lib/api/types";
-import { SHOWCASE_SECTION_GUTTER_PX, SHOWCASE_SECTION_MAX_WIDTH } from "../lib/showcase-layout";
-import { formatPrice, normalizeShopName, productHref, safeImageUrl, sortedShopPrices } from "../lib/product-utils";
+import { getParaCategories, listParaProducts } from "../lib/demo-data/catalog";
+import type { ParaProduct } from "../lib/demo-data/types";
+import {
+  SHOWCASE_SECTION_GUTTER_PX,
+  SHOWCASE_SECTION_MAX_WIDTH,
+} from "../lib/showcase-layout";
+import {
+  formatPrice,
+  normalizeShopName,
+  productHref,
+  safeImageUrl,
+  sortedShopPrices,
+} from "../lib/product-utils";
 import type { TrendingProduct } from "./TrendingSection";
 
-
-type ShowcaseIntention = "bebe" | "solaire" | "hygiene" | "visage" | "hommes" | "soins";
+type ShowcaseIntention =
+  | "bebe"
+  | "solaire"
+  | "hygiene"
+  | "visage"
+  | "hommes"
+  | "soins";
 
 function normParaCat(s: string) {
   return s
@@ -53,28 +97,40 @@ function normParaCat(s: string) {
     .trim();
 }
 
-function resolveParaTopCategory(intention: ShowcaseIntention, categories: string[]): string | undefined {
+function resolveParaTopCategory(
+  intention: ShowcaseIntention,
+  categories: string[],
+): string | undefined {
   const list = categories.map((raw) => ({ raw, key: normParaCat(raw) }));
 
   if (intention === "bebe") {
-    const exactList = list.find(({ raw, key }) => raw.trim() === "Bébé" || key === "bebe");
+    const exactList = list.find(
+      ({ raw, key }) => raw.trim() === "Bébé" || key === "bebe",
+    );
     if (exactList) return exactList.raw;
     const word = list.find(({ key }) => /\bbebe\b/.test(key));
     if (word) return word.raw;
   }
   if (intention === "solaire") {
-    const exact = list.find(({ raw, key }) => raw.trim().toLowerCase() === "solaire" || key === "solaire");
+    const exact = list.find(
+      ({ raw, key }) =>
+        raw.trim().toLowerCase() === "solaire" || key === "solaire",
+    );
     if (exact) return exact.raw;
     return list.find(({ key }) => key.includes("solaire"))?.raw;
   }
   if (intention === "hygiene") {
-    return list.find(({ key }) => key.includes("hygiene") || key.includes("hygi"))?.raw;
+    return list.find(
+      ({ key }) => key.includes("hygiene") || key.includes("hygi"),
+    )?.raw;
   }
   if (intention === "visage") {
     return list.find(({ key }) => key.includes("visage"))?.raw;
   }
   if (intention === "hommes") {
-    return list.find(({ key }) => key.includes("homme") || key.includes("homme"))?.raw;
+    return list.find(
+      ({ key }) => key.includes("homme") || key.includes("homme"),
+    )?.raw;
   }
   if (intention === "soins") {
     return list.find(({ key }) => key.includes("soin"))?.raw;
@@ -128,7 +184,7 @@ const PARA_SHOWCASE_DEFINITIONS_2 = [
     apiFallback: "Soins",
     chip: "Soins",
     bannerTitle: "Soins",
-    bannerImg: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
   {
     intention: "hommes" as const,
@@ -157,7 +213,9 @@ function paraToCard(product: ParaProduct, isLight: boolean): CardProduct {
     name: product.name,
     price: formatPrice(product.bestPrice),
     originalPrice:
-      product.originalPrice && product.originalPrice > product.bestPrice ? formatPrice(product.originalPrice) : undefined,
+      product.originalPrice && product.originalPrice > product.bestPrice
+        ? formatPrice(product.originalPrice)
+        : undefined,
     image: safeImageUrl(product.image),
     inStock: product.inStock,
     href: productHref(product, "para"),
@@ -169,11 +227,26 @@ function paraToCard(product: ParaProduct, isLight: boolean): CardProduct {
             price: formatPrice(shop.price),
             best: index === 0,
           }))
-        : [{ name: "Meilleur prix", dot: T.teal, price: formatPrice(product.bestPrice), best: true }],
+        : [
+            {
+              name: "Meilleur prix",
+              dot: T.teal,
+              price: formatPrice(product.bestPrice),
+              best: true,
+            },
+          ],
   };
 }
 
-function ParaProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallbackImg: string; isLight: boolean }) {
+function ParaProductCard({
+  p,
+  fallbackImg,
+  isLight,
+}: {
+  p: CardProduct;
+  fallbackImg: string;
+  isLight: boolean;
+}) {
   const T = makeT(isLight);
   const href = p.href || `/products/${encodeURIComponent(p.id)}?source=para`;
   const stores = p.stores.filter((s) => s.name).slice(0, 3);
@@ -194,7 +267,9 @@ function ParaProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallback
         border: `1px solid ${T.cardBorder}`,
         background: T.card,
         padding: 12,
-        boxShadow: isLight ? "0 4px 20px rgba(91,33,182,0.10), 0 1px 4px rgba(0,0,0,0.06)" : "0 8px 32px rgba(0,0,0,0.45)",
+        boxShadow: isLight
+          ? "0 4px 20px rgba(91,33,182,0.10), 0 1px 4px rgba(0,0,0,0.06)"
+          : "0 8px 32px rgba(0,0,0,0.45)",
         transition: "box-shadow 0.2s, transform 0.2s, border-color 0.2s",
       }}
     >
@@ -207,12 +282,24 @@ function ParaProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallback
           width: "100%",
           overflow: "hidden",
           borderRadius: 12,
-          background: isLight ? "linear-gradient(180deg,rgba(91,33,182,0.06),rgba(91,33,182,0.02))" : "linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.03))",
-          border: isLight ? "1px solid rgba(91,33,182,0.15)" : "1px solid rgba(255,255,255,0.1)",
+          background: isLight
+            ? "linear-gradient(180deg,rgba(91,33,182,0.06),rgba(91,33,182,0.02))"
+            : "linear-gradient(180deg,rgba(255,255,255,0.1),rgba(255,255,255,0.03))",
+          border: isLight
+            ? "1px solid rgba(91,33,182,0.15)"
+            : "1px solid rgba(255,255,255,0.1)",
           display: "block",
         }}
       >
-        <div style={{ position: "absolute", inset: 4, borderRadius: 10, background: "rgba(255,255,255,0.97)", overflow: "hidden" }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: 4,
+            borderRadius: 10,
+            background: "rgba(255,255,255,0.97)",
+            overflow: "hidden",
+          }}
+        >
           <img
             className="showcase-product-img"
             src={img}
@@ -242,7 +329,9 @@ function ParaProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallback
               padding: "2px 8px",
               fontSize: 9,
               fontWeight: 800,
-              background: isLight ? "rgba(255,255,255,0.95)" : "rgba(0,0,0,0.88)",
+              background: isLight
+                ? "rgba(255,255,255,0.95)"
+                : "rgba(0,0,0,0.88)",
               border: `1px solid ${isLight ? "rgba(91,33,182,0.35)" : "rgba(59,222,185,0.45)"}`,
               color: T.teal,
               boxShadow: isLight ? "0 2px 8px rgba(91,33,182,0.15)" : "none",
@@ -253,8 +342,18 @@ function ParaProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallback
         )}
       </a>
 
-      <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.08em", color: T.teal }}>
+      <div
+        style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            color: T.teal,
+          }}
+        >
           {p.brand}
         </span>
         <a
@@ -274,15 +373,54 @@ function ParaProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallback
         >
           {p.name}
         </a>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 18, fontWeight: 900, color: T.text, whiteSpace: "nowrap" }}>{p.price}</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 18,
+              fontWeight: 900,
+              color: T.text,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {p.price}
+          </span>
           {p.originalPrice && (
-            <span style={{ fontSize: 10, color: T.muted, textDecoration: "line-through" }}>{p.originalPrice}</span>
+            <span
+              style={{
+                fontSize: 10,
+                color: T.muted,
+                textDecoration: "line-through",
+              }}
+            >
+              {p.originalPrice}
+            </span>
           )}
         </div>
 
-        <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: T.muted }}>
+        <div
+          style={{
+            marginTop: 4,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: T.muted,
+            }}
+          >
             Comparer les prix
           </span>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -296,16 +434,47 @@ function ParaProductCard({ p, fallbackImg, isLight }: { p: CardProduct; fallback
                   borderRadius: 8,
                   padding: "6px 8px",
                   background: s.best ? T.rowBest : T.rowOther,
-                  border: s.best ? `1px solid ${T.rowBestBorder}` : `1px solid ${isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.06)"}`,
+                  border: s.best
+                    ? `1px solid ${T.rowBestBorder}`
+                    : `1px solid ${isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.06)"}`,
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, fontWeight: 500, color: s.best ? T.text : T.textSoft }}>{s.name}</span>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: s.dot,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: s.best ? T.text : T.textSoft,
+                    }}
+                  >
+                    {s.name}
+                  </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: s.best ? T.price : T.textSoft }}>{s.price}</span>
-                  <Check size={12} strokeWidth={3} style={{ color: T.teal }} aria-hidden />
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: s.best ? T.price : T.textSoft,
+                    }}
+                  >
+                    {s.price}
+                  </span>
+                  <Check
+                    size={12}
+                    strokeWidth={3}
+                    style={{ color: T.teal }}
+                    aria-hidden
+                  />
                 </div>
               </div>
             ))}
@@ -348,7 +517,13 @@ type ShowcaseDef = {
   categoryType?: "top_category" | "subcategory";
 };
 
-function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitions: readonly ShowcaseDef[]; defaultTab?: number }) {
+function ParapharmacieShowcaseBlock({
+  definitions,
+  defaultTab = 0,
+}: {
+  definitions: readonly ShowcaseDef[];
+  defaultTab?: number;
+}) {
   const isLight = useIsLight();
   const T = makeT(isLight);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -375,7 +550,9 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
     () =>
       definitions.map((def) => ({
         ...def,
-        api: resolveParaTopCategory(def.intention, paraTopCategories) ?? def.apiFallback,
+        api:
+          resolveParaTopCategory(def.intention, paraTopCategories) ??
+          def.apiFallback,
       })),
     [paraTopCategories, definitions],
   );
@@ -392,7 +569,11 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
       const forcedType = activeCategory.categoryType;
       try {
         let res = await listParaProducts(
-          { category: apiCategory, category_type: forcedType ?? "top_category", limit: 48 },
+          {
+            category: apiCategory,
+            category_type: forcedType ?? "top_category",
+            limit: 48,
+          },
           { signal: ac.signal },
         );
         if (!res.products?.length && !forcedType) {
@@ -403,7 +584,8 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
         }
         let raw = res.products || [];
         if (raw.length > 24) raw = raw.slice(0, 24);
-        if (!cancelled) setProducts(raw.map((product) => paraToCard(product, isLight)));
+        if (!cancelled)
+          setProducts(raw.map((product) => paraToCard(product, isLight)));
       } catch {
         if (!cancelled) setProducts([]);
       } finally {
@@ -429,7 +611,10 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
   };
 
   return (
-    <div className="para-shell" style={{ width: "100%", background: T.bg, padding: "56px 0 64px" }}>
+    <div
+      className="para-shell"
+      style={{ width: "100%", background: T.bg, padding: "56px 0 64px" }}
+    >
       <section
         style={{
           width: "100%",
@@ -639,13 +824,25 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
             background: T.panel,
             borderRadius: 24,
             border: `1px solid ${T.cardBorder}`,
-            boxShadow: "0 16px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
+            boxShadow:
+              "0 16px 48px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.05)",
             padding: "32px 16px",
             boxSizing: "border-box",
           }}
         >
-          <div className="para-showcase-row" style={{ display: "flex", flexDirection: "column", gap: 24, alignItems: "stretch" }}>
-            <div className="para-showcase-banner" style={{ width: 320, flexShrink: 0 }}>
+          <div
+            className="para-showcase-row"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 24,
+              alignItems: "stretch",
+            }}
+          >
+            <div
+              className="para-showcase-banner"
+              style={{ width: 320, flexShrink: 0 }}
+            >
               <div
                 className="para-banner-group"
                 style={{
@@ -656,7 +853,8 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
                   borderRadius: "2.5rem",
                   overflow: "hidden",
                   background: "#000000",
-                  boxShadow: "0 16px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(59,222,185,0.12)",
+                  boxShadow:
+                    "0 16px 40px rgba(0,0,0,0.25), 0 0 0 1px rgba(59,222,185,0.12)",
                 }}
               >
                 <img
@@ -689,11 +887,19 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
                   style={{
                     position: "absolute",
                     inset: 0,
-                    background: "linear-gradient(to top, rgba(0,0,0,0.65), transparent 55%)",
+                    background:
+                      "linear-gradient(to top, rgba(0,0,0,0.65), transparent 55%)",
                     pointerEvents: "none",
                   }}
                 />
-                <div style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: 24,
+                    left: 24,
+                    right: 24,
+                  }}
+                >
                   <span
                     className="para-banner-kicker"
                     style={{
@@ -727,8 +933,24 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
               </div>
             </div>
 
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 24 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: "flex",
+                flexDirection: "column",
+                gap: 24,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  flexWrap: "wrap",
+                }}
+              >
                 <div
                   style={{
                     display: "flex",
@@ -755,15 +977,31 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
                         whiteSpace: "nowrap",
                         flexShrink: 0,
                         cursor: "pointer",
-                        border: i === chipIdx
-                          ? `1px solid ${isLight ? "rgba(91,33,182,0.4)" : "rgba(255,255,255,0.28)"}`
-                          : `1px solid ${isLight ? "rgba(91,33,182,0.15)" : "rgba(255,255,255,0.1)"}`,
-                        boxShadow: i === chipIdx ? (isLight ? "0 4px 16px rgba(91,33,182,0.18)" : "0 4px 20px rgba(0,0,0,0.3)") : "none",
-                        background: i === chipIdx
-                          ? (isLight ? "rgba(91,33,182,0.12)" : "rgba(255,255,255,0.1)")
-                          : (isLight ? "rgba(91,33,182,0.04)" : "rgba(255,255,255,0.04)"),
-                        color: isLight ? (i === chipIdx ? "#5B21B6" : "rgba(0,0,0,0.6)") : "#fff",
-                        transition: "background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+                        border:
+                          i === chipIdx
+                            ? `1px solid ${isLight ? "rgba(91,33,182,0.4)" : "rgba(255,255,255,0.28)"}`
+                            : `1px solid ${isLight ? "rgba(91,33,182,0.15)" : "rgba(255,255,255,0.1)"}`,
+                        boxShadow:
+                          i === chipIdx
+                            ? isLight
+                              ? "0 4px 16px rgba(91,33,182,0.18)"
+                              : "0 4px 20px rgba(0,0,0,0.3)"
+                            : "none",
+                        background:
+                          i === chipIdx
+                            ? isLight
+                              ? "rgba(91,33,182,0.12)"
+                              : "rgba(255,255,255,0.1)"
+                            : isLight
+                              ? "rgba(91,33,182,0.04)"
+                              : "rgba(255,255,255,0.04)",
+                        color: isLight
+                          ? i === chipIdx
+                            ? "#5B21B6"
+                            : "rgba(0,0,0,0.6)"
+                          : "#fff",
+                        transition:
+                          "background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
                       }}
                     >
                       {cat.chip}
@@ -772,7 +1010,10 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
                 </div>
               </div>
 
-              <div style={{ position: "relative" }} className="para-showcase-wrap">
+              <div
+                style={{ position: "relative" }}
+                className="para-showcase-wrap"
+              >
                 <button
                   type="button"
                   className="para-showcase-arrow"
@@ -878,12 +1119,25 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
                       Aucun produit dans cette catégorie.
                     </div>
                   ) : (
-                    products.map((p) => <ParaProductCard key={p.id} p={p} fallbackImg={activeCategory.bannerImg} isLight={isLight} />)
+                    products.map((p) => (
+                      <ParaProductCard
+                        key={p.id}
+                        p={p}
+                        fallbackImg={activeCategory.bannerImg}
+                        isLight={isLight}
+                      />
+                    ))
                   )}
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  marginTop: 8,
+                }}
+              >
                 <a
                   className="para-showcase-more"
                   href={moreHref}
@@ -899,8 +1153,10 @@ function ParapharmacieShowcaseBlock({ definitions, defaultTab = 0 }: { definitio
                     fontWeight: 800,
                     color: T.text,
                     textDecoration: "none",
-                    boxShadow: "0 8px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
-                    transition: "box-shadow 0.2s, border-color 0.2s, transform 0.2s",
+                    boxShadow:
+                      "0 8px 28px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)",
+                    transition:
+                      "box-shadow 0.2s, border-color 0.2s, transform 0.2s",
                   }}
                 >
                   Voir plus de produits parapharmacie
@@ -1044,8 +1300,14 @@ export function ParapharmacieShowcaseSection() {
         </div>
       </div>
       <ParapharmacieShowcaseBlock definitions={PARA_SHOWCASE_DEFINITIONS} />
-      <ParapharmacieShowcaseBlock definitions={PARA_SHOWCASE_DEFINITIONS_2} defaultTab={0} />
-      <ParapharmacieShowcaseBlock definitions={PARA_SHOWCASE_DEFINITIONS_3} defaultTab={3} />
+      <ParapharmacieShowcaseBlock
+        definitions={PARA_SHOWCASE_DEFINITIONS_2}
+        defaultTab={0}
+      />
+      <ParapharmacieShowcaseBlock
+        definitions={PARA_SHOWCASE_DEFINITIONS_3}
+        defaultTab={3}
+      />
     </div>
   );
 }

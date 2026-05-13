@@ -2,19 +2,42 @@
 
 import { articles } from "../lib/articles";
 
-const FALLBACK = "https://images.unsplash.com/photo-1518770660439-4636190af475?w=640&q=80";
+const FALLBACK = "/images/item-cart.png";
 
 function ArrowIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 14 14"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M1.17 12.83L12.83 1.17M12.83 1.17H4.5M12.83 1.17V9.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
 function ClockIcon() {
   return (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
@@ -378,12 +401,19 @@ export default function BlogSection() {
 
         <h2 className="hero-blog-title">Le blog a cote du comparateur.</h2>
         <p className="hero-blog-copy">
-          Guides rapides, bons reflexes d&apos;achat et comparatifs utiles pour passer de la recherche au bon choix sans quitter l&apos;accueil.
+          Guides rapides, bons reflexes d&apos;achat et comparatifs utiles pour
+          passer de la recherche au bon choix sans quitter l&apos;accueil.
         </p>
 
-        <a href={`/blog/${featuredArticle.slug}`} className="hero-blog-featured">
+        <a
+          href={`/blog/${featuredArticle.slug}`}
+          className="hero-blog-featured"
+        >
           <div className="hero-blog-media">
-            <span className="hero-blog-badge" style={{ background: featuredArticle.categoryColor }}>
+            <span
+              className="hero-blog-badge"
+              style={{ background: featuredArticle.categoryColor }}
+            >
               A la une
             </span>
             <img
@@ -404,15 +434,23 @@ export default function BlogSection() {
               <span className="hero-blog-meta-dot"></span>
               <span>{featuredArticle.read}</span>
             </div>
-            <h3 className="hero-blog-featured-title">{featuredArticle.title}</h3>
+            <h3 className="hero-blog-featured-title">
+              {featuredArticle.title}
+            </h3>
             <p className="hero-blog-featured-text">{featuredArticle.desc}</p>
-            <div className="hero-blog-link">Lire l&apos;article <ArrowIcon /></div>
+            <div className="hero-blog-link">
+              Lire l&apos;article <ArrowIcon />
+            </div>
           </div>
         </a>
 
         <div className="hero-blog-stack">
           {sideArticles.map((article) => (
-            <a key={article.slug} href={`/blog/${article.slug}`} className="hero-blog-mini">
+            <a
+              key={article.slug}
+              href={`/blog/${article.slug}`}
+              className="hero-blog-mini"
+            >
               <div className="hero-blog-mini-media">
                 <img
                   src={article.img}
@@ -425,23 +463,33 @@ export default function BlogSection() {
                 />
               </div>
               <div className="hero-blog-mini-content">
-                <span className="hero-blog-mini-category" style={{ background: article.categoryColor }}>
+                <span
+                  className="hero-blog-mini-category"
+                  style={{ background: article.categoryColor }}
+                >
                   {article.category}
                 </span>
                 <h3 className="hero-blog-mini-title">{article.title}</h3>
                 <div className="hero-blog-mini-meta">
-                  <span className="hero-blog-mini-read"><ClockIcon />{article.read}</span>
+                  <span className="hero-blog-mini-read">
+                    <ClockIcon />
+                    {article.read}
+                  </span>
                   <span className="hero-blog-meta-dot"></span>
                   <span>{article.date}</span>
                 </div>
-                <div className="hero-blog-link">Ouvrir <ArrowIcon /></div>
+                <div className="hero-blog-link">
+                  Ouvrir <ArrowIcon />
+                </div>
               </div>
             </a>
           ))}
         </div>
 
         <div className="hero-blog-footer">
-          <p>Un acces direct aux derniers contenus sans descendre dans la page.</p>
+          <p>
+            Un acces direct aux derniers contenus sans descendre dans la page.
+          </p>
           <a href="/blogs" className="tf-btn-4 light_skew_hover type-white">
             Voir tout le blog
           </a>

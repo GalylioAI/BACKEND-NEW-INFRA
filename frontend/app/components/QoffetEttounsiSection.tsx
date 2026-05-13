@@ -6,79 +6,190 @@ import { useEffect, useState } from "react";
 function useIsLight() {
   const [light, setLight] = useState(false);
   useEffect(() => {
-    const check = () => setLight(document.documentElement.dataset.theme === "light");
+    const check = () =>
+      setLight(document.documentElement.dataset.theme === "light");
     check();
     const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     return () => obs.disconnect();
   }, []);
   return light;
 }
 
 function makeC(light: boolean) {
-  return light ? {
-    teal:   "#5B21B6",
-    orange: "#7C3AED",
-    red:    "#6D28D9",
-    bg:     "#f0f2ef",
-    card:   "#ffffff",
-    text:   "#0a0f0d",
-    muted:  "rgba(0,0,0,0.45)",
-  } : {
-    teal:   "#3BDEB9",
-    orange: "#F97316",
-    red:    "#EF4444",
-    bg:     "#000000",
-    card:   "rgba(12,22,18,0.95)",
-    text:   "#ffffff",
-    muted:  "rgba(255,255,255,0.45)",
-  };
+  return light
+    ? {
+        teal: "#5B21B6",
+        orange: "#7C3AED",
+        red: "#6D28D9",
+        bg: "#f0f2ef",
+        card: "#ffffff",
+        text: "#0a0f0d",
+        muted: "rgba(0,0,0,0.45)",
+      }
+    : {
+        teal: "#3BDEB9",
+        orange: "#F97316",
+        red: "#EF4444",
+        bg: "#000000",
+        card: "rgba(12,22,18,0.95)",
+        text: "#ffffff",
+        muted: "rgba(255,255,255,0.45)",
+      };
 }
 
 type ShopKey = "Carrefour" | "Monoprix" | "GeantDrive";
 const SHOPS: { key: ShopKey; color: string; label: string }[] = [
-  { key: "Monoprix",   color: "#EF4444", label: "Monoprix"   },
-  { key: "Carrefour",  color: "#3B82F6", label: "Carrefour"  },
+  { key: "Monoprix", color: "#EF4444", label: "Monoprix" },
+  { key: "Carrefour", color: "#3B82F6", label: "Carrefour" },
   { key: "GeantDrive", color: "#22C55E", label: "Géant Drive" },
 ];
 
 type Ingredient = {
-  img: string; brand: string; name: string;
-  size: string; badge: string;
+  img: string;
+  brand: string;
+  name: string;
+  size: string;
+  badge: string;
   prices: { shop: ShopKey; price: number }[];
 };
 
 const ingredients: Ingredient[] = [
-  { img:"/images/huile-vegetale.webp", brand:"Nejma",     name:"Huile Végétale",       size:"1L",    badge:"Huiles",         prices:[{shop:"Carrefour",price:4.69},{shop:"Monoprix",price:4.85},{shop:"GeantDrive",price:4.95}] },
-  { img:"/images/egg.webp",             brand:"El Mazraa", name:"Œufs Frais",           size:"6 pcs", badge:"Produits Frais", prices:[{shop:"Carrefour",price:3.59},{shop:"Monoprix",price:3.75},{shop:"GeantDrive",price:3.89}] },
-  { img:"/images/sicam.webp",           brand:"Sicam",     name:"Concentré de Tomates", size:"400g",  badge:"Conserves",      prices:[{shop:"Carrefour",price:1.85},{shop:"Monoprix",price:1.95},{shop:"GeantDrive",price:2.10}] },
-  { img:"/images/harissa.webp",         brand:"Cap Bon",   name:"Harissa",              size:"135g",  badge:"Épices",         prices:[{shop:"Carrefour",price:1.35},{shop:"Monoprix",price:1.45},{shop:"GeantDrive",price:1.55}] },
-  { img:"/images/sel.webp",             brand:"Cotusal",   name:"Sel de Table",         size:"500g",  badge:"Épices",         prices:[{shop:"Carrefour",price:0.75},{shop:"Monoprix",price:0.85},{shop:"GeantDrive",price:0.90}] },
-  { img:"/images/onion.webp",           brand:"Locale",    name:"Oignons Blancs",       size:"1kg",   badge:"Légumes",        prices:[{shop:"Carrefour",price:1.99},{shop:"Monoprix",price:2.15},{shop:"GeantDrive",price:2.25}] },
-  { img:"/images/ail.webp",             brand:"Locale",    name:"Ail Frais",            size:"250g",  badge:"Légumes",        prices:[{shop:"Carrefour",price:4.25},{shop:"Monoprix",price:4.50},{shop:"GeantDrive",price:4.75}] },
-  { img:"/images/tomate.webp",          brand:"Locale",    name:"Tomates Fraîches",     size:"1kg",   badge:"Légumes",        prices:[{shop:"Carrefour",price:2.99},{shop:"Monoprix",price:3.25},{shop:"GeantDrive",price:3.45}] },
+  {
+    img: "/images/huile-vegetale.webp",
+    brand: "Nejma",
+    name: "Huile Végétale",
+    size: "1L",
+    badge: "Huiles",
+    prices: [
+      { shop: "Carrefour", price: 4.69 },
+      { shop: "Monoprix", price: 4.85 },
+      { shop: "GeantDrive", price: 4.95 },
+    ],
+  },
+  {
+    img: "/images/egg.webp",
+    brand: "El Mazraa",
+    name: "Œufs Frais",
+    size: "6 pcs",
+    badge: "Produits Frais",
+    prices: [
+      { shop: "Carrefour", price: 3.59 },
+      { shop: "Monoprix", price: 3.75 },
+      { shop: "GeantDrive", price: 3.89 },
+    ],
+  },
+  {
+    img: "/images/sicam.webp",
+    brand: "Sicam",
+    name: "Concentré de Tomates",
+    size: "400g",
+    badge: "Conserves",
+    prices: [
+      { shop: "Carrefour", price: 1.85 },
+      { shop: "Monoprix", price: 1.95 },
+      { shop: "GeantDrive", price: 2.1 },
+    ],
+  },
+  {
+    img: "/images/harissa.webp",
+    brand: "Cap Bon",
+    name: "Harissa",
+    size: "135g",
+    badge: "Épices",
+    prices: [
+      { shop: "Carrefour", price: 1.35 },
+      { shop: "Monoprix", price: 1.45 },
+      { shop: "GeantDrive", price: 1.55 },
+    ],
+  },
+  {
+    img: "/images/sel.webp",
+    brand: "Cotusal",
+    name: "Sel de Table",
+    size: "500g",
+    badge: "Épices",
+    prices: [
+      { shop: "Carrefour", price: 0.75 },
+      { shop: "Monoprix", price: 0.85 },
+      { shop: "GeantDrive", price: 0.9 },
+    ],
+  },
+  {
+    img: "/images/onion.webp",
+    brand: "Locale",
+    name: "Oignons Blancs",
+    size: "1kg",
+    badge: "Légumes",
+    prices: [
+      { shop: "Carrefour", price: 1.99 },
+      { shop: "Monoprix", price: 2.15 },
+      { shop: "GeantDrive", price: 2.25 },
+    ],
+  },
+  {
+    img: "/images/ail.webp",
+    brand: "Locale",
+    name: "Ail Frais",
+    size: "250g",
+    badge: "Légumes",
+    prices: [
+      { shop: "Carrefour", price: 4.25 },
+      { shop: "Monoprix", price: 4.5 },
+      { shop: "GeantDrive", price: 4.75 },
+    ],
+  },
+  {
+    img: "/images/tomate.webp",
+    brand: "Locale",
+    name: "Tomates Fraîches",
+    size: "1kg",
+    badge: "Légumes",
+    prices: [
+      { shop: "Carrefour", price: 2.99 },
+      { shop: "Monoprix", price: 3.25 },
+      { shop: "GeantDrive", price: 3.45 },
+    ],
+  },
 ];
 
 const fmt = (n: number) => n.toFixed(3) + " DT";
-const bestPrice = (ing: Ingredient) => Math.min(...ing.prices.map(p => p.price));
+const bestPrice = (ing: Ingredient) =>
+  Math.min(...ing.prices.map((p) => p.price));
 const totalCost = ingredients.reduce((s, i) => s + bestPrice(i), 0);
-const shopColor = (k: ShopKey) => SHOPS.find(s => s.key === k)!.color;
+const shopColor = (k: ShopKey) => SHOPS.find((s) => s.key === k)!.color;
 
 /* ── Ingredient card ─────────────────────────────────────────────────── */
 type CType = ReturnType<typeof makeC>;
-function IngredientCard({ ing, index, C }: { ing: Ingredient; index: number; C: CType }) {
+function IngredientCard({
+  ing,
+  index,
+  C,
+}: {
+  ing: Ingredient;
+  index: number;
+  C: CType;
+}) {
   const sorted = [...ing.prices].sort((a, b) => a.price - b.price);
-  const max    = sorted[sorted.length - 1].price;
+  const max = sorted[sorted.length - 1].price;
 
   return (
-    <div
-      className="qoffet-card"
-      style={{ animationDelay: `${index * 0.06}s` }}
-    >
+    <div className="qoffet-card" style={{ animationDelay: `${index * 0.06}s` }}>
       {/* Top: emoji + badge */}
       <div className="qoffet-card__top">
         <div className="qoffet-card__emoji-wrap">
-          <img src={ing.img} alt={ing.name} className="qoffet-card__img" loading="lazy" decoding="async" fetchPriority="low" sizes="72px" />
+          <img
+            src={ing.img}
+            alt={ing.name}
+            className="qoffet-card__img"
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            sizes="72px"
+          />
           <div className="qoffet-card__glow" />
         </div>
         <span className="qoffet-card__badge">{ing.badge}</span>
@@ -90,7 +201,9 @@ function IngredientCard({ ing, index, C }: { ing: Ingredient; index: number; C: 
         <h3 className="qoffet-card__name">{ing.name}</h3>
         <div className="qoffet-card__meta">
           <span className="qoffet-card__size">{ing.size}</span>
-          <span className="qoffet-card__best-price">{fmt(sorted[0].price)}</span>
+          <span className="qoffet-card__best-price">
+            {fmt(sorted[0].price)}
+          </span>
         </div>
       </div>
 
@@ -104,16 +217,29 @@ function IngredientCard({ ing, index, C }: { ing: Ingredient; index: number; C: 
               <div className="qoffet-bar__label">
                 <span className="qoffet-bar__dot" style={{ background: col }} />
                 <span className="qoffet-bar__shop">{p.shop}</span>
-                <span className="qoffet-bar__price" style={{ color: i === 0 ? C.text : C.muted } as React.CSSProperties}>
+                <span
+                  className="qoffet-bar__price"
+                  style={
+                    { color: i === 0 ? C.text : C.muted } as React.CSSProperties
+                  }
+                >
                   {fmt(p.price)}
                 </span>
               </div>
               <div className="qoffet-bar__track">
-                <div className="qoffet-bar__fill" style={{
-                  width: `${pct}%`,
-                  background: p.shop === "Carrefour" ? col : (i === 0 ? `linear-gradient(90deg, ${col}, #4ade80)` : col),
-                  opacity: i === 0 ? 1 : 0.38,
-                }} />
+                <div
+                  className="qoffet-bar__fill"
+                  style={{
+                    width: `${pct}%`,
+                    background:
+                      p.shop === "Carrefour"
+                        ? col
+                        : i === 0
+                          ? `linear-gradient(90deg, ${col}, #4ade80)`
+                          : col,
+                    opacity: i === 0 ? 1 : 0.38,
+                  }}
+                />
               </div>
             </div>
           );
@@ -684,20 +810,36 @@ export default function QoffetEttounsiSection() {
       `}</style>
 
       <div className="qoffet-inner">
-
         {/* ── Hero header ── */}
         <div className="qoffet-hero">
           <div className="qoffet-hero__left">
             <div className="qoffet-hero__eyebrow">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1Z"/>
-                <path d="M6 17h12"/>
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M17 21a1 1 0 0 0 1-1v-5.35c0-.457.316-.844.727-1.041a4 4 0 0 0-2.134-7.589 5 5 0 0 0-9.186 0 4 4 0 0 0-2.134 7.588c.411.198.727.585.727 1.041V20a1 1 0 0 0 1 1Z" />
+                <path d="M6 17h12" />
               </svg>
               Recette tunisienne
             </div>
 
             <h2 className="qoffet-hero__title">
-              <img src="/images/couffin.webp" alt="" className="qoffet-couffin qoffet-couffin-img" loading="lazy" decoding="async" fetchPriority="low" sizes="(max-width: 600px) 28vw, 220px" />
+              <img
+                src="/images/couffin.webp"
+                alt=""
+                className="qoffet-couffin qoffet-couffin-img"
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                sizes="(max-width: 600px) 28vw, 220px"
+              />
               <span className="qoffet-hero__title-ar qoffet-hero__title-ar--animated">
                 {AR_TEXT.slice(0, arCount)}
                 <span className="qoffet-ar-cursor" />
@@ -705,13 +847,18 @@ export default function QoffetEttounsiSection() {
             </h2>
 
             <p className="qoffet-hero__desc">
-              Comparez les prix des ingrédients pour préparer ce plat traditionnel tunisien dans les principales enseignes. Économisez à chaque panier.
+              Comparez les prix des ingrédients pour préparer ce plat
+              traditionnel tunisien dans les principales enseignes. Économisez à
+              chaque panier.
             </p>
 
             <div className="qoffet-hero__legend">
-              {SHOPS.map(s => (
+              {SHOPS.map((s) => (
                 <div key={s.key} className="qoffet-hero__legend-item">
-                  <span className="qoffet-hero__legend-dot" style={{ background: s.color }} />
+                  <span
+                    className="qoffet-hero__legend-dot"
+                    style={{ background: s.color }}
+                  />
                   {s.label}
                 </div>
               ))}
@@ -721,7 +868,9 @@ export default function QoffetEttounsiSection() {
           <div className="qoffet-stats">
             <div className="qoffet-stat qoffet-stat--highlight">
               <div className="qoffet-stat__value">{fmt(totalCost)}</div>
-              <div className="qoffet-stat__label">Coût total · meilleur prix</div>
+              <div className="qoffet-stat__label">
+                Coût total · meilleur prix
+              </div>
             </div>
             <div className="qoffet-stat">
               <div className="qoffet-stat__value">{ingredients.length}</div>
@@ -738,11 +887,22 @@ export default function QoffetEttounsiSection() {
         <div className="qoffet-grid-wrap">
           <button
             className="qoffet-arrow"
-            onClick={() => setPage(p => Math.max(0, p - 1))}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
             disabled={page === 0}
             aria-label="Précédent"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="rgba(255,255,255,0.55)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </button>
 
           <div className="qoffet-grid">
@@ -753,37 +913,64 @@ export default function QoffetEttounsiSection() {
 
           <button
             className="qoffet-arrow"
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
             disabled={page >= totalPages - 1}
             aria-label="Suivant"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.55)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="rgba(255,255,255,0.55)"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="m9 18 6-6-6-6" />
+            </svg>
           </button>
         </div>
 
         {/* Dots */}
         <div className="qoffet-dots">
           {Array.from({ length: totalPages }).map((_, i) => (
-            <button key={i} onClick={() => setPage(i)} className="qoffet-dot" style={{
-              width: i === page ? 24 : 6,
-              background: i === page ? C.teal : "rgba(255,255,255,0.18)",
-            }} />
+            <button
+              key={i}
+              onClick={() => setPage(i)}
+              className="qoffet-dot"
+              style={{
+                width: i === page ? 24 : 6,
+                background: i === page ? C.teal : "rgba(255,255,255,0.18)",
+              }}
+            />
           ))}
         </div>
 
         {/* ── Footer banner ── */}
         <div className="qoffet-footer">
           <p className="qoffet-footer__text">
-            <strong>🍳 9offet Ettounsi :</strong>{" "}
-            Plat traditionnel tunisien à base de tomates, oignons, ail, huile végétale et œufs pochés.
+            <strong>🍳 9offet Ettounsi :</strong> Plat traditionnel tunisien à
+            base de tomates, oignons, ail, huile végétale et œufs pochés.
             Simple, délicieux et économique — comparez pour cuisiner malin !
           </p>
           <a href="/products" className="qoffet-footer__cta">
             Voir tous les produits
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </svg>
           </a>
         </div>
-
       </div>
     </section>
   );

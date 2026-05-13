@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 1111.tn Frontend
 
-## Getting Started
+Next.js production frontend for `https://1111.tn`.
 
-First, run the development server:
+## Environment
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Local development:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Production:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```env
+NEXT_PUBLIC_API_BASE_URL=https://backend.1111.tn
+NEXT_PUBLIC_APP_URL=https://1111.tn
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Only public browser-safe values may use `NEXT_PUBLIC_*`. Refresh tokens are never stored by the frontend; they are kept in the backend HttpOnly cookie.
 
-## Learn More
+## Backend Wiring
 
-To learn more about Next.js, take a look at the following resources:
+The frontend API layer lives in `app/lib/api/`:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `client.ts` unwraps the backend `{ success, data, meta }` envelope, centralizes errors, attaches access tokens, refreshes once on `401`, and retries once.
+- `auth.ts`, `otp.ts`, `users.ts`, `admin.ts`, `favorites.ts`, `alerts.ts`, and `gouvernorats.ts` map to the Go gateway routes.
+- Access tokens are in memory only. The refresh token is only sent by the browser cookie with `credentials: "include"`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Static catalog, blog, analytics, and flight content remains local because the current Go backend does not expose product/content/access-rule APIs. Do not connect these flows to legacy backends or fake UUIDs.
 
-## Deploy on Vercel
+## Validation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm ci
+npm run lint
+npm run typecheck
+npm run format:check
+npm run build
+```

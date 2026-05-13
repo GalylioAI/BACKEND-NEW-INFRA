@@ -3,59 +3,176 @@ name: Deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   REPO: galylioai/backend-new-infra
+  NEXT_PUBLIC_API_BASE_URL: https://backend.1111.tn
+  NEXT_PUBLIC_APP_URL: https://1111.tn
 
 jobs:
+  frontend-checks:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Format check
+        working-directory: frontend
+        run: npm run format:check
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  backend-checks:
+    name: Backend Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+          cache-dependency-path: backend/**/go.sum
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/mail-service/requirements.txt
+      - name: Sync Go workspace
+        working-directory: backend
+        run: go work sync
+      - name: Run Go tests
+        working-directory: backend
+        run: |
+          go test \
+            ./shared/... \
+            ./api-gateway/... \
+            ./auth-service/... \
+            ./user-service/... \
+            ./otp-service/... \
+            ./favorites-service/... \
+            ./alerts-service/... \
+            -v -race -count=1 -timeout 120s
+      - name: Run Go vet
+        working-directory: backend
+        run: |
+          go vet \
+            ./shared/... \
+            ./api-gateway/... \
+            ./auth-service/... \
+            ./user-service/... \
+            ./otp-service/... \
+            ./favorites-service/... \
+            ./alerts-service/...
+      - name: Install mail dependencies
+        working-directory: backend
+        run: pip install -r mail-service/requirements.txt
+      - name: Run mail tests
+        working-directory: backend/mail-service
+        run: python -m unittest discover -s tests -v
+
+  validate-compose:
+    name: Validate Compose
+    runs-on: ubuntu-latest
+    needs: [frontend-checks, backend-checks]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate production compose syntax
+        working-directory: backend
+        run: |
+          mkdir -p /tmp/app-secrets/keys /tmp/app-secrets/runtime
+          printf '%s\n' dummy > /tmp/app-secrets/keys/private.pem
+          printf '%s\n' dummy > /tmp/app-secrets/keys/public.pem
+          for name in internal_secret redis_url_gateway redis_url_mail rabbitmq_url \
+                      auth_db_password user_db_password otp_db_password favorites_db_password alerts_db_password \
+                      auth_db_migration_url user_db_migration_url otp_db_migration_url favorites_db_migration_url alerts_db_migration_url \
+                      google_client_secret smtp_pass sendgrid_api_key; do
+            printf '%s\n' dummy > "/tmp/app-secrets/runtime/${name}"
+          done
+          IMAGE_TAG=test \
+          APP_SECRETS_DIR=/tmp/app-secrets \
+          JWT_ISSUER=test JWT_AUDIENCE=test \
+          CORS_ALLOWED_ORIGINS=https://1111.tn \
+          COOKIE_DOMAIN=backend.1111.tn COOKIE_SECURE=true \
+          REFRESH_COOKIE_DOMAIN=backend.1111.tn REFRESH_COOKIE_PATH=/auth REFRESH_COOKIE_SAMESITE=Lax \
+          JWT_ACCESS_EXPIRY=15m REFRESH_TOKEN_EXPIRY=720h JWT_2FA_PENDING_EXPIRY=5m \
+          GOOGLE_CLIENT_ID=test SMTP_HOST=smtp.test.com SMTP_PORT=587 SMTP_USER=test MAIL_FROM=noreply@1111.tn \
+          docker compose -f docker-compose.prod.yml config --quiet
+
   build-and-push:
     name: Build & Push - ${{ matrix.service }}
     runs-on: ubuntu-latest
+    needs: [validate-compose]
     permissions:
       contents: read
       packages: write
-
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - api-gateway
-          - auth-service
-          - user-service
-          - otp-service
-          - favorites-service
-          - alerts-service
-          - mail-service
-
+        include:
+          - service: frontend
+            context: ./frontend
+            file: ./frontend/Dockerfile
+          - service: api-gateway
+            context: ./backend
+            file: ./backend/api-gateway/Dockerfile
+          - service: auth-service
+            context: ./backend
+            file: ./backend/auth-service/Dockerfile
+          - service: user-service
+            context: ./backend
+            file: ./backend/user-service/Dockerfile
+          - service: otp-service
+            context: ./backend
+            file: ./backend/otp-service/Dockerfile
+          - service: favorites-service
+            context: ./backend
+            file: ./backend/favorites-service/Dockerfile
+          - service: alerts-service
+            context: ./backend
+            file: ./backend/alerts-service/Dockerfile
+          - service: mail-service
+            context: ./backend
+            file: ./backend/mail-service/Dockerfile
     steps:
       - uses: actions/checkout@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+      - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Extract image metadata
-        id: meta
+      - uses: docker/setup-buildx-action@v3
+      - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.service }}
           tags: |
             type=sha,prefix=,format=short
             type=raw,value=latest
-
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
-          file: ./backend/${{ matrix.service }}/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }}
+            NEXT_PUBLIC_APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}
@@ -64,113 +181,102 @@ jobs:
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-latest
-    needs: build-and-push
+    needs: [build-and-push]
     environment: production
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Get short SHA
-        id: sha
+      - id: sha
         run: echo "tag=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-
       - name: Copy deployment files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: deploy
+          username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "backend/docker-compose.prod.yml,backend/infra/scripts/health-check.sh,backend/infra/scripts/rollback.sh,backend/infra/scripts/08-materialize-secrets.sh"
-          target: "/opt/app/"
+          port: ${{ secrets.VPS_SSH_PORT }}
+          source: "backend/docker-compose.prod.yml,backend/infra/scripts/health-check.sh,backend/infra/scripts/rollback.sh,backend/infra/scripts/08-materialize-secrets.sh,backend/infra/scripts/05-nginx.sh,frontend/.env.production.example"
+          target: "${{ secrets.DEPLOY_PATH }}/"
           strip_components: 1
-
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          PROD_ENV_BACKEND: ${{ secrets.PROD_ENV_BACKEND }}
+          PROD_ENV_FRONTEND: ${{ secrets.PROD_ENV_FRONTEND }}
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: deploy
+          username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_SSH_PORT }}
+          envs: PROD_ENV_BACKEND,PROD_ENV_FRONTEND
           script: |
             set -euo pipefail
 
             TAG="${{ steps.sha.outputs.tag }}"
-            COMPOSE="/opt/app/docker-compose.prod.yml"
+            DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
+            COMPOSE="${DEPLOY_PATH}/docker-compose.prod.yml"
             ENV_FILE="/etc/app/secrets/.env"
 
             echo "=== Deploying tag: ${TAG} ==="
-            bash /opt/app/infra/scripts/08-materialize-secrets.sh
+            umask 077
+            if [ -n "${PROD_ENV_BACKEND:-}" ]; then
+              printf '%s\n' "${PROD_ENV_BACKEND}" > "${ENV_FILE}"
+            fi
+            if [ -n "${PROD_ENV_FRONTEND:-}" ]; then
+              printf '%s\n' "${PROD_ENV_FRONTEND}" > "${DEPLOY_PATH}/frontend.env"
+            fi
+
+            COMPOSE_ENV="${DEPLOY_PATH}/.compose.env"
+            cp "${ENV_FILE}" "${COMPOSE_ENV}"
+            if [ -f "${DEPLOY_PATH}/frontend.env" ]; then
+              printf '\n' >> "${COMPOSE_ENV}"
+              cat "${DEPLOY_PATH}/frontend.env" >> "${COMPOSE_ENV}"
+            fi
+            chmod 600 "${COMPOSE_ENV}"
+
+            bash "${DEPLOY_PATH}/infra/scripts/08-materialize-secrets.sh"
 
             get_env_value() {
               grep -E "^$1=" "${ENV_FILE}" 2>/dev/null | tail -n1 | cut -d= -f2- || true
             }
 
-            APP_INTERNAL_NETWORK="$(get_env_value APP_INTERNAL_NETWORK)"
-            APP_INTERNAL_NETWORK="${APP_INTERNAL_NETWORK:-app_internal}"
-            APP_DOCKER_SUBNET="$(get_env_value APP_DOCKER_SUBNET)"
-            APP_DOCKER_SUBNET="${APP_DOCKER_SUBNET:-172.18.0.0/16}"
-            APP_DOCKER_GATEWAY="$(get_env_value APP_DOCKER_GATEWAY)"
-            APP_DOCKER_GATEWAY="${APP_DOCKER_GATEWAY:-172.18.0.1}"
-            GATEWAY_BIND_IP="$(get_env_value GATEWAY_BIND_IP)"
-            if systemctl is-active --quiet nginx; then
-              GATEWAY_BIND_IP="${GATEWAY_BIND_IP:-127.0.0.1}"
-              TRUSTED_PROXY_CIDRS="127.0.0.1/32,::1/128,${APP_DOCKER_GATEWAY}/32"
-            else
-              GATEWAY_BIND_IP="0.0.0.0"
-              TRUSTED_PROXY_CIDRS="127.0.0.1/32,::1/128"
-              echo "Nginx is not active; exposing api-gateway on 0.0.0.0:8080 for direct IP testing."
-            fi
-
-            export APP_INTERNAL_NETWORK APP_DOCKER_SUBNET APP_DOCKER_GATEWAY GATEWAY_BIND_IP TRUSTED_PROXY_CIDRS
+            export APP_INTERNAL_NETWORK="$(get_env_value APP_INTERNAL_NETWORK)"
+            export APP_INTERNAL_NETWORK="${APP_INTERNAL_NETWORK:-app_internal}"
+            export APP_DOCKER_SUBNET="$(get_env_value APP_DOCKER_SUBNET)"
+            export APP_DOCKER_SUBNET="${APP_DOCKER_SUBNET:-172.18.0.0/16}"
+            export APP_DOCKER_GATEWAY="$(get_env_value APP_DOCKER_GATEWAY)"
+            export APP_DOCKER_GATEWAY="${APP_DOCKER_GATEWAY:-172.18.0.1}"
+            export FRONTEND_BIND_IP=127.0.0.1
+            export GATEWAY_BIND_IP=127.0.0.1
+            export TRUSTED_PROXY_CIDRS="127.0.0.1/32,::1/128,${APP_DOCKER_GATEWAY}/32"
 
             if ! docker network inspect "${APP_INTERNAL_NETWORK}" >/dev/null 2>&1; then
-              docker network create \
-                --driver bridge \
-                --subnet "${APP_DOCKER_SUBNET}" \
-                --gateway "${APP_DOCKER_GATEWAY}" \
-                "${APP_INTERNAL_NETWORK}"
+              docker network create --driver bridge --subnet "${APP_DOCKER_SUBNET}" --gateway "${APP_DOCKER_GATEWAY}" "${APP_INTERNAL_NETWORK}"
             fi
 
-            echo "${{ secrets.GHCR_TOKEN }}" | \
-              docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
-            IMAGE_TAG="${TAG}" docker compose -f "${COMPOSE}" --env-file "${ENV_FILE}" pull
+            IMAGE_TAG="${TAG}" docker compose -f "${COMPOSE}" --env-file "${COMPOSE_ENV}" pull
 
-            [ -f /opt/app/.last_deployed_tag ] && \
-              cp /opt/app/.last_deployed_tag /opt/app/.previous_tag || true
-            echo "${TAG}" > /opt/app/.last_deployed_tag
+            [ -f "${DEPLOY_PATH}/.last_deployed_tag" ] && cp "${DEPLOY_PATH}/.last_deployed_tag" "${DEPLOY_PATH}/.previous_tag" || true
+            echo "${TAG}" > "${DEPLOY_PATH}/.last_deployed_tag"
 
-            for svc in auth-service user-service otp-service \
-                       favorites-service alerts-service mail-service api-gateway; do
+            for svc in auth-service user-service otp-service favorites-service alerts-service mail-service api-gateway frontend; do
               echo "--- Updating ${svc} ---"
-              IMAGE_TAG="${TAG}" \
-                docker compose -f "${COMPOSE}" --env-file "${ENV_FILE}" \
-                up -d --no-deps "${svc}"
+              IMAGE_TAG="${TAG}" docker compose -f "${COMPOSE}" --env-file "${COMPOSE_ENV}" up -d --no-deps "${svc}"
               sleep 4
             done
 
-            echo "=== Waiting for gateway health ==="
-            for i in $(seq 1 24); do
-              HTTP="$(curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8080/health 2>/dev/null || true)"
-              HTTP="${HTTP:-000}"
-              if [ "${HTTP}" = "200" ]; then
-                echo "Gateway healthy (attempt ${i})"
-                break
-              fi
-              echo "Attempt ${i}/24: HTTP ${HTTP}; waiting 5s"
-              sleep 5
-              if [ "${i}" = "24" ]; then
-                echo "DEPLOY FAILED: gateway not healthy after 120s"
-                docker compose -f "${COMPOSE}" --env-file "${ENV_FILE}" ps || true
-                docker logs app-api-gateway-1 --tail 160 || true
-                for svc in auth-service user-service otp-service favorites-service alerts-service mail-service; do
-                  docker logs "app-${svc}-1" --tail 60 || true
-                done
-                exit 1
-              fi
-            done
+            echo "=== Health checks ==="
+            curl -fsS http://127.0.0.1:8080/health >/dev/null
+            curl -fsS http://127.0.0.1:3000/ >/dev/null
+            bash "${DEPLOY_PATH}/infra/scripts/health-check.sh"
+            curl -fsS https://1111.tn >/dev/null
+            curl -fsS https://backend.1111.tn/health >/dev/null
 
-            bash /opt/app/infra/scripts/health-check.sh
+            if command -v nginx >/dev/null 2>&1; then
+              sudo nginx -t
+              sudo systemctl reload nginx
+            fi
 
             docker image prune -f --filter "until=72h"
-
             echo "=== Deploy complete: ${TAG} ==="

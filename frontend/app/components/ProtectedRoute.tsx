@@ -19,10 +19,19 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
 
   if (status !== "authenticated") {
     return (
-      <main className="tf-section" style={{ minHeight: "55vh", display: "grid", placeItems: "center" }}>
+      <main
+        className="tf-section"
+        style={{ minHeight: "55vh", display: "grid", placeItems: "center" }}
+      >
         <div style={{ textAlign: "center", color: "#fff" }}>
-          <div className="spinner-border text-light" role="status" aria-label="Chargement" />
-          <p style={{ marginTop: 16, color: "rgba(255,255,255,0.72)" }}>Verification de la session...</p>
+          <div
+            className="spinner-border text-light"
+            role="status"
+            aria-label="Chargement"
+          />
+          <p style={{ marginTop: 16, color: "rgba(255,255,255,0.72)" }}>
+            Verification de la session...
+          </p>
         </div>
       </main>
     );

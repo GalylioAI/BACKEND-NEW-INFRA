@@ -24,6 +24,30 @@ networks:
     driver: bridge
 
 services:
+  frontend:
+    <<: *common
+    image: ghcr.io/galylioai/backend-new-infra/frontend:${IMAGE_TAG}
+    ports:
+      - "${FRONTEND_BIND_IP:-127.0.0.1}:3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://backend.1111.tn}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://1111.tn}
+    networks:
+      - gateway-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
+
   api-gateway:
     <<: *common
     image: ghcr.io/galylioai/backend-new-infra/api-gateway:${IMAGE_TAG}

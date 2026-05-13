@@ -1,156 +1,195 @@
-import type { ApiValidationIssue } from "./types";
+import { apiUrl } from "./config";
+import { endpoints } from "./endpoints";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "./token-store";
+import type { AccessTokenResponse, ApiFailureEnvelope, ApiMeta } from "./types";
 
 type QueryValue = string | number | boolean | null | undefined;
-type QueryParams = Record<string, QueryValue | QueryValue[]>;
 
-// New Go backend — handles auth, users, alerts, favorites, otp
-export const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL || "https://backend.1111.tn"
-).replace(/\/$/, "");
-
-// Old backend — handles products, para, analytics, blogs
-export const LEGACY_API_BASE_URL = (
-  process.env.NEXT_PUBLIC_LEGACY_API_BASE_URL || "https://back-27em.onrender.com"
-).replace(/\/$/, "");
-
-const NEW_BACKEND_PREFIXES = ["/auth", "/users", "/alerts", "/favorites", "/otp", "/gouvernorats"];
-
-function resolveBase(path: string): string {
-  if (path.startsWith("http")) return "";
-  const isNewBackend = NEW_BACKEND_PREFIXES.some((p) => path.startsWith(p));
-  return isNewBackend ? API_BASE_URL : LEGACY_API_BASE_URL;
-}
-
-interface ApiFetchOptions extends Omit<RequestInit, "body"> {
+interface ApiRequestOptions extends Omit<RequestInit, "body"> {
+  auth?: boolean;
   body?: unknown;
-  query?: QueryParams;
-  token?: string | null;
+  query?: Record<string, QueryValue>;
+  retryOnAuthFailure?: boolean;
 }
 
 export class ApiError extends Error {
   status: number;
-  issues: ApiValidationIssue[];
-  payload: unknown;
+  code: string;
+  fields?: Record<string, string>;
+  retryAfterSeconds?: number;
+  requestId?: string;
 
-  constructor(message: string, status: number, payload: unknown, issues: ApiValidationIssue[] = []) {
+  constructor(
+    status: number,
+    code: string,
+    message: string,
+    options: {
+      fields?: Record<string, string>;
+      retryAfterSeconds?: number;
+      requestId?: string;
+    } = {},
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
-    this.payload = payload;
-    this.issues = issues;
+    this.code = code;
+    this.fields = options.fields;
+    this.retryAfterSeconds = options.retryAfterSeconds;
+    this.requestId = options.requestId;
   }
 }
 
-function appendQuery(url: URL, query?: QueryParams) {
-  if (!query) return;
+let refreshPromise: Promise<string | null> | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
+export function setUnauthorizedHandler(handler: (() => void) | null) {
+  unauthorizedHandler = handler;
+}
+
+export function getApiErrorMessage(
+  error: unknown,
+  fallback = "Une erreur est survenue.",
+) {
+  if (error instanceof ApiError) {
+    return error.message || fallback;
+  }
+  if (error instanceof Error) {
+    return error.message || fallback;
+  }
+  return fallback;
+}
+
+function withQuery(path: string, query?: Record<string, QueryValue>) {
+  if (!query) return path;
+  const params = new URLSearchParams();
   Object.entries(query).forEach(([key, value]) => {
-    const values = Array.isArray(value) ? value : [value];
-    values.forEach((item) => {
-      if (item === undefined || item === null || item === "") return;
-      url.searchParams.append(key, String(item));
-    });
+    if (value === undefined || value === null || value === "") return;
+    params.set(key, String(value));
   });
+  const suffix = params.toString();
+  if (!suffix) return path;
+  return `${path}${path.includes("?") ? "&" : "?"}${suffix}`;
 }
 
-function createUrl(path: string, query?: QueryParams) {
-  const base = resolveBase(path);
-  const url = new URL(path.startsWith("http") ? path : `${base}${path}`);
-  appendQuery(url, query);
-  return url.toString();
-}
-
-function isValidationIssue(value: unknown): value is ApiValidationIssue {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "msg" in value &&
-    typeof (value as { msg?: unknown }).msg === "string"
-  );
-}
-
-function extractMessage(payload: unknown, fallback: string) {
-  if (!payload) return fallback;
-
-  if (typeof payload === "string") return payload;
-
-  if (typeof payload === "object" && payload !== null) {
-    const record = payload as Record<string, unknown>;
-
-    // New backend: { success: false, error: { code, message } }
-    if (typeof record.error === "object" && record.error !== null) {
-      const err = record.error as Record<string, unknown>;
-      if (typeof err.message === "string") return err.message;
-    }
-
-    const detail = record.detail;
-    if (typeof record.message === "string") return record.message;
-    if (typeof detail === "string") return detail;
-    if (Array.isArray(detail)) {
-      const first = detail.find(isValidationIssue);
-      if (first) return first.msg;
+async function parseResponse<T>(response: Response): Promise<{
+  data: T;
+  meta?: ApiMeta;
+}> {
+  const text = await response.text();
+  let body: unknown = null;
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      body = null;
     }
   }
-
-  return fallback;
-}
-
-function extractIssues(payload: unknown) {
-  if (typeof payload !== "object" || payload === null) return [];
-  const detail = (payload as Record<string, unknown>).detail;
-  if (!Array.isArray(detail)) return [];
-  return detail.filter(isValidationIssue);
-}
-
-// Unwrap new backend envelope: { success, data, meta } → data
-function unwrapEnvelope<T>(payload: unknown): T {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    "success" in payload &&
-    "data" in payload
-  ) {
-    return (payload as { data: T }).data;
-  }
-  return payload as T;
-}
-
-export function getApiErrorMessage(error: unknown, fallback = "Une erreur est survenue.") {
-  if (error instanceof ApiError) return error.message;
-  if (error instanceof Error) return error.message;
-  return fallback;
-}
-
-export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { body, query, token, headers: customHeaders, ...init } = options;
-  const headers = new Headers(customHeaders);
-  const hasBody = body !== undefined;
-
-  if (hasBody && !(body instanceof FormData) && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(createUrl(path, query), {
-    ...init,
-    headers,
-    body: hasBody ? (body instanceof FormData ? body : JSON.stringify(body)) : undefined,
-  });
-
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json") ? await response.json() : await response.text();
 
   if (!response.ok) {
+    const failure = body as ApiFailureEnvelope | null;
+    const apiError = failure?.success === false ? failure.error : null;
     throw new ApiError(
-      extractMessage(payload, `Erreur API (${response.status})`),
       response.status,
-      payload,
-      extractIssues(payload),
+      apiError?.code || `HTTP_${response.status}`,
+      apiError?.message || response.statusText || "Request failed.",
+      {
+        fields: apiError?.fields,
+        retryAfterSeconds: apiError?.retry_after_seconds,
+        requestId: failure?.meta?.request_id,
+      },
     );
   }
 
-  return unwrapEnvelope<T>(payload);
+  if (body && typeof body === "object" && "success" in body) {
+    return {
+      data: (body as unknown as { data: T }).data,
+      meta: (body as { meta?: ApiMeta }).meta,
+    };
+  }
+
+  return { data: body as T };
+}
+
+async function refreshAccessToken() {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      try {
+        const response = await fetch(apiUrl(endpoints.auth.refresh), {
+          method: "POST",
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        });
+        const { data } = await parseResponse<AccessTokenResponse>(response);
+        setAccessToken(data.access_token);
+        return data.access_token;
+      } catch {
+        clearAccessToken();
+        return null;
+      } finally {
+        refreshPromise = null;
+      }
+    })();
+  }
+  return refreshPromise;
+}
+
+export async function apiRequest<T>(
+  path: string,
+  options: ApiRequestOptions = {},
+): Promise<T> {
+  const {
+    auth = false,
+    body,
+    query,
+    retryOnAuthFailure = true,
+    headers,
+    ...init
+  } = options;
+  const token = getAccessToken();
+  const requestHeaders = new Headers(headers);
+
+  requestHeaders.set("Accept", "application/json");
+  if (body !== undefined && !requestHeaders.has("Content-Type")) {
+    requestHeaders.set("Content-Type", "application/json");
+  }
+  if (auth && token) {
+    requestHeaders.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(apiUrl(withQuery(path, query)), {
+    ...init,
+    body: body === undefined ? undefined : JSON.stringify(body),
+    credentials: "include",
+    headers: requestHeaders,
+  });
+
+  try {
+    const { data } = await parseResponse<T>(response);
+    return data;
+  } catch (error) {
+    if (
+      auth &&
+      retryOnAuthFailure &&
+      error instanceof ApiError &&
+      error.status === 401
+    ) {
+      const refreshedToken = await refreshAccessToken();
+      if (refreshedToken) {
+        return apiRequest<T>(path, {
+          ...options,
+          retryOnAuthFailure: false,
+        });
+      }
+      unauthorizedHandler?.();
+    }
+    throw error;
+  }
+}
+
+export async function primeSessionFromRefresh() {
+  return refreshAccessToken();
 }

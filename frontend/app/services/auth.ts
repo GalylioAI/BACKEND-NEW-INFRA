@@ -1,47 +1,29 @@
-import { changePassword, getCurrentUser, updateProfile } from "../lib/api/auth";
-import type { ChangePasswordPayload, UserProfileUpdate, UserResponse } from "../lib/api/types";
-
-const TOKEN_KEY = "1111.auth.token";
-
-function getStoredToken() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return window.localStorage.getItem(TOKEN_KEY);
-}
+import {
+  changePassword,
+  currentUser,
+  deleteOwnAccount,
+  logoutAll,
+  setPassword,
+  updateProfile,
+} from "../lib/api";
 
 export const authService = {
-  async me(): Promise<{ data: UserResponse }> {
-    const token = getStoredToken();
-
-    if (!token) {
-      throw new Error("Aucun jeton d'authentification disponible.");
-    }
-
-    const data = await getCurrentUser(token);
-    return { data };
+  async me() {
+    return { data: await currentUser() };
   },
-
-  async updateProfile(payload: UserProfileUpdate): Promise<{ data: UserResponse }> {
-    const token = getStoredToken();
-
-    if (!token) {
-      throw new Error("Aucun jeton d'authentification disponible.");
-    }
-
-    const data = await updateProfile(token, payload);
-    return { data };
+  async updateProfile(payload: Parameters<typeof updateProfile>[0]) {
+    return { data: await updateProfile(payload) };
   },
-
-  async changePassword(payload: ChangePasswordPayload): Promise<{ data: { message?: string } }> {
-    const token = getStoredToken();
-
-    if (!token) {
-      throw new Error("Aucun jeton d'authentification disponible.");
-    }
-
-    const data = await changePassword(token, payload);
-    return { data };
+  async changePassword(payload: Parameters<typeof changePassword>[0]) {
+    return { data: await changePassword(payload) };
+  },
+  async setPassword(payload: Parameters<typeof setPassword>[0]) {
+    return { data: await setPassword(payload) };
+  },
+  async deleteOwnAccount() {
+    return { data: await deleteOwnAccount() };
+  },
+  async logoutAll() {
+    return { data: await logoutAll() };
   },
 };

@@ -127,7 +127,8 @@ export default function PricingPage() {
           <main style={{ background: "#fafbff" }}>
             <section
               style={{
-                background: "linear-gradient(135deg, #0f172a 0%, #111827 45%, #e31e24 100%)",
+                background:
+                  "linear-gradient(135deg, #0f172a 0%, #111827 45%, #e31e24 100%)",
                 color: "#ffffff",
                 padding: "180px 0 90px",
                 textAlign: "center",
@@ -147,12 +148,31 @@ export default function PricingPage() {
                 >
                   Plans flexibles pour tous les besoins
                 </div>
-                <h1 style={{ fontSize: "clamp(32px, 5vw, 58px)", fontWeight: 800, marginBottom: "16px", color: "#ffffff", WebkitTextFillColor: "#ffffff", textShadow: "0 2px 10px rgba(0,0,0,0.28)" }}>
+                <h1
+                  style={{
+                    fontSize: "clamp(32px, 5vw, 58px)",
+                    fontWeight: 800,
+                    marginBottom: "16px",
+                    color: "#ffffff",
+                    WebkitTextFillColor: "#ffffff",
+                    textShadow: "0 2px 10px rgba(0,0,0,0.28)",
+                  }}
+                >
                   Choisissez votre plan
                 </h1>
-                <p style={{ maxWidth: "760px", margin: "0 auto", opacity: 0.9, fontSize: "18px", color: "#ffffff", WebkitTextFillColor: "#ffffff", textShadow: "0 1px 8px rgba(0,0,0,0.22)" }}>
-                  Des solutions adaptees aux particuliers comme aux entreprises. Commencez gratuitement et evoluez
-                  selon vos besoins.
+                <p
+                  style={{
+                    maxWidth: "760px",
+                    margin: "0 auto",
+                    opacity: 0.9,
+                    fontSize: "18px",
+                    color: "#ffffff",
+                    WebkitTextFillColor: "#ffffff",
+                    textShadow: "0 1px 8px rgba(0,0,0,0.22)",
+                  }}
+                >
+                  Des solutions adaptees aux particuliers comme aux entreprises.
+                  Commencez gratuitement et evoluez selon vos besoins.
                 </p>
               </div>
             </section>
@@ -175,7 +195,9 @@ export default function PricingPage() {
                         border: `2px solid ${plan.badge ? plan.accent : "#e7e7ef"}`,
                         borderRadius: "24px",
                         padding: "24px",
-                        boxShadow: plan.badge ? "0 12px 30px rgba(227,30,36,0.18)" : "0 8px 22px rgba(0,0,0,0.06)",
+                        boxShadow: plan.badge
+                          ? "0 12px 30px rgba(227,30,36,0.18)"
+                          : "0 8px 22px rgba(0,0,0,0.06)",
                         display: "flex",
                         flexDirection: "column",
                       }}
@@ -187,7 +209,8 @@ export default function PricingPage() {
                             top: "-12px",
                             left: "50%",
                             transform: "translateX(-50%)",
-                            background: "linear-gradient(90deg, #e31e24, #ff5a5f)",
+                            background:
+                              "linear-gradient(90deg, #e31e24, #ff5a5f)",
                             color: "#fff",
                             borderRadius: "999px",
                             padding: "4px 12px",
@@ -199,15 +222,51 @@ export default function PricingPage() {
                         </div>
                       ) : null}
 
-                      <h3 style={{ fontSize: "24px", fontWeight: 800, color: "#111827", marginBottom: "4px" }}>{plan.name}</h3>
-                      <p style={{ color: "#5b6476", fontSize: "14px", minHeight: "40px" }}>{plan.tagline}</p>
+                      <h3
+                        style={{
+                          fontSize: "24px",
+                          fontWeight: 800,
+                          color: "#111827",
+                          marginBottom: "4px",
+                        }}
+                      >
+                        {plan.name}
+                      </h3>
+                      <p
+                        style={{
+                          color: "#5b6476",
+                          fontSize: "14px",
+                          minHeight: "40px",
+                        }}
+                      >
+                        {plan.tagline}
+                      </p>
 
                       <div style={{ margin: "18px 0 20px" }}>
-                        <span style={{ fontSize: "40px", fontWeight: 800, color: "#111827" }}>{plan.price}</span>
-                        {plan.period ? <span style={{ color: "#5b6476", marginLeft: "6px" }}>{plan.period}</span> : null}
+                        <span
+                          style={{
+                            fontSize: "40px",
+                            fontWeight: 800,
+                            color: "#111827",
+                          }}
+                        >
+                          {plan.price}
+                        </span>
+                        {plan.period ? (
+                          <span style={{ color: "#5b6476", marginLeft: "6px" }}>
+                            {plan.period}
+                          </span>
+                        ) : null}
                       </div>
 
-                      <ul style={{ margin: 0, padding: 0, listStyle: "none", flex: 1 }}>
+                      <ul
+                        style={{
+                          margin: 0,
+                          padding: 0,
+                          listStyle: "none",
+                          flex: 1,
+                        }}
+                      >
                         {plan.features.map((feature) => (
                           <li
                             key={feature}
@@ -220,7 +279,11 @@ export default function PricingPage() {
                               fontSize: "14px",
                             }}
                           >
-                            <span style={{ color: plan.accent, fontWeight: 800 }}>✓</span>
+                            <span
+                              style={{ color: plan.accent, fontWeight: 800 }}
+                            >
+                              ✓
+                            </span>
                             <span>{feature}</span>
                           </li>
                         ))}
@@ -250,7 +313,13 @@ export default function PricingPage() {
             <section style={{ padding: "40px 0 80px" }}>
               <div className="container">
                 <div style={{ textAlign: "center", marginBottom: "26px" }}>
-                  <h2 style={{ fontSize: "clamp(28px, 3.8vw, 42px)", color: "#111827", fontWeight: 800 }}>
+                  <h2
+                    style={{
+                      fontSize: "clamp(28px, 3.8vw, 42px)",
+                      color: "#111827",
+                      fontWeight: 800,
+                    }}
+                  >
                     Tout ce dont vous avez besoin
                   </h2>
                 </div>
@@ -272,10 +341,25 @@ export default function PricingPage() {
                         padding: "18px",
                       }}
                     >
-                      <h3 style={{ fontWeight: 800, color: "#121926", marginBottom: "8px", fontSize: "18px" }}>
+                      <h3
+                        style={{
+                          fontWeight: 800,
+                          color: "#121926",
+                          marginBottom: "8px",
+                          fontSize: "18px",
+                        }}
+                      >
                         {item.title}
                       </h3>
-                      <p style={{ color: "#606b81", margin: 0, fontSize: "14px" }}>{item.text}</p>
+                      <p
+                        style={{
+                          color: "#606b81",
+                          margin: 0,
+                          fontSize: "14px",
+                        }}
+                      >
+                        {item.text}
+                      </p>
                     </div>
                   ))}
                 </div>

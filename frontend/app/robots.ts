@@ -1,10 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const SITE_URL = (
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  process.env.SITE_URL ||
-  "https://1111.tn"
-).replace(/\/$/, "");
+const SITE_URL = "http://localhost:3000";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -12,7 +8,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/compte", "/connexion", "/api"],
+        disallow: ["/compte", "/connexion"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

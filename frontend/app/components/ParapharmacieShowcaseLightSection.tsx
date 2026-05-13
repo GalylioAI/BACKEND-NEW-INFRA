@@ -2,10 +2,18 @@
 
 import { ArrowRight, Check, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getParaCategories, listParaProducts } from "../lib/api/products";
-import type { ParaProduct } from "../lib/api/types";
-import { SHOWCASE_SECTION_GUTTER_PX, SHOWCASE_SECTION_MAX_WIDTH } from "../lib/showcase-layout";
-import { formatPrice, normalizeShopName, safeImageUrl, sortedShopPrices } from "../lib/product-utils";
+import { getParaCategories, listParaProducts } from "../lib/demo-data/catalog";
+import type { ParaProduct } from "../lib/demo-data/types";
+import {
+  SHOWCASE_SECTION_GUTTER_PX,
+  SHOWCASE_SECTION_MAX_WIDTH,
+} from "../lib/showcase-layout";
+import {
+  formatPrice,
+  normalizeShopName,
+  safeImageUrl,
+  sortedShopPrices,
+} from "../lib/product-utils";
 
 const L = {
   bg: "#f8fafc",
@@ -33,11 +41,16 @@ function normParaCat(s: string) {
     .trim();
 }
 
-function resolveParaTopCategory(intention: ShowcaseIntention, categories: string[]): string | undefined {
+function resolveParaTopCategory(
+  intention: ShowcaseIntention,
+  categories: string[],
+): string | undefined {
   const list = categories.map((raw) => ({ raw, key: normParaCat(raw) }));
 
   if (intention === "bebe") {
-    const exactList = list.find(({ raw, key }) => raw.trim() === "Bébé" || key === "bebe");
+    const exactList = list.find(
+      ({ raw, key }) => raw.trim() === "Bébé" || key === "bebe",
+    );
     if (exactList) return exactList.raw;
     const word = list.find(({ key }) => /\bbebe\b/.test(key));
     if (word) return word.raw;
@@ -46,7 +59,9 @@ function resolveParaTopCategory(intention: ShowcaseIntention, categories: string
     return list.find(({ key }) => key.includes("solaire"))?.raw;
   }
   if (intention === "hygiene") {
-    return list.find(({ key }) => key.includes("hygiene") || key.includes("hygi"))?.raw;
+    return list.find(
+      ({ key }) => key.includes("hygiene") || key.includes("hygi"),
+    )?.raw;
   }
   if (intention === "visage") {
     return list.find(({ key }) => key.includes("visage"))?.raw;
@@ -82,11 +97,17 @@ const PARA_SHOWCASE_DEFINITIONS = [
     apiFallback: "Visage",
     chip: "Visage",
     bannerTitle: "Visage",
-    bannerImg: "https://images.unsplash.com/photo-1570172619643-d2b24d61be0f?q=80&w=800&auto=format&fit=crop",
+    bannerImg: "/images/item-cart.png",
   },
 ] as const;
 
-type LightStore = { name: string; price: string; best: boolean; dot: string; ok: boolean };
+type LightStore = {
+  name: string;
+  price: string;
+  best: boolean;
+  dot: string;
+  ok: boolean;
+};
 type LightCard = {
   id: string;
   brand: string;
@@ -106,7 +127,9 @@ function paraToLightCard(product: ParaProduct): LightCard {
     name: product.name,
     price: formatPrice(product.bestPrice),
     originalPrice:
-      product.originalPrice && product.originalPrice > product.bestPrice ? formatPrice(product.originalPrice) : undefined,
+      product.originalPrice && product.originalPrice > product.bestPrice
+        ? formatPrice(product.originalPrice)
+        : undefined,
     image: safeImageUrl(product.image),
     inStock: product.inStock,
     stores:
@@ -118,7 +141,15 @@ function paraToLightCard(product: ParaProduct): LightCard {
             best: index === 0,
             ok: shop.available !== false,
           }))
-        : [{ name: "Meilleur prix", dot: DOTS[0] ?? "#06b6d4", price: formatPrice(product.bestPrice), best: true, ok: true }],
+        : [
+            {
+              name: "Meilleur prix",
+              dot: DOTS[0] ?? "#06b6d4",
+              price: formatPrice(product.bestPrice),
+              best: true,
+              ok: true,
+            },
+          ],
   };
 }
 
@@ -130,7 +161,13 @@ function bannerSrcForRow(row: { bannerImg: string; bannerLocal?: string }) {
   return row.bannerLocal || row.bannerImg;
 }
 
-function LightProductCard({ p, fallbackImg }: { p: LightCard; fallbackImg: string }) {
+function LightProductCard({
+  p,
+  fallbackImg,
+}: {
+  p: LightCard;
+  fallbackImg: string;
+}) {
   const href = productParaHref(p.id);
   const stores = p.stores.filter((s) => s.name).slice(0, 3);
   const img = p.image || fallbackImg;
@@ -199,8 +236,18 @@ function LightProductCard({ p, fallbackImg }: { p: LightCard; fallbackImg: strin
         )}
       </a>
 
-      <div style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}>
-        <span style={{ fontSize: 10, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: L.orange }}>
+      <div
+        style={{ display: "flex", flex: 1, flexDirection: "column", gap: 8 }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            color: L.orange,
+          }}
+        >
           {p.brand}
         </span>
         <a
@@ -220,15 +267,54 @@ function LightProductCard({ p, fallbackImg }: { p: LightCard; fallbackImg: strin
         >
           {p.name}
         </a>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 18, fontWeight: 900, color: L.orange, whiteSpace: "nowrap" }}>{p.price}</span>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 8,
+            flexWrap: "wrap",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 18,
+              fontWeight: 900,
+              color: L.orange,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {p.price}
+          </span>
           {p.originalPrice && (
-            <span style={{ fontSize: 10, color: L.muted, textDecoration: "line-through" }}>{p.originalPrice}</span>
+            <span
+              style={{
+                fontSize: 10,
+                color: L.muted,
+                textDecoration: "line-through",
+              }}
+            >
+              {p.originalPrice}
+            </span>
           )}
         </div>
 
-        <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 6 }}>
-          <span style={{ fontSize: 9, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.06em", color: L.muted }}>
+        <div
+          style={{
+            marginTop: 4,
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 800,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              color: L.muted,
+            }}
+          >
             Comparer les prix
           </span>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -242,19 +328,55 @@ function LightProductCard({ p, fallbackImg }: { p: LightCard; fallbackImg: strin
                   borderRadius: 8,
                   padding: "6px 8px",
                   background: s.best ? "#f0fdf4" : L.mutedRow,
-                  border: s.best ? "1px solid #bbf7d0" : "1px solid transparent",
+                  border: s.best
+                    ? "1px solid #bbf7d0"
+                    : "1px solid transparent",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: s.dot, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, fontWeight: 500, color: L.foreground }}>{s.name}</span>
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: s.dot,
+                      flexShrink: 0,
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: L.foreground,
+                    }}
+                  >
+                    {s.name}
+                  </span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 10, fontWeight: 800, color: s.best ? "#16a34a" : L.foreground }}>{s.price}</span>
+                  <span
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: s.best ? "#16a34a" : L.foreground,
+                    }}
+                  >
+                    {s.price}
+                  </span>
                   {s.ok ? (
-                    <Check size={12} strokeWidth={3} style={{ color: "#22c55e" }} aria-hidden />
+                    <Check
+                      size={12}
+                      strokeWidth={3}
+                      style={{ color: "#22c55e" }}
+                      aria-hidden
+                    />
                   ) : (
-                    <X size={12} strokeWidth={3} style={{ color: "#f87171" }} aria-hidden />
+                    <X
+                      size={12}
+                      strokeWidth={3}
+                      style={{ color: "#f87171" }}
+                      aria-hidden
+                    />
                   )}
                 </div>
               </div>
@@ -312,7 +434,9 @@ export function ParapharmacieShowcaseLightSection() {
     () =>
       PARA_SHOWCASE_DEFINITIONS.map((def) => ({
         ...def,
-        api: resolveParaTopCategory(def.intention, paraTopCategories) ?? def.apiFallback,
+        api:
+          resolveParaTopCategory(def.intention, paraTopCategories) ??
+          def.apiFallback,
       })),
     [paraTopCategories],
   );
@@ -368,7 +492,14 @@ export function ParapharmacieShowcaseLightSection() {
   return (
     <section
       id="parapharmacie-accueil"
-      style={{ width: "100%", maxWidth: SHOWCASE_SECTION_MAX_WIDTH, margin: "0 auto", padding: `32px ${SHOWCASE_SECTION_GUTTER_PX}px`, boxSizing: "border-box", background: L.bg }}
+      style={{
+        width: "100%",
+        maxWidth: SHOWCASE_SECTION_MAX_WIDTH,
+        margin: "0 auto",
+        padding: `32px ${SHOWCASE_SECTION_GUTTER_PX}px`,
+        boxSizing: "border-box",
+        background: L.bg,
+      }}
     >
       <style>{`
         .para-light-card:hover {
@@ -428,8 +559,27 @@ export function ParapharmacieShowcaseLightSection() {
       `}</style>
 
       <div style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: "1.5rem", fontWeight: 900, color: L.foreground, margin: 0, lineHeight: 1.2 }}>Produits Parapharmacie</h2>
-        <p style={{ fontSize: 14, color: L.muted, marginTop: 6, marginBottom: 0 }}>Comparez les prix des parapharmacies tunisiennes</p>
+        <h2
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: 900,
+            color: L.foreground,
+            margin: 0,
+            lineHeight: 1.2,
+          }}
+        >
+          Produits Parapharmacie
+        </h2>
+        <p
+          style={{
+            fontSize: 14,
+            color: L.muted,
+            marginTop: 6,
+            marginBottom: 0,
+          }}
+        >
+          Comparez les prix des parapharmacies tunisiennes
+        </p>
       </div>
 
       <div className="para-light-layout">
@@ -452,7 +602,8 @@ export function ParapharmacieShowcaseLightSection() {
               referrerPolicy="no-referrer"
               onError={(e) => {
                 const el = e.currentTarget;
-                if (el.src !== activeCategory.bannerImg) el.src = activeCategory.bannerImg;
+                if (el.src !== activeCategory.bannerImg)
+                  el.src = activeCategory.bannerImg;
               }}
               style={{
                 position: "absolute",
@@ -468,11 +619,14 @@ export function ParapharmacieShowcaseLightSection() {
               style={{
                 position: "absolute",
                 inset: 0,
-                background: "linear-gradient(to top, rgba(0,0,0,0.6), transparent)",
+                background:
+                  "linear-gradient(to top, rgba(0,0,0,0.6), transparent)",
                 pointerEvents: "none",
               }}
             />
-            <div style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}>
+            <div
+              style={{ position: "absolute", bottom: 24, left: 24, right: 24 }}
+            >
               <span
                 style={{
                   color: "#fff",
@@ -488,15 +642,40 @@ export function ParapharmacieShowcaseLightSection() {
               >
                 Para
               </span>
-              <h3 style={{ color: "#fff", fontSize: 20, fontWeight: 900, margin: "6px 0 0", textShadow: "0 2px 12px rgba(0,0,0,0.35)" }}>
+              <h3
+                style={{
+                  color: "#fff",
+                  fontSize: 20,
+                  fontWeight: 900,
+                  margin: "6px 0 0",
+                  textShadow: "0 2px 12px rgba(0,0,0,0.35)",
+                }}
+              >
                 {activeCategory.bannerTitle}
               </h3>
             </div>
           </div>
         </div>
 
-        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 24,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              overflowX: "auto",
+              paddingBottom: 8,
+              scrollbarWidth: "none",
+            }}
+          >
             {resolvedRows.map((cat, i) => (
               <button
                 key={cat.intention}
@@ -510,8 +689,14 @@ export function ParapharmacieShowcaseLightSection() {
                   whiteSpace: "nowrap",
                   flexShrink: 0,
                   cursor: "pointer",
-                  border: i === chipIdx ? `1px solid ${L.orange}` : `1px solid ${L.border}`,
-                  boxShadow: i === chipIdx ? "0 2px 8px rgba(234,88,12,0.2)" : "0 1px 2px rgba(0,0,0,0.05)",
+                  border:
+                    i === chipIdx
+                      ? `1px solid ${L.orange}`
+                      : `1px solid ${L.border}`,
+                  boxShadow:
+                    i === chipIdx
+                      ? "0 2px 8px rgba(234,88,12,0.2)"
+                      : "0 1px 2px rgba(0,0,0,0.05)",
                   background: i === chipIdx ? L.orange : L.card,
                   color: i === chipIdx ? "#fff" : L.muted,
                 }}
@@ -594,20 +779,46 @@ export function ParapharmacieShowcaseLightSection() {
 
             <div ref={scrollerRef} className="para-light-scroll">
               {loading ? (
-                <div style={{ padding: "48px 24px", color: L.muted, fontSize: 14, fontWeight: 600, width: "100%", textAlign: "center" }}>
+                <div
+                  style={{
+                    padding: "48px 24px",
+                    color: L.muted,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    width: "100%",
+                    textAlign: "center",
+                  }}
+                >
                   Chargement…
                 </div>
               ) : products.length === 0 ? (
-                <div style={{ padding: "48px 24px", color: L.muted, fontSize: 14, fontWeight: 600, width: "100%", textAlign: "center" }}>
+                <div
+                  style={{
+                    padding: "48px 24px",
+                    color: L.muted,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    width: "100%",
+                    textAlign: "center",
+                  }}
+                >
                   Aucun produit dans cette catégorie.
                 </div>
               ) : (
-                products.map((p) => <LightProductCard key={p.id} p={p} fallbackImg={activeCategory.bannerImg} />)
+                products.map((p) => (
+                  <LightProductCard
+                    key={p.id}
+                    p={p}
+                    fallbackImg={activeCategory.bannerImg}
+                  />
+                ))
               )}
             </div>
           </div>
 
-          <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+          <div
+            style={{ display: "flex", justifyContent: "center", marginTop: 8 }}
+          >
             <a
               href={moreHref}
               style={{

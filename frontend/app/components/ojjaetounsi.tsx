@@ -191,7 +191,13 @@ function sortShops(shops: ShopPrice[]) {
 
 function ArrowRightIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M5 12H19M19 12L12 5M19 12L12 19"
         stroke="currentColor"
@@ -207,34 +213,88 @@ function IngredientIcon({ kind }: { kind: IngredientIconKind }) {
   switch (kind) {
     case "garlic":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-          <path d="M18 8.5C19.5 10.4 20.2 12.4 20.2 14.6V16H15.8V14.6C15.8 12.4 16.5 10.4 18 8.5Z" fill="#7C5DE8" />
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M18 8.5C19.5 10.4 20.2 12.4 20.2 14.6V16H15.8V14.6C15.8 12.4 16.5 10.4 18 8.5Z"
+            fill="#7C5DE8"
+          />
           <path
             d="M18 12.5C23.1 12.5 27 16.3 27 21.5C27 26.4 23.3 30 18.4 30H17.6C12.7 30 9 26.4 9 21.5C9 16.3 12.9 12.5 18 12.5Z"
             fill="#F7F3FF"
             stroke="#A78BFA"
             strokeWidth="1.5"
           />
-          <path d="M18 12.5V30" stroke="#D6C7FF" strokeWidth="1.4" strokeLinecap="round" />
-          <path d="M15.2 15.3C13.4 17.5 12.8 19.8 13.1 22.4" stroke="#DCCEFF" strokeWidth="1.2" strokeLinecap="round" />
-          <path d="M20.8 15.3C22.6 17.5 23.2 19.8 22.9 22.4" stroke="#DCCEFF" strokeWidth="1.2" strokeLinecap="round" />
+          <path
+            d="M18 12.5V30"
+            stroke="#D6C7FF"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+          <path
+            d="M15.2 15.3C13.4 17.5 12.8 19.8 13.1 22.4"
+            stroke="#DCCEFF"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
+          <path
+            d="M20.8 15.3C22.6 17.5 23.2 19.8 22.9 22.4"
+            stroke="#DCCEFF"
+            strokeWidth="1.2"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "harissa":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-          <path d="M23.8 9.5C24.3 8.2 25.4 7.1 26.8 6.7" stroke="#48B55A" strokeWidth="2.3" strokeLinecap="round" />
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M23.8 9.5C24.3 8.2 25.4 7.1 26.8 6.7"
+            stroke="#48B55A"
+            strokeWidth="2.3"
+            strokeLinecap="round"
+          />
           <path
             d="M21.8 11C16 9.6 10.3 13.4 9.4 19.2C8.5 24.8 12.6 29 17.6 29C23.7 29 29 24.2 28.6 18.1C28.4 14.4 25.8 11.8 21.8 11Z"
             fill="#FF5A43"
           />
-          <path d="M16.1 14.8C13.1 16.3 11.2 19.1 11 22.4" stroke="#FFB1A4" strokeWidth="1.8" strokeLinecap="round" />
+          <path
+            d="M16.1 14.8C13.1 16.3 11.2 19.1 11 22.4"
+            stroke="#FFB1A4"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "eggs":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-          <ellipse cx="18" cy="19" rx="8.8" ry="11.1" fill="#FFF7EA" stroke="#F0E2C9" strokeWidth="1.4" />
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
+          <ellipse
+            cx="18"
+            cy="19"
+            rx="8.8"
+            ry="11.1"
+            fill="#FFF7EA"
+            stroke="#F0E2C9"
+            strokeWidth="1.4"
+          />
           <circle cx="15.1" cy="15.8" r="1.4" fill="#E7D8C0" />
           <circle cx="21.5" cy="18.3" r="1.2" fill="#E7D8C0" />
           <circle cx="18.2" cy="22.8" r="1.1" fill="#E7D8C0" />
@@ -242,41 +302,94 @@ function IngredientIcon({ kind }: { kind: IngredientIconKind }) {
       );
     case "oliveOil":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
           <path d="M16 10.5H20V14.2H16V10.5Z" fill="#5E6D2F" />
           <path
             d="M14.2 14H21.8L23.3 25.8C23.5 27.7 22 29.4 20 29.4H16C14 29.4 12.5 27.7 12.7 25.8L14.2 14Z"
             fill="#F2C14C"
           />
-          <path d="M16.5 17.2C15.4 18.6 15 20 15.2 21.8" stroke="#FFF2B4" strokeWidth="1.4" strokeLinecap="round" />
-          <path d="M18.7 7.6C19.9 8.7 20.5 9.7 20.5 10.8" stroke="#5E6D2F" strokeWidth="1.7" strokeLinecap="round" />
+          <path
+            d="M16.5 17.2C15.4 18.6 15 20 15.2 21.8"
+            stroke="#FFF2B4"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+          <path
+            d="M18.7 7.6C19.9 8.7 20.5 9.7 20.5 10.8"
+            stroke="#5E6D2F"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "onions":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-          <path d="M18 7.5C20.6 10 22 12.8 22 15.8V28" stroke="#C98A00" strokeWidth="1.8" strokeLinecap="round" />
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M18 7.5C20.6 10 22 12.8 22 15.8V28"
+            stroke="#C98A00"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
           <path
             d="M18 10.5C24 10.5 28 14.8 28 20.5C28 25.8 24.2 29.5 18.8 29.5H17.2C11.8 29.5 8 25.8 8 20.5C8 14.8 12 10.5 18 10.5Z"
             fill="#FFCB45"
             stroke="#D89716"
             strokeWidth="1.5"
           />
-          <path d="M18 10.5V29.5" stroke="#E3A93C" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M13.5 12.5C11.7 14.6 10.8 17.1 10.9 20" stroke="#FFE18B" strokeWidth="1.3" strokeLinecap="round" />
-          <path d="M22.5 12.5C24.3 14.6 25.2 17.1 25.1 20" stroke="#FFE18B" strokeWidth="1.3" strokeLinecap="round" />
+          <path
+            d="M18 10.5V29.5"
+            stroke="#E3A93C"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M13.5 12.5C11.7 14.6 10.8 17.1 10.9 20"
+            stroke="#FFE18B"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
+          <path
+            d="M22.5 12.5C24.3 14.6 25.2 17.1 25.1 20"
+            stroke="#FFE18B"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+          />
         </svg>
       );
     case "salt":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
           <path
             d="M14.8 9.5H21.2L22.4 14.2L23.5 27.1C23.6 28.6 22.4 29.8 20.9 29.8H15.1C13.6 29.8 12.4 28.6 12.5 27.1L13.6 14.2L14.8 9.5Z"
             fill="#F7F7F9"
             stroke="#D7DAE1"
             strokeWidth="1.4"
           />
-          <path d="M14.6 13.8H21.4" stroke="#B9C1CC" strokeWidth="1.6" strokeLinecap="round" />
+          <path
+            d="M14.6 13.8H21.4"
+            stroke="#B9C1CC"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
           <circle cx="16.4" cy="21.5" r="0.9" fill="#CED4DD" />
           <circle cx="20.1" cy="19.4" r="0.8" fill="#CED4DD" />
           <circle cx="18.1" cy="24.1" r="0.9" fill="#CED4DD" />
@@ -284,9 +397,23 @@ function IngredientIcon({ kind }: { kind: IngredientIconKind }) {
       );
     case "tomatoPaste":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
-          <path d="M12 9.2H24V26.8C24 28.1 22.9 29.2 21.6 29.2H14.4C13.1 29.2 12 28.1 12 26.8V9.2Z" fill="#D1E37A" />
-          <path d="M11 9.2H25" stroke="#51630D" strokeWidth="2" strokeLinecap="round" />
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M12 9.2H24V26.8C24 28.1 22.9 29.2 21.6 29.2H14.4C13.1 29.2 12 28.1 12 26.8V9.2Z"
+            fill="#D1E37A"
+          />
+          <path
+            d="M11 9.2H25"
+            stroke="#51630D"
+            strokeWidth="2"
+            strokeLinecap="round"
+          />
           <path d="M12 13H24" stroke="#92B14B" strokeWidth="1.6" />
           <path d="M12 24H24" stroke="#92B14B" strokeWidth="1.6" />
           <circle cx="18" cy="19" r="4.8" fill="#FFC42F" />
@@ -298,7 +425,13 @@ function IngredientIcon({ kind }: { kind: IngredientIconKind }) {
       );
     case "tomatoes":
       return (
-        <svg width="34" height="34" viewBox="0 0 36 36" fill="none" aria-hidden="true">
+        <svg
+          width="34"
+          height="34"
+          viewBox="0 0 36 36"
+          fill="none"
+          aria-hidden="true"
+        >
           <circle cx="18" cy="18" r="9.5" fill="#EF4E42" />
           <path
             d="M18 9.3L20.1 12.4L23.9 12.1L21.4 15L22.3 18.8L18.8 17.4L15.7 19.6L15.8 15.8L12.9 13.4L16.5 12.5L18 9.3Z"
@@ -329,13 +462,33 @@ function OjjaDishArtwork() {
           <stop offset="0%" stopColor="#FFE38F" />
           <stop offset="100%" stopColor="#F5A623" />
         </radialGradient>
-        <linearGradient id="ojjaDishMerguez" x1="70" y1="190" x2="248" y2="155" gradientUnits="userSpaceOnUse">
+        <linearGradient
+          id="ojjaDishMerguez"
+          x1="70"
+          y1="190"
+          x2="248"
+          y2="155"
+          gradientUnits="userSpaceOnUse"
+        >
           <stop offset="0%" stopColor="#C84C2C" />
           <stop offset="45%" stopColor="#8F2E20" />
           <stop offset="100%" stopColor="#F5955E" />
         </linearGradient>
-        <filter id="ojjaDishShadow" x="33" y="41" width="254" height="240" filterUnits="userSpaceOnUse">
-          <feDropShadow dx="0" dy="18" stdDeviation="16" floodColor="#4A170F" floodOpacity="0.32" />
+        <filter
+          id="ojjaDishShadow"
+          x="33"
+          y="41"
+          width="254"
+          height="240"
+          filterUnits="userSpaceOnUse"
+        >
+          <feDropShadow
+            dx="0"
+            dy="18"
+            stdDeviation="16"
+            floodColor="#4A170F"
+            floodOpacity="0.32"
+          />
         </filter>
       </defs>
 
@@ -353,13 +506,44 @@ function OjjaDishArtwork() {
       <circle cx="118" cy="141" r="15" fill="url(#ojjaDishYolk)" />
       <circle cx="205" cy="190" r="17" fill="url(#ojjaDishYolk)" />
 
-      <path d="M78 225C114 195 161 175 229 164" stroke="url(#ojjaDishMerguez)" strokeWidth="20" strokeLinecap="round" />
-      <path d="M100 96C139 112 188 107 239 121" stroke="url(#ojjaDishMerguez)" strokeWidth="18" strokeLinecap="round" opacity="0.95" />
+      <path
+        d="M78 225C114 195 161 175 229 164"
+        stroke="url(#ojjaDishMerguez)"
+        strokeWidth="20"
+        strokeLinecap="round"
+      />
+      <path
+        d="M100 96C139 112 188 107 239 121"
+        stroke="url(#ojjaDishMerguez)"
+        strokeWidth="18"
+        strokeLinecap="round"
+        opacity="0.95"
+      />
 
-      <path d="M84 174C104 157 118 139 126 111" stroke="#56C167" strokeWidth="11" strokeLinecap="round" />
-      <path d="M228 234C246 218 257 198 260 176" stroke="#5CBF64" strokeWidth="10" strokeLinecap="round" />
-      <path d="M210 98C234 117 249 136 257 157" stroke="#F24934" strokeWidth="11" strokeLinecap="round" />
-      <path d="M150 238C167 224 182 208 192 186" stroke="#6ACB73" strokeWidth="9" strokeLinecap="round" />
+      <path
+        d="M84 174C104 157 118 139 126 111"
+        stroke="#56C167"
+        strokeWidth="11"
+        strokeLinecap="round"
+      />
+      <path
+        d="M228 234C246 218 257 198 260 176"
+        stroke="#5CBF64"
+        strokeWidth="10"
+        strokeLinecap="round"
+      />
+      <path
+        d="M210 98C234 117 249 136 257 157"
+        stroke="#F24934"
+        strokeWidth="11"
+        strokeLinecap="round"
+      />
+      <path
+        d="M150 238C167 224 182 208 192 186"
+        stroke="#6ACB73"
+        strokeWidth="9"
+        strokeLinecap="round"
+      />
 
       <g fill="#3E8A42">
         <circle cx="87" cy="205" r="4.2" />
@@ -384,8 +568,20 @@ function OjjaDishArtwork() {
         <circle cx="126" cy="248" r="1.8" />
       </g>
 
-      <path d="M138 66C146 54 158 50 171 53" stroke="#FFFFFF" strokeWidth="5" strokeLinecap="round" opacity="0.24" />
-      <path d="M189 69C196 58 208 55 218 57" stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" opacity="0.18" />
+      <path
+        d="M138 66C146 54 158 50 171 53"
+        stroke="#FFFFFF"
+        strokeWidth="5"
+        strokeLinecap="round"
+        opacity="0.24"
+      />
+      <path
+        d="M189 69C196 58 208 55 218 57"
+        stroke="#FFFFFF"
+        strokeWidth="4.5"
+        strokeLinecap="round"
+        opacity="0.18"
+      />
     </svg>
   );
 }
@@ -449,7 +645,9 @@ function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
               />
               {shop.name}
             </span>
-            <span className="ojja-price-row__value">{formatPrice(shop.price)}</span>
+            <span className="ojja-price-row__value">
+              {formatPrice(shop.price)}
+            </span>
           </div>
         ))}
       </div>
@@ -458,14 +656,22 @@ function IngredientCard({ ingredient }: { ingredient: Ingredient }) {
 }
 
 function computeRecipeTotals() {
-  const totals: Record<ShopName, number> = { Carrefour: 0, Monoprix: 0, GeantDrive: 0 };
+  const totals: Record<ShopName, number> = {
+    Carrefour: 0,
+    Monoprix: 0,
+    GeantDrive: 0,
+  };
   for (const ing of ingredients) {
     for (const shop of ing.shops) {
       totals[shop.name] += shop.price;
     }
   }
-  const sorted = (Object.entries(totals) as [ShopName, number][]).sort((a, b) => a[1] - b[1]);
-  const avg = Object.values(totals).reduce((s, v) => s + v, 0) / Object.values(totals).length;
+  const sorted = (Object.entries(totals) as [ShopName, number][]).sort(
+    (a, b) => a[1] - b[1],
+  );
+  const avg =
+    Object.values(totals).reduce((s, v) => s + v, 0) /
+    Object.values(totals).length;
   return { totals, sorted, avg };
 }
 
@@ -1210,7 +1416,8 @@ function OjjaEtTounsiSection() {
           </div>
 
           <div className="heading">
-            Comparez une <span className="font-playfair-display text-gradient">ojja</span>
+            Comparez une{" "}
+            <span className="font-playfair-display text-gradient">ojja</span>
             <br />
             ingredient par ingredient
           </div>
@@ -1241,19 +1448,40 @@ function OjjaEtTounsiSection() {
               </div>
               {/* overlay lives OUTSIDE plate-core so overflow:hidden doesn't clip it */}
               <div className="ojja-dish-hover__overlay" aria-hidden="true">
-                <div className="ojja-dish-overlay__label">Couffin · 8 ingrédients</div>
+                <div className="ojja-dish-overlay__label">
+                  Couffin · 8 ingrédients
+                </div>
                 <div className="ojja-dish-overlay__divider" />
-                <div className="ojja-dish-overlay__title">Prix moyen recette</div>
-                <div className="ojja-dish-overlay__price">{formatPrice(recipeTotals.avg)}</div>
+                <div className="ojja-dish-overlay__title">
+                  Prix moyen recette
+                </div>
+                <div className="ojja-dish-overlay__price">
+                  {formatPrice(recipeTotals.avg)}
+                </div>
                 <div className="ojja-dish-overlay__divider" />
                 {recipeTotals.sorted.map(([shop, total], i) => (
                   <div key={shop} className="ojja-dish-overlay__row">
-                    <span className="ojja-shop-dot" style={{ backgroundColor: shopStyles[shop].color }} />
-                    <span style={{ color: i === 0 ? "#A8FFD3" : undefined }}>{shop}</span>
-                    <span style={{ marginLeft: "auto", color: i === 0 ? "#A8FFD3" : undefined, fontWeight: 800 }}>{formatPrice(total)}</span>
+                    <span
+                      className="ojja-shop-dot"
+                      style={{ backgroundColor: shopStyles[shop].color }}
+                    />
+                    <span style={{ color: i === 0 ? "#A8FFD3" : undefined }}>
+                      {shop}
+                    </span>
+                    <span
+                      style={{
+                        marginLeft: "auto",
+                        color: i === 0 ? "#A8FFD3" : undefined,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {formatPrice(total)}
+                    </span>
                   </div>
                 ))}
-                <div className="ojja-dish-overlay__sub">Meilleur prix : {recipeTotals.sorted[0][0]}</div>
+                <div className="ojja-dish-overlay__sub">
+                  Meilleur prix : {recipeTotals.sorted[0][0]}
+                </div>
               </div>
             </div>
 
@@ -1267,8 +1495,9 @@ function OjjaEtTounsiSection() {
 
         <div className="ojja-section__footer">
           <p>
-            Le meilleur prix de chaque ingredient est visible sur la carte, et le
-            hover ouvre le classement complet Monoprix, Carrefour et GeantDrive.
+            Le meilleur prix de chaque ingredient est visible sur la carte, et
+            le hover ouvre le classement complet Monoprix, Carrefour et
+            GeantDrive.
           </p>
           <a href="/products" className="ojja-section__cta">
             Explorer le panier

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import type { DetailedAnalyticsResponse } from "../lib/api/types";
+import type { DetailedAnalyticsResponse } from "../lib/demo-data/types";
 import { normalizeShopName, shopLogo } from "../lib/product-utils";
 
 type FilterKey = "ecommerce" | "para" | "super" | "nouveaux";
@@ -14,35 +14,147 @@ interface StoreCard {
   prix: number;
 }
 
-const BASE = "https://1111-galylio-startup.vercel.app";
-
 const fallbackStores: StoreCard[] = [
   // E-commerce
-  { categories: "ecommerce new", href: "https://www.mytek.tn",          logo: `${BASE}/_next/image?url=%2Fimages%2Ft%C3%A9l%C3%A9chargement%20(4).png&w=256&q=75`,       name: "Mytek",      tags: ["HOT"], prix: 842.16 },
-  { categories: "ecommerce",     href: "https://www.spacenet.tn",        logo: `${BASE}/_next/image?url=%2Fimages%2Fspacenet-removebg-preview.png&w=256&q=75`,              name: "Spacenet",              prix: 800.45 },
-  { categories: "ecommerce",     href: "https://www.tunisianet.tn",      logo: `${BASE}/_next/image?url=%2Fimages%2Ft%C3%A9l%C3%A9chargement%20(6).png&w=256&q=75`,        name: "Tunisianet",            prix: 815.72 },
-  { categories: "ecommerce new", href: "https://www.technopro.com.tn",   logo: `${BASE}/_next/image?url=%2Fimages%2Ftechnopro-logo.jpg&w=256&q=75`,                         name: "Oxtek",      tags: ["NEW"], prix: 855.93 },
-  { categories: "ecommerce",     href: "https://www.batam.tn",           logo: `${BASE}/_next/image?url=%2Fimages%2Flogo-batam.jpg&w=256&q=75`,                             name: "Batam",                 prix: 828.38 },
-  { categories: "ecommerce new", href: "https://www.darty.com.tn",       logo: `/images/darty-logo.webp`,                                                                      name: "Darty",      tags: ["NEW"], prix: 867.54 },
+  {
+    categories: "ecommerce new",
+    href: "/products",
+    logo: "/images/logo/logo.svg",
+    name: "Mytek",
+    tags: ["HOT"],
+    prix: 842.16,
+  },
+  {
+    categories: "ecommerce",
+    href: "/products",
+    logo: "/images/logo/logo.svg",
+    name: "Spacenet",
+    prix: 800.45,
+  },
+  {
+    categories: "ecommerce",
+    href: "/products",
+    logo: "/images/logo/logo.svg",
+    name: "Tunisianet",
+    prix: 815.72,
+  },
+  {
+    categories: "ecommerce new",
+    href: "/products",
+    logo: "/images/logo/logo.svg",
+    name: "Oxtek",
+    tags: ["NEW"],
+    prix: 855.93,
+  },
+  {
+    categories: "ecommerce",
+    href: "/products",
+    logo: "/images/logo/logo.svg",
+    name: "Batam",
+    prix: 828.38,
+  },
+  {
+    categories: "ecommerce new",
+    href: "/products",
+    logo: `/images/darty-logo.webp`,
+    name: "Darty",
+    tags: ["NEW"],
+    prix: 867.54,
+  },
   // Supermarché
-  { categories: "super new",     href: "https://www.carrefour.com.tn",        logo: `/images/carrefour.png`,  name: "Carrefour",         tags: ["NEW"], prix: 12.90 },
-  { categories: "super",         href: "https://www.monoprix.com.tn",         logo: `/images/monoprix.png`,   name: "Monoprix",                         prix: 13.50 },
-  { categories: "super",         href: "https://www.geant.com.tn",            logo: `/images/geant.png`,      name: "Géant",                            prix: 13.80 },
-  { categories: "super new",     href: "https://www.mgmarche.tn",             logo: `/images/mg.png`,         name: "MG",                tags: ["NEW"], prix: 13.20 },
-  { categories: "super",         href: "https://www.aziza.com.tn",            logo: `/images/aziza.png`,      name: "Aziza",                            prix: 13.60 },
-  { categories: "super",         href: "https://www.carrefourexpress.com.tn", logo: `/images/carrefour.png`,  name: "Carrefour Express",                prix: 14.10 },
+  {
+    categories: "super new",
+    href: "/products",
+    logo: `/images/carrefour.png`,
+    name: "Carrefour",
+    tags: ["NEW"],
+    prix: 12.9,
+  },
+  {
+    categories: "super",
+    href: "/products",
+    logo: `/images/monoprix.png`,
+    name: "Monoprix",
+    prix: 13.5,
+  },
+  {
+    categories: "super",
+    href: "/products",
+    logo: `/images/geant.png`,
+    name: "Géant",
+    prix: 13.8,
+  },
+  {
+    categories: "super new",
+    href: "/products",
+    logo: `/images/mg.png`,
+    name: "MG",
+    tags: ["NEW"],
+    prix: 13.2,
+  },
+  {
+    categories: "super",
+    href: "/products",
+    logo: `/images/aziza.png`,
+    name: "Aziza",
+    prix: 13.6,
+  },
+  {
+    categories: "super",
+    href: "/products",
+    logo: `/images/carrefour.png`,
+    name: "Carrefour Express",
+    prix: 14.1,
+  },
   // Parapharmacie
-  { categories: "para new",      href: "https://www.pharmashop.tn",     logo: `/images/parahouse.png`,  name: "Parahouse",  tags: ["NEW"], prix: 28.50 },
-  { categories: "para",          href: "https://www.parapharmacie.tn",  logo: `/images/parafendri.jpg`, name: "Parafendri",               prix: 31.00 },
-  { categories: "para new",      href: "https://www.tunisie-para.tn",   logo: `/images/parashop.png`,   name: "Parashop",   tags: ["NEW"], prix: 29.90 },
+  {
+    categories: "para new",
+    href: "/para",
+    logo: `/images/parahouse.png`,
+    name: "Parahouse",
+    tags: ["NEW"],
+    prix: 28.5,
+  },
+  {
+    categories: "para",
+    href: "/para",
+    logo: `/images/parafendri.jpg`,
+    name: "Parafendri",
+    prix: 31.0,
+  },
+  {
+    categories: "para new",
+    href: "/para",
+    logo: `/images/parashop.png`,
+    name: "Parashop",
+    tags: ["NEW"],
+    prix: 29.9,
+  },
 ];
 
 const RANK_LABEL = ["1er", "2ème", "3ème"];
 
-const MONTHS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+const MONTHS = [
+  "Jan",
+  "Fév",
+  "Mar",
+  "Avr",
+  "Mai",
+  "Jun",
+  "Jul",
+  "Aoû",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Déc",
+];
 
 // Generate 12-month history ending at `current`, with realistic variance
-function fallbackHistory(current: number, variance: number, pattern: number[]): number[] {
+function fallbackHistory(
+  current: number,
+  variance: number,
+  pattern: number[],
+): number[] {
   return pattern.map((offset, i) => {
     const progress = i / (pattern.length - 1);
     const base = current * (1 - variance) + current * variance * progress;
@@ -58,20 +170,54 @@ const HISTORY_PATTERNS: Record<string, number[]> = {
 };
 
 const RANK_COLORS = ["#3BDEB9", "#94A3B8", "#F59E0B"];
-const RANK_PATTERNS: [number, keyof typeof HISTORY_PATTERNS][] = [[0.15, "A"], [0.16, "B"], [0.14, "C"]];
+const RANK_PATTERNS: [number, keyof typeof HISTORY_PATTERNS][] = [
+  [0.15, "A"],
+  [0.16, "B"],
+  [0.14, "C"],
+];
 
 function RankMedalIcon({ rank }: { rank: number }) {
   const tones = [
-    { bg: "linear-gradient(135deg,#3BDEB9,#CCFF9B)", border: "rgba(204,255,155,0.75)", icon: "#08120d" },
-    { bg: "linear-gradient(135deg,#cbd5e1,#94a3b8)", border: "rgba(203,213,225,0.75)", icon: "#111827" },
-    { bg: "linear-gradient(135deg,#fbbf24,#f59e0b)", border: "rgba(251,191,36,0.8)", icon: "#1f1300" },
-  ][rank] || { bg: "linear-gradient(135deg,#3BDEB9,#CCFF9B)", border: "rgba(204,255,155,0.75)", icon: "#08120d" };
+    {
+      bg: "linear-gradient(135deg,#3BDEB9,#CCFF9B)",
+      border: "rgba(204,255,155,0.75)",
+      icon: "#08120d",
+    },
+    {
+      bg: "linear-gradient(135deg,#cbd5e1,#94a3b8)",
+      border: "rgba(203,213,225,0.75)",
+      icon: "#111827",
+    },
+    {
+      bg: "linear-gradient(135deg,#fbbf24,#f59e0b)",
+      border: "rgba(251,191,36,0.8)",
+      icon: "#1f1300",
+    },
+  ][rank] || {
+    bg: "linear-gradient(135deg,#3BDEB9,#CCFF9B)",
+    border: "rgba(204,255,155,0.75)",
+    icon: "#08120d",
+  };
 
   return (
-    <span className="pdm-medal" style={{ background: tones.bg, borderColor: tones.border }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <span
+      className="pdm-medal"
+      style={{ background: tones.bg, borderColor: tones.border }}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        aria-hidden="true"
+      >
         <circle cx="12" cy="9.5" r="4.5" stroke={tones.icon} strokeWidth="2" />
-        <path d="M9 13.2L7.3 21l4.7-2.3L16.7 21 15 13.2" stroke={tones.icon} strokeWidth="2" strokeLinejoin="round" />
+        <path
+          d="M9 13.2L7.3 21l4.7-2.3L16.7 21 15 13.2"
+          stroke={tones.icon}
+          strokeWidth="2"
+          strokeLinejoin="round"
+        />
       </svg>
     </span>
   );
@@ -80,33 +226,63 @@ function RankMedalIcon({ rank }: { rank: number }) {
 function useIsLight() {
   const [light, setLight] = useState(false);
   useEffect(() => {
-    const check = () => setLight(document.documentElement.dataset.theme === "light");
+    const check = () =>
+      setLight(document.documentElement.dataset.theme === "light");
     check();
     const obs = new MutationObserver(check);
-    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    obs.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     return () => obs.disconnect();
   }, []);
   return light;
 }
 
-function Sparkline({ data, color, name }: { data: number[]; color: string; name: string }) {
+function Sparkline({
+  data,
+  color,
+  name,
+}: {
+  data: number[];
+  color: string;
+  name: string;
+}) {
   const isLight = useIsLight();
   const gridStroke = isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.05)";
-  const labelFill  = isLight ? "rgba(0,0,0,0.35)"  : "rgba(255,255,255,0.3)";
-  const W = 280, H = 90, padL = 28, padR = 8, padT = 10, padB = 22;
-  const cW = W - padL - padR, cH = H - padT - padB;
-  const min = Math.min(...data), max = Math.max(...data);
+  const labelFill = isLight ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.3)";
+  const W = 280,
+    H = 90,
+    padL = 28,
+    padR = 8,
+    padT = 10,
+    padB = 22;
+  const cW = W - padL - padR,
+    cH = H - padT - padB;
+  const min = Math.min(...data),
+    max = Math.max(...data);
   const range = max - min || 1;
   const px = (i: number) => padL + (i / (data.length - 1)) * cW;
   const py = (v: number) => padT + cH - ((v - min) / range) * cH;
 
-  const linePath = data.map((v, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(1)},${py(v).toFixed(1)}`).join(" ");
-  const areaPath = linePath + ` L${px(data.length - 1).toFixed(1)},${(padT + cH).toFixed(1)} L${padL},${(padT + cH).toFixed(1)} Z`;
+  const linePath = data
+    .map(
+      (v, i) => `${i === 0 ? "M" : "L"}${px(i).toFixed(1)},${py(v).toFixed(1)}`,
+    )
+    .join(" ");
+  const areaPath =
+    linePath +
+    ` L${px(data.length - 1).toFixed(1)},${(padT + cH).toFixed(1)} L${padL},${(padT + cH).toFixed(1)} Z`;
   const id = `spark-${name.replace(/\s/g, "")}`;
 
   return (
     <div className="pdm-spark">
-      <svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`} style={{ display: "block", overflow: "visible" }}>
+      <svg
+        width="100%"
+        height={H}
+        viewBox={`0 0 ${W} ${H}`}
+        style={{ display: "block", overflow: "visible" }}
+      >
         <defs>
           <linearGradient id={`${id}-area`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.22" />
@@ -120,29 +296,74 @@ function Sparkline({ data, color, name }: { data: number[]; color: string; name:
 
         {/* Grid lines */}
         {[0, 0.5, 1].map((t, i) => (
-          <line key={i} x1={padL} x2={W - padR} y1={padT + cH * t} y2={padT + cH * t}
-            stroke={gridStroke} strokeDasharray="3 3" />
+          <line
+            key={i}
+            x1={padL}
+            x2={W - padR}
+            y1={padT + cH * t}
+            y2={padT + cH * t}
+            stroke={gridStroke}
+            strokeDasharray="3 3"
+          />
         ))}
 
         {/* Area fill */}
         <path d={areaPath} fill={`url(#${id}-area)`} />
 
         {/* Line */}
-        <path d={linePath} fill="none" stroke={`url(#${id}-line)`} strokeWidth="2"
-          strokeLinecap="round" strokeLinejoin="round"
-          className="pdm-spark-line" />
+        <path
+          d={linePath}
+          fill="none"
+          stroke={`url(#${id}-line)`}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="pdm-spark-line"
+        />
 
         {/* End dot */}
-        <circle cx={px(data.length - 1)} cy={py(data[data.length - 1])} r="3.5"
-          fill={color} stroke="rgba(0,0,0,0.6)" strokeWidth="1.5" />
+        <circle
+          cx={px(data.length - 1)}
+          cy={py(data[data.length - 1])}
+          r="3.5"
+          fill={color}
+          stroke="rgba(0,0,0,0.6)"
+          strokeWidth="1.5"
+        />
 
         {/* Y labels */}
-        <text x={padL - 4} y={padT + 4} textAnchor="end" fontSize="8" fill={labelFill} fontWeight="600">{max.toFixed(2)}</text>
-        <text x={padL - 4} y={padT + cH + 4} textAnchor="end" fontSize="8" fill={labelFill} fontWeight="600">{min.toFixed(2)}</text>
+        <text
+          x={padL - 4}
+          y={padT + 4}
+          textAnchor="end"
+          fontSize="8"
+          fill={labelFill}
+          fontWeight="600"
+        >
+          {max.toFixed(2)}
+        </text>
+        <text
+          x={padL - 4}
+          y={padT + cH + 4}
+          textAnchor="end"
+          fontSize="8"
+          fill={labelFill}
+          fontWeight="600"
+        >
+          {min.toFixed(2)}
+        </text>
 
         {/* X month labels — show 4 evenly */}
-        {[0, 3, 7, 11].map(i => (
-          <text key={i} x={px(i)} y={H - 4} textAnchor="middle" fontSize="8" fill={labelFill} fontWeight="600">
+        {[0, 3, 7, 11].map((i) => (
+          <text
+            key={i}
+            x={px(i)}
+            y={H - 4}
+            textAnchor="middle"
+            fontSize="8"
+            fill={labelFill}
+            fontWeight="600"
+          >
             {MONTHS[i]}
           </text>
         ))}
@@ -153,9 +374,9 @@ function Sparkline({ data, color, name }: { data: number[]; color: string; name:
 
 const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "ecommerce", label: "E-commerce" },
-  { key: "para",      label: "Parapharmacie" },
-  { key: "super",     label: "Supermarché" },
-  { key: "nouveaux",  label: "Nouveaux" },
+  { key: "para", label: "Parapharmacie" },
+  { key: "super", label: "Supermarché" },
+  { key: "nouveaux", label: "Nouveaux" },
 ];
 
 interface DemoSectionProps {
@@ -165,18 +386,20 @@ interface DemoSectionProps {
 function domainForShop(name: string) {
   const normalized = name.toLowerCase().replace(/_/g, "");
   const domains: Record<string, string> = {
-    tunisianet: "https://www.tunisianet.com.tn",
-    spacenet: "https://spacenet.tn",
-    mytek: "https://www.mytek.tn",
-    darty: "https://www.darty.com.tn",
-    parashop: "https://www.parashop.tn",
-    parafendri: "https://www.parafendri.tn",
-    pharmashop: "https://www.pharmashop.tn",
+    tunisianet: "/products",
+    spacenet: "/products",
+    mytek: "/products",
+    darty: "/products",
+    parashop: "/para",
+    parafendri: "/para",
+    pharmashop: "/para",
   };
-  return domains[normalized] || `https://${normalized}.tn`;
+  return domains[normalized] || "/products";
 }
 
-function analyticsStores(analytics?: DetailedAnalyticsResponse | null): StoreCard[] {
+function analyticsStores(
+  analytics?: DetailedAnalyticsResponse | null,
+): StoreCard[] {
   if (!analytics) return fallbackStores;
 
   const retail = analytics.retails_shops.map((shop, index) => ({
@@ -197,7 +420,9 @@ function analyticsStores(analytics?: DetailedAnalyticsResponse | null): StoreCar
     prix: shop.average_price,
   }));
 
-  const supermarketFallback = fallbackStores.filter((shop) => shop.categories.includes("super"));
+  const supermarketFallback = fallbackStores.filter((shop) =>
+    shop.categories.includes("super"),
+  );
   return [...retail, ...para, ...supermarketFallback];
 }
 
@@ -207,23 +432,28 @@ export default function DemoSection({ analytics }: DemoSectionProps) {
   const activeFilterIdx = FILTERS.findIndex((f) => f.key === active);
 
   const goPrevFilter = () => {
-    const nextIdx = activeFilterIdx <= 0 ? FILTERS.length - 1 : activeFilterIdx - 1;
+    const nextIdx =
+      activeFilterIdx <= 0 ? FILTERS.length - 1 : activeFilterIdx - 1;
     setActive(FILTERS[nextIdx].key);
   };
   const goNextFilter = () => {
-    const nextIdx = activeFilterIdx >= FILTERS.length - 1 ? 0 : activeFilterIdx + 1;
+    const nextIdx =
+      activeFilterIdx >= FILTERS.length - 1 ? 0 : activeFilterIdx + 1;
     setActive(FILTERS[nextIdx].key);
   };
 
   const filtered = stores
-    .filter(s => active === "nouveaux" ? s.categories.includes("new") : s.categories.includes(active))
+    .filter((s) =>
+      active === "nouveaux"
+        ? s.categories.includes("new")
+        : s.categories.includes(active),
+    )
     .sort((a, b) => a.prix - b.prix)
     .slice(0, 3);
 
   // Podium order: [2nd, 1st, 3rd]
-  const podium = filtered.length === 3
-    ? [filtered[1], filtered[0], filtered[2]]
-    : filtered;
+  const podium =
+    filtered.length === 3 ? [filtered[1], filtered[0], filtered[2]] : filtered;
 
   const podiumIndex = filtered.length === 3 ? [1, 0, 2] : [0, 1, 2];
 
@@ -1005,33 +1235,110 @@ export default function DemoSection({ analytics }: DemoSectionProps) {
         <div className="row">
           <div className="col-12">
             <div className="heading-section center mb-60">
-              <img loading="lazy" decoding="async" fetchPriority="low" className="img-bg" src="/images/item/grid-2.webp" alt="" />
-              <svg className="pdm-heading-art" width="459" height="242" viewBox="0 0 459 242" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <img
+                loading="lazy"
+                decoding="async"
+                fetchPriority="low"
+                className="img-bg"
+                src="/images/item/grid-2.webp"
+                alt=""
+              />
+              <svg
+                className="pdm-heading-art"
+                width="459"
+                height="242"
+                viewBox="0 0 459 242"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
                 <defs>
-                  <linearGradient id="pdm_g1" x1="375" y1="625" x2="-132.784" y2="483.917" gradientUnits="userSpaceOnUse">
-                    <stop stopColor="#3BDEB9" /><stop offset="0.5" stopColor="#77E590" /><stop offset="1" stopColor="#CCFF9B" />
+                  <linearGradient
+                    id="pdm_g1"
+                    x1="375"
+                    y1="625"
+                    x2="-132.784"
+                    y2="483.917"
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop stopColor="#3BDEB9" />
+                    <stop offset="0.5" stopColor="#77E590" />
+                    <stop offset="1" stopColor="#CCFF9B" />
                   </linearGradient>
-                  <linearGradient id="pdm_g2" x1="195" y1="4" x2="195" y2="228.526" gradientUnits="userSpaceOnUse">
-                    <stop stopOpacity="0" /><stop offset="1" />
+                  <linearGradient
+                    id="pdm_g2"
+                    x1="195"
+                    y1="4"
+                    x2="195"
+                    y2="228.526"
+                    gradientUnits="userSpaceOnUse"
+                  >
+                    <stop stopOpacity="0" />
+                    <stop offset="1" />
                   </linearGradient>
-                  <linearGradient id="pdm_g1_light" x1="390" y1="16" x2="68" y2="230" gradientUnits="userSpaceOnUse">
+                  <linearGradient
+                    id="pdm_g1_light"
+                    x1="390"
+                    y1="16"
+                    x2="68"
+                    y2="230"
+                    gradientUnits="userSpaceOnUse"
+                  >
                     <stop stopColor="#4C1D95" />
                     <stop offset="0.55" stopColor="#6D28D9" />
                     <stop offset="1" stopColor="#A78BFA" />
                   </linearGradient>
-                  <linearGradient id="pdm_g2_light" x1="195" y1="4" x2="195" y2="241" gradientUnits="userSpaceOnUse">
+                  <linearGradient
+                    id="pdm_g2_light"
+                    x1="195"
+                    y1="4"
+                    x2="195"
+                    y2="241"
+                    gradientUnits="userSpaceOnUse"
+                  >
                     <stop stopColor="rgba(255,255,255,0)" />
                     <stop offset="0.72" stopColor="rgba(91,33,182,0.07)" />
                     <stop offset="1" stopColor="rgba(15,23,42,0.04)" />
                   </linearGradient>
                 </defs>
-                <rect className="pdm-heading-bg" x="6" y="4" width="378" height="237" fill="url(#pdm_g2)" />
-                <text className="pdm-heading-glyph" x="80" y="200" fontSize="220" fontFamily="Arial Black, Arial, sans-serif" fontWeight="bold"
-                  stroke="url(#pdm_g1)" strokeWidth="6" fill="none">50</text>
-                <text className="pdm-heading-glyph" x="370" y="100" fontSize="110" fontFamily="Arial Black, Arial, sans-serif" fontWeight="bold"
-                  stroke="url(#pdm_g1)" strokeWidth="4" fill="none">+</text>
+                <rect
+                  className="pdm-heading-bg"
+                  x="6"
+                  y="4"
+                  width="378"
+                  height="237"
+                  fill="url(#pdm_g2)"
+                />
+                <text
+                  className="pdm-heading-glyph"
+                  x="80"
+                  y="200"
+                  fontSize="220"
+                  fontFamily="Arial Black, Arial, sans-serif"
+                  fontWeight="bold"
+                  stroke="url(#pdm_g1)"
+                  strokeWidth="6"
+                  fill="none"
+                >
+                  50
+                </text>
+                <text
+                  className="pdm-heading-glyph"
+                  x="370"
+                  y="100"
+                  fontSize="110"
+                  fontFamily="Arial Black, Arial, sans-serif"
+                  fontWeight="bold"
+                  stroke="url(#pdm_g1)"
+                  strokeWidth="4"
+                  fill="none"
+                >
+                  +
+                </text>
               </svg>
-              <div className="heading fw-6 mb-8 wow fadeInUp h1" data-wow-delay="0s">
+              <div
+                className="heading fw-6 mb-8 wow fadeInUp h1"
+                data-wow-delay="0s"
+              >
                 <span className="fw-4 fst-italic font-playfair-display animationtext letters rotate-3">
                   <span className="cd-words-wrapper">
                     <span className="item-text is-visible">Magasins</span>
@@ -1041,68 +1348,140 @@ export default function DemoSection({ analytics }: DemoSectionProps) {
                 </span>
                 &nbsp;Indexés
               </div>
-              <p className="wow fadeInUp" data-wow-delay="0.1s">Comparez les prix en temps réel sur les plus grandes boutiques en ligne de Tunisie.</p>
+              <p className="wow fadeInUp" data-wow-delay="0.1s">
+                Comparez les prix en temps réel sur les plus grandes boutiques
+                en ligne de Tunisie.
+              </p>
             </div>
           </div>
         </div>
 
         {/* Filter bar */}
         <div className="pdm-filter-mobile-nav wow fadeInUp" data-wow-delay="0s">
-          <button type="button" className="pdm-filter-arrow" onClick={goPrevFilter} aria-label="Filtre précédent">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <button
+            type="button"
+            className="pdm-filter-arrow"
+            onClick={goPrevFilter}
+            aria-label="Filtre précédent"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M15 6l-6 6 6 6"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
-          <div className="pdm-filter-mobile-pill">{FILTERS[activeFilterIdx]?.label || "Filtre"}</div>
-          <button type="button" className="pdm-filter-arrow" onClick={goNextFilter} aria-label="Filtre suivant">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          <div className="pdm-filter-mobile-pill">
+            {FILTERS[activeFilterIdx]?.label || "Filtre"}
+          </div>
+          <button
+            type="button"
+            className="pdm-filter-arrow"
+            onClick={goNextFilter}
+            aria-label="Filtre suivant"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="M9 6l6 6-6 6"
+                stroke="currentColor"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           </button>
         </div>
         <div className="pdm-filter-bar wow fadeInUp" data-wow-delay="0s">
-          {FILTERS.map(f => (
+          {FILTERS.map((f) => (
             <button
               key={f.key}
               className={`pdm-filter-btn tf-btn-3 light_skew_hover${active === f.key ? " active" : ""}`}
-              onClick={() => setActive(f.key)}>
+              onClick={() => setActive(f.key)}
+            >
               {f.label}
             </button>
           ))}
         </div>
 
         {/* Podium */}
-        <div className={`pdm-stage wow fadeInUp${active === "para" ? " is-para" : ""}`} data-wow-delay="0.1s">
+        <div
+          className={`pdm-stage wow fadeInUp${active === "para" ? " is-para" : ""}`}
+          data-wow-delay="0.1s"
+        >
           {podium.map((card, colIdx) => {
             const rank = podiumIndex[colIdx]; // 0=1st, 1=2nd, 2=3rd
             const isFirst = rank === 0;
-            const diffPct = rank === 0 ? null : (((card.prix - cheapest) / cheapest) * 100).toFixed(1);
+            const diffPct =
+              rank === 0
+                ? null
+                : (((card.prix - cheapest) / cheapest) * 100).toFixed(1);
 
             return (
-              <div key={card.name} className="pdm-col" style={{ marginBottom: isFirst ? 0 : 0 }}>
-                <a href={card.href} target="_blank" rel="noopener noreferrer" className={`pdm-card${isFirst ? " first" : ""}`}>
+              <div
+                key={card.name}
+                className="pdm-col"
+                style={{ marginBottom: isFirst ? 0 : 0 }}
+              >
+                <a
+                  href={card.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`pdm-card${isFirst ? " first" : ""}`}
+                >
                   <RankMedalIcon rank={rank} />
                   <div className="pdm-logo-wrap">
-                    <img src={card.logo} alt={card.name} loading="lazy" decoding="async" fetchPriority="low" sizes="120px" />
+                    <img
+                      src={card.logo}
+                      alt={card.name}
+                      loading="lazy"
+                      decoding="async"
+                      fetchPriority="low"
+                      sizes="120px"
+                    />
                   </div>
                   <div className="pdm-body">
                     <div className="pdm-store-name">
                       {card.name}
-                      {card.tags?.map(t => <span key={t} className="pdm-tag">{t}</span>)}
+                      {card.tags?.map((t) => (
+                        <span key={t} className="pdm-tag">
+                          {t}
+                        </span>
+                      ))}
                     </div>
                     <p className="pdm-explain">
-                      Moyenne sur 12 mois glissants — repère pour comparer les enseignes au même produit.
+                      Moyenne sur 12 mois glissants — repère pour comparer les
+                      enseignes au même produit.
                     </p>
                     <div className="pdm-price-panel">
                       <span className="pdm-price-label">Prix moyen</span>
                       <div className="pdm-price-row">
-                        <span className="pdm-price-num">{card.prix.toFixed(2)}</span>
+                        <span className="pdm-price-num">
+                          {card.prix.toFixed(2)}
+                        </span>
                         <span className="pdm-price-unit">DT</span>
                       </div>
-                      {isFirst
-                        ? <span className="pdm-best-badge">Moins cher</span>
-                        : <span className="pdm-diff-badge">+{diffPct}% vs. meilleur prix</span>
-                      }
+                      {isFirst ? (
+                        <span className="pdm-best-badge">Moins cher</span>
+                      ) : (
+                        <span className="pdm-diff-badge">
+                          +{diffPct}% vs. meilleur prix
+                        </span>
+                      )}
                     </div>
                   </div>
                 </a>
@@ -1113,9 +1492,15 @@ export default function DemoSection({ analytics }: DemoSectionProps) {
 
                 {/* Price evolution chart */}
                 <div className="pdm-spark">
-                  <div className="pdm-spark-title">Évolution du prix (12 mois)</div>
+                  <div className="pdm-spark-title">
+                    Évolution du prix (12 mois)
+                  </div>
                   <Sparkline
-                    data={fallbackHistory(card.prix, RANK_PATTERNS[rank][0], HISTORY_PATTERNS[RANK_PATTERNS[rank][1]])}
+                    data={fallbackHistory(
+                      card.prix,
+                      RANK_PATTERNS[rank][0],
+                      HISTORY_PATTERNS[RANK_PATTERNS[rank][1]],
+                    )}
                     color={RANK_COLORS[rank]}
                     name={card.name}
                   />

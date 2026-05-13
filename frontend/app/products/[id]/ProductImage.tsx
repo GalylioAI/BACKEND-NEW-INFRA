@@ -19,5 +19,12 @@ export default function ProductImage({
     setImage(safeImageUrl(src));
   }, [src]);
 
-  return <img src={image} alt={alt} onError={() => setImage(PRODUCT_IMAGE_FALLBACK)} style={style} />;
+  return (
+    <img
+      src={image}
+      alt={alt}
+      onError={() => setImage(PRODUCT_IMAGE_FALLBACK)}
+      style={style}
+    />
+  );
 }

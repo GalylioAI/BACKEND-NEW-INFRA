@@ -1,122 +1,95 @@
-import { apiFetch } from "./client";
+import { apiRequest, primeSessionFromRefresh } from "./client";
+import { endpoints } from "./endpoints";
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "./token-store";
 import type {
-  ChangePasswordPayload,
+  AccessTokenResponse,
+  LoginRequest,
   LoginResponse,
-  UserCreate,
-  UserLogin,
-  UserProfileUpdate,
+  MessageResponse,
   UserResponse,
 } from "./types";
+import { normalizeUser } from "./types";
 
-export function signupUser(payload: UserCreate) {
-  return apiFetch<{ user_id: string; email: string }>("/users/signup", {
+export async function login(payload: LoginRequest) {
+  const result = await apiRequest<LoginResponse>(endpoints.auth.login, {
     method: "POST",
-    body: payload,
+    body: { identifier: payload.email, password: payload.password },
   });
+
+  if (result.access_token) {
+    setAccessToken(result.access_token);
+  }
+
+  return result;
 }
 
-export function signinUser(payload: UserLogin) {
-  return apiFetch<LoginResponse>("/auth/login", {
+export async function googleLogin(idToken: string) {
+  const result = await apiRequest<LoginResponse>(endpoints.auth.google, {
     method: "POST",
-    body: payload,
+    body: { id_token: idToken },
   });
+
+  if (result.access_token) {
+    setAccessToken(result.access_token);
+  }
+
+  return result;
 }
 
-export function getCurrentUser(token: string) {
-  return apiFetch<UserResponse>("/users/me", {
-    token,
-    cache: "no-store",
-  });
+export async function verifyLogin2FA(code: string, pendingToken: string) {
+  const result = await apiRequest<AccessTokenResponse>(
+    endpoints.otp.login2faVerify,
+    {
+      method: "POST",
+      body: { code },
+      headers: { Authorization: `Bearer ${pendingToken}` },
+    },
+  );
+  setAccessToken(result.access_token);
+  return result;
 }
 
-export function updateProfile(token: string, payload: UserProfileUpdate) {
-  return apiFetch<UserResponse>("/users/me", {
-    method: "PUT",
-    token,
-    body: payload,
-  });
+export async function refreshSession() {
+  const token = await primeSessionFromRefresh();
+  return token;
 }
 
-export function changePassword(token: string, payload: ChangePasswordPayload) {
-  return apiFetch<{ message?: string }>("/users/me/password", {
-    method: "PUT",
-    token,
-    body: payload,
+export async function currentUser() {
+  const user = await apiRequest<UserResponse>(endpoints.users.me, {
+    method: "GET",
+    auth: true,
   });
+  return normalizeUser(user);
 }
 
-export function deleteAccount(token: string) {
-  return apiFetch<{ message?: string }>("/users/me", {
-    method: "DELETE",
-    token,
-  });
+export async function logout() {
+  const token = getAccessToken();
+  try {
+    await apiRequest<MessageResponse>(endpoints.auth.logout, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      retryOnAuthFailure: false,
+    });
+  } finally {
+    clearAccessToken();
+  }
 }
 
-// Password reset — 3-step flow
-export function requestPasswordReset(email: string) {
-  return apiFetch<{ message?: string }>("/otp/password-reset/send", {
-    method: "POST",
-    body: { email },
-  });
+export async function logoutAll() {
+  try {
+    await apiRequest<MessageResponse>(endpoints.auth.logoutAll, {
+      method: "POST",
+      auth: true,
+    });
+  } finally {
+    clearAccessToken();
+  }
 }
 
-export function verifyPasswordResetCode(email: string, code: string) {
-  return apiFetch<{ reset_token: string }>("/otp/password-reset/verify", {
-    method: "POST",
-    body: { email, code },
-  });
-}
-
-export function applyPasswordReset(
-  reset_token: string,
-  new_password: string,
-  new_password_confirm: string,
-) {
-  return apiFetch<{ message?: string }>("/otp/password-reset/apply", {
-    method: "POST",
-    body: { reset_token, new_password, new_password_confirm },
-  });
-}
-
-// Email verification
-export function sendEmailVerification(token: string) {
-  return apiFetch<{ message?: string }>("/otp/email/send", {
-    method: "POST",
-    token,
-  });
-}
-
-export function verifyEmail(token: string, code: string) {
-  return apiFetch<{ is_verified: boolean }>("/otp/email/verify", {
-    method: "POST",
-    token,
-    body: { code },
-  });
-}
-
-// Token management
-export function refreshToken() {
-  return apiFetch<{ access_token: string }>("/auth/refresh", {
-    method: "POST",
-    credentials: "include", // relies on HttpOnly refresh_token cookie
-  });
-}
-
-export function logoutUser(token: string) {
-  return apiFetch<{ message?: string }>("/auth/logout", {
-    method: "POST",
-    token,
-  });
-}
-
-export function logoutAllSessions(token: string) {
-  return apiFetch<{ message?: string }>("/auth/logout-all", {
-    method: "POST",
-    token,
-  });
-}
-
-// Gouvernorats (required for signup region picker)
-export function getGouvernorats() {
-  return apiFetch<Array<{ id: number; name: string }>>("/gouvernorats");
+export function clearAuthToken() {
+  clearAccessToken();
 }
