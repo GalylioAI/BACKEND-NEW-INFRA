@@ -8,6 +8,7 @@ var sensitiveHeaders = []string{
 	"X-User-Email",
 	"X-Internal-Secret",
 	"X-2FA-Session-Token",
+	"X-2FA-Pending-Token",
 }
 
 func StripSensitiveHeaders(next http.Handler) http.Handler {

@@ -16,23 +16,39 @@ import (
 	"github.com/google/uuid"
 )
 
-const (
-	refreshCookieName       = "refresh_token"
-	legacyRefreshCookieName = "__Host-refresh_token"
-	refreshCookiePath       = "/auth"
-)
+const legacyRefreshCookieName = "__Host-refresh_token"
+
+type RefreshCookieConfig struct {
+	Name     string
+	Path     string
+	Domain   string
+	MaxAge   time.Duration
+	HTTPOnly bool
+	Secure   bool
+	SameSite http.SameSite
+}
 
 type Handler struct {
 	service        *service.Service
 	internalSecret string
-	refreshTTL     time.Duration
-	cookieSecure   bool
-	cookieDomain   string
+	refreshCookie  RefreshCookieConfig
 	healthCheck    http.HandlerFunc
 }
 
-func New(service *service.Service, internalSecret string, refreshTTL time.Duration, cookieSecure bool, cookieDomain string, healthCheck ...http.HandlerFunc) *Handler {
-	h := &Handler{service: service, internalSecret: internalSecret, refreshTTL: refreshTTL, cookieSecure: cookieSecure, cookieDomain: cookieDomain}
+func New(service *service.Service, internalSecret string, refreshCookie RefreshCookieConfig, healthCheck ...http.HandlerFunc) *Handler {
+	if refreshCookie.Name == "" {
+		refreshCookie.Name = "refresh_token"
+	}
+	if refreshCookie.Path == "" {
+		refreshCookie.Path = "/auth"
+	}
+	if refreshCookie.MaxAge <= 0 {
+		refreshCookie.MaxAge = 30 * 24 * time.Hour
+	}
+	if refreshCookie.SameSite == 0 {
+		refreshCookie.SameSite = http.SameSiteStrictMode
+	}
+	h := &Handler{service: service, internalSecret: internalSecret, refreshCookie: refreshCookie}
 	if len(healthCheck) > 0 {
 		h.healthCheck = healthCheck[0]
 	}
@@ -107,7 +123,9 @@ func (h *Handler) google(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, r, err)
 		return
 	}
-	h.setRefreshCookie(w, tokens.RefreshToken)
+	if tokens.RefreshToken != "" {
+		h.setRefreshCookie(w, tokens.RefreshToken)
+	}
 	httpjson.Write(w, r, http.StatusOK, result)
 }
 
@@ -125,10 +143,13 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	if token := h.refreshCookieValue(r); token != "" {
-		if err := h.service.Logout(r.Context(), token); err != nil {
+		if err := h.service.Logout(r.Context(), token, r.UserAgent(), clientIP(r)); err != nil {
 			httpjson.WriteError(w, r, err)
 			return
 		}
+	} else if err := h.service.Logout(r.Context(), "", r.UserAgent(), clientIP(r)); err != nil {
+		httpjson.WriteError(w, r, err)
+		return
 	}
 	h.clearRefreshCookie(w)
 	httpjson.WriteNoContent(w, r)
@@ -224,41 +245,41 @@ func (h *Handler) internalCompleteTwoFactor(w http.ResponseWriter, r *http.Reque
 
 func (h *Handler) setRefreshCookie(w http.ResponseWriter, value string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     refreshCookieName,
+		Name:     h.refreshCookie.Name,
 		Value:    value,
-		Path:     refreshCookiePath,
-		Domain:   h.cookieDomain,
-		MaxAge:   int(h.refreshTTL.Seconds()),
-		HttpOnly: true,
-		Secure:   h.cookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		Path:     h.refreshCookie.Path,
+		Domain:   h.refreshCookie.Domain,
+		MaxAge:   int(h.refreshCookie.MaxAge.Seconds()),
+		HttpOnly: h.refreshCookie.HTTPOnly,
+		Secure:   h.refreshCookie.Secure,
+		SameSite: h.refreshCookie.SameSite,
 	})
 }
 
 func (h *Handler) clearRefreshCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     refreshCookieName,
+		Name:     h.refreshCookie.Name,
 		Value:    "",
-		Path:     refreshCookiePath,
-		Domain:   h.cookieDomain,
+		Path:     h.refreshCookie.Path,
+		Domain:   h.refreshCookie.Domain,
 		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   h.cookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		HttpOnly: h.refreshCookie.HTTPOnly,
+		Secure:   h.refreshCookie.Secure,
+		SameSite: h.refreshCookie.SameSite,
 	})
 	http.SetCookie(w, &http.Cookie{
 		Name:     legacyRefreshCookieName,
 		Value:    "",
 		Path:     "/",
 		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   h.cookieSecure,
-		SameSite: http.SameSiteStrictMode,
+		HttpOnly: h.refreshCookie.HTTPOnly,
+		Secure:   h.refreshCookie.Secure,
+		SameSite: h.refreshCookie.SameSite,
 	})
 }
 
 func (h *Handler) refreshCookieValue(r *http.Request) string {
-	if raw, _ := r.Cookie(refreshCookieName); raw != nil {
+	if raw, _ := r.Cookie(h.refreshCookie.Name); raw != nil {
 		return raw.Value
 	}
 	if raw, _ := r.Cookie(legacyRefreshCookieName); raw != nil {

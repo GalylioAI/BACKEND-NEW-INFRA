@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"time"
@@ -22,11 +23,77 @@ type Repository interface {
 	IncrementOTPAttempts(ctx context.Context, id uuid.UUID) (domain.OTPCode, error)
 	MarkOTPUsed(ctx context.Context, id uuid.UUID) error
 	CheckAndIncrementRateLimit(ctx context.Context, userID uuid.UUID, otpType string) (int, error)
+	RevokeTwoFactorChallenges(ctx context.Context, userID uuid.UUID, purpose string) error
+	CreateTwoFactorChallenge(ctx context.Context, userID uuid.UUID, jti, purpose, otpHash string, expiresAt time.Time, maxAttempts int16) (domain.TwoFactorChallenge, error)
+	GetTwoFactorChallengeByJTI(ctx context.Context, userID uuid.UUID, jti, purpose string) (domain.TwoFactorChallenge, error)
+	GetLatestTwoFactorChallenge(ctx context.Context, userID uuid.UUID, purpose string) (domain.TwoFactorChallenge, error)
+	IncrementTwoFactorChallengeAttempts(ctx context.Context, id uuid.UUID) (domain.TwoFactorChallenge, error)
+	ConsumeTwoFactorChallenge(ctx context.Context, id uuid.UUID) error
 	CreatePasswordResetToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (domain.PasswordResetToken, error)
 	GetPasswordResetToken(ctx context.Context, tokenHash string) (domain.PasswordResetToken, error)
 	MarkResetTokenUsed(ctx context.Context, id uuid.UUID) error
 	InvalidateResetTokens(ctx context.Context, userID uuid.UUID) error
 	Ping(ctx context.Context) error
+}
+
+func (r *PostgresRepository) RevokeTwoFactorChallenges(ctx context.Context, userID uuid.UUID, purpose string) error {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	_, err := r.pool.Exec(ctx, `
+		UPDATE two_factor_challenges
+		SET revoked_at = NOW()
+		WHERE user_id = $1 AND purpose = $2 AND consumed_at IS NULL AND revoked_at IS NULL`, userID, purpose)
+	return err
+}
+
+func (r *PostgresRepository) CreateTwoFactorChallenge(ctx context.Context, userID uuid.UUID, jti, purpose, otpHash string, expiresAt time.Time, maxAttempts int16) (domain.TwoFactorChallenge, error) {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	return scanTwoFactorChallenge(r.pool.QueryRow(ctx, `
+		INSERT INTO two_factor_challenges (user_id, jti, purpose, otp_hash, expires_at, max_attempts)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, user_id, jti, purpose, otp_hash, attempts, max_attempts, expires_at, consumed_at, revoked_at, created_at`,
+		userID, jti, purpose, otpHash, expiresAt, maxAttempts))
+}
+
+func (r *PostgresRepository) GetTwoFactorChallengeByJTI(ctx context.Context, userID uuid.UUID, jti, purpose string) (domain.TwoFactorChallenge, error) {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	return scanTwoFactorChallenge(r.pool.QueryRow(ctx, `
+		SELECT id, user_id, jti, purpose, otp_hash, attempts, max_attempts, expires_at, consumed_at, revoked_at, created_at
+		FROM two_factor_challenges
+		WHERE user_id = $1 AND jti = $2 AND purpose = $3
+		  AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()
+		LIMIT 1`, userID, jti, purpose))
+}
+
+func (r *PostgresRepository) GetLatestTwoFactorChallenge(ctx context.Context, userID uuid.UUID, purpose string) (domain.TwoFactorChallenge, error) {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	return scanTwoFactorChallenge(r.pool.QueryRow(ctx, `
+		SELECT id, user_id, jti, purpose, otp_hash, attempts, max_attempts, expires_at, consumed_at, revoked_at, created_at
+		FROM two_factor_challenges
+		WHERE user_id = $1 AND purpose = $2
+		  AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()
+		ORDER BY created_at DESC
+		LIMIT 1`, userID, purpose))
+}
+
+func (r *PostgresRepository) IncrementTwoFactorChallengeAttempts(ctx context.Context, id uuid.UUID) (domain.TwoFactorChallenge, error) {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	return scanTwoFactorChallenge(r.pool.QueryRow(ctx, `
+		UPDATE two_factor_challenges
+		SET attempts = attempts + 1
+		WHERE id = $1
+		RETURNING id, user_id, jti, purpose, otp_hash, attempts, max_attempts, expires_at, consumed_at, revoked_at, created_at`, id))
+}
+
+func (r *PostgresRepository) ConsumeTwoFactorChallenge(ctx context.Context, id uuid.UUID) error {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	_, err := r.pool.Exec(ctx, `UPDATE two_factor_challenges SET consumed_at = NOW() WHERE id = $1 AND consumed_at IS NULL AND revoked_at IS NULL`, id)
+	return err
 }
 
 type PostgresRepository struct {
@@ -195,4 +262,23 @@ func scanReset(row scanner) (domain.PasswordResetToken, error) {
 		return domain.PasswordResetToken{}, err
 	}
 	return reset, nil
+}
+
+func scanTwoFactorChallenge(row scanner) (domain.TwoFactorChallenge, error) {
+	var challenge domain.TwoFactorChallenge
+	var consumedAt, revokedAt sql.NullTime
+	err := row.Scan(&challenge.ID, &challenge.UserID, &challenge.JTI, &challenge.Purpose, &challenge.OTPHash, &challenge.Attempts, &challenge.MaxAttempts, &challenge.ExpiresAt, &consumedAt, &revokedAt, &challenge.CreatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.TwoFactorChallenge{}, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidTwoFASession, "2FA challenge is invalid or expired.")
+		}
+		return domain.TwoFactorChallenge{}, err
+	}
+	if consumedAt.Valid {
+		challenge.ConsumedAt = &consumedAt.Time
+	}
+	if revokedAt.Valid {
+		challenge.RevokedAt = &revokedAt.Time
+	}
+	return challenge, nil
 }

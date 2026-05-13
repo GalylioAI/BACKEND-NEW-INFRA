@@ -37,6 +37,7 @@ type RateLimiter struct {
 	logger          zerolog.Logger
 	script          *redis.Script
 	trustedProxyNet []*net.IPNet
+	limits          RateLimitConfig
 }
 
 type routeLimit struct {
@@ -44,12 +45,45 @@ type routeLimit struct {
 	Window time.Duration
 }
 
+func RouteLimit(limit int, window time.Duration) routeLimit {
+	return routeLimit{Limit: limit, Window: window}
+}
+
+type RateLimitConfig struct {
+	Default routeLimit
+	Login   routeLimit
+	OTP     routeLimit
+}
+
+func DefaultRateLimitConfig() RateLimitConfig {
+	return RateLimitConfig{
+		Default: routeLimit{Limit: 60, Window: time.Minute},
+		Login:   routeLimit{Limit: 5, Window: time.Minute},
+		OTP:     routeLimit{Limit: 3, Window: time.Minute},
+	}
+}
+
 func NewRateLimiter(client *redis.Client, logger zerolog.Logger, trustedProxyCIDRs []string) *RateLimiter {
+	return NewRateLimiterWithConfig(client, logger, trustedProxyCIDRs, DefaultRateLimitConfig())
+}
+
+func NewRateLimiterWithConfig(client *redis.Client, logger zerolog.Logger, trustedProxyCIDRs []string, limits RateLimitConfig) *RateLimiter {
+	defaults := DefaultRateLimitConfig()
+	if limits.Default.Limit <= 0 || limits.Default.Window <= 0 {
+		limits.Default = defaults.Default
+	}
+	if limits.Login.Limit <= 0 || limits.Login.Window <= 0 {
+		limits.Login = defaults.Login
+	}
+	if limits.OTP.Limit <= 0 || limits.OTP.Window <= 0 {
+		limits.OTP = defaults.OTP
+	}
 	return &RateLimiter{
 		client:          client,
 		logger:          logger,
 		script:          redis.NewScript(slidingWindowLua),
 		trustedProxyNet: parseTrustedProxyCIDRs(trustedProxyCIDRs),
+		limits:          limits,
 	}
 }
 
@@ -60,7 +94,7 @@ func (r *RateLimiter) Middleware(routeKey string) func(http.Handler) http.Handle
 				next.ServeHTTP(w, req)
 				return
 			}
-			limit := limitForRoute(routeKey)
+			limit := r.limitForRoute(routeKey)
 			allowed, retryAfter, err := r.allow(req.Context(), routeKey, r.clientIP(req), limit)
 			if err != nil {
 				r.logger.Warn().
@@ -131,19 +165,31 @@ func parseRedisNumber(value any) (int64, error) {
 }
 
 func limitForRoute(routeKey string) routeLimit {
+	return DefaultRateLimitConfig().limitForRoute(routeKey)
+}
+
+func (r *RateLimiter) limitForRoute(routeKey string) routeLimit {
+	if r == nil {
+		return limitForRoute(routeKey)
+	}
+	return r.limits.limitForRoute(routeKey)
+}
+
+func (c RateLimitConfig) limitForRoute(routeKey string) routeLimit {
 	switch routeKey {
 	case "POST /auth/login", "POST /auth/google":
-		return routeLimit{Limit: 5, Window: time.Minute}
+		return c.Login
 	case "POST /users/signup",
 		"POST /otp/email/send",
 		"POST /otp/email/verify",
-		"POST /otp/2fa/verify",
+		"POST /otp/2fa/login/verify",
+		"POST /otp/2fa/enable/verify",
 		"POST /otp/password-reset/send",
 		"POST /otp/password-reset/verify",
 		"POST /otp/password-reset/apply":
-		return routeLimit{Limit: 3, Window: time.Minute}
+		return c.OTP
 	default:
-		return routeLimit{Limit: 60, Window: time.Minute}
+		return c.Default
 	}
 }
 

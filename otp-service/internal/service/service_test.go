@@ -39,7 +39,7 @@ func TestGenerateOTPReturnsSixDigitsAndBcryptHash(t *testing.T) {
 	}
 }
 
-func TestPendingJWTVerifierAcceptsPendingAndAccessTokens(t *testing.T) {
+func TestPendingJWTVerifierAcceptsOnlyLoginPendingTokens(t *testing.T) {
 	privateKey, publicKeyPath := testJWTKey(t)
 	verifier, err := service.NewPendingJWTVerifier(publicKeyPath, "test-issuer", "test-audience")
 	if err != nil {
@@ -49,28 +49,25 @@ func TestPendingJWTVerifierAcceptsPendingAndAccessTokens(t *testing.T) {
 
 	pending := signToken(t, privateKey, service.PendingClaims{
 		Type:             "2fa_pending",
-		Context:          "login",
+		Purpose:          "2fa_login",
 		RegisteredClaims: registeredClaims(userID),
 	})
-	verifiedUserID, contextValue, err := verifier.Verify(pending)
+	claims, err := verifier.VerifyLoginPending(pending)
 	if err != nil {
 		t.Fatalf("pending token should verify: %v", err)
 	}
-	if verifiedUserID != userID || contextValue != "login" {
-		t.Fatalf("unexpected pending claims: user_id=%s context=%q", verifiedUserID, contextValue)
+	if claims.UserID != userID || claims.JTI == "" {
+		t.Fatalf("unexpected pending claims: %#v", claims)
 	}
 
 	access := signToken(t, privateKey, service.AccessClaims{
+		Type:             "access",
 		Role:             "user",
 		Email:            "user@example.com",
 		RegisteredClaims: registeredClaims(userID),
 	})
-	verifiedUserID, contextValue, err = verifier.Verify(access)
-	if err != nil {
-		t.Fatalf("access token should verify for 2FA enable confirmation: %v", err)
-	}
-	if verifiedUserID != userID || contextValue != "2fa_enable" {
-		t.Fatalf("unexpected access claims: user_id=%s context=%q", verifiedUserID, contextValue)
+	if _, err := verifier.VerifyLoginPending(access); err == nil {
+		t.Fatal("access token must not verify as login 2FA pending token")
 	}
 }
 
@@ -88,7 +85,7 @@ func TestPendingJWTVerifierRejectsGenericSignedToken(t *testing.T) {
 		IssuedAt:  jwtlib.NewNumericDate(time.Now()),
 		ID:        uuid.NewString(),
 	})
-	if _, _, err := verifier.Verify(raw); err == nil {
+	if _, err := verifier.VerifyLoginPending(raw); err == nil {
 		t.Fatal("generic signed token must not verify as a 2FA session")
 	}
 }

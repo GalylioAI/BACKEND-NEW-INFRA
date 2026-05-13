@@ -56,6 +56,7 @@ func Load() (Config, error) {
 			Name:         sharedcfg.String("DB_NAME", "alerts_db"),
 			User:         sharedcfg.String("DB_USER", "alerts_user"),
 			Password:     sharedcfg.String("DB_PASSWORD", "alerts_pass"),
+			SSLMode:      sharedcfg.String("DB_SSLMODE", "disable"),
 			MaxOpenConns: int32(maxOpen),
 			MaxIdleConns: int32(maxIdle),
 		},

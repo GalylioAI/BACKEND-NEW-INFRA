@@ -216,13 +216,22 @@ func (r *PostgresRepository) PendingOutbox(ctx context.Context, limit int) ([]do
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, alert_id, event_type, payload, published, publish_attempts, last_attempt_at, failed, created_at
-		FROM alert_outbox
-		WHERE published = false
-		  AND failed = false
-		  AND created_at < NOW() - INTERVAL '2 seconds'
-		ORDER BY created_at
-		LIMIT $1`, limit)
+		WITH claim AS (
+			SELECT id
+			FROM alert_outbox
+			WHERE published = false
+			  AND failed = false
+			  AND (claimed_at IS NULL OR claimed_at < NOW() - INTERVAL '5 minutes')
+			  AND created_at < NOW() - INTERVAL '2 seconds'
+			ORDER BY created_at
+			LIMIT $1
+			FOR UPDATE SKIP LOCKED
+		)
+		UPDATE alert_outbox o
+		SET claimed_at = NOW(), claimed_by = 'alerts-service'
+		FROM claim
+		WHERE o.id = claim.id
+		RETURNING o.id, o.alert_id, o.event_type, o.payload, o.published, o.publish_attempts, o.last_attempt_at, o.failed, o.created_at`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -258,14 +267,14 @@ func (r *PostgresRepository) RecordOutboxAttempt(ctx context.Context, id uuid.UU
 func (r *PostgresRepository) MarkOutboxFailed(ctx context.Context, id uuid.UUID) error {
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
-	_, err := r.pool.Exec(ctx, `UPDATE alert_outbox SET failed = true WHERE id = $1`, id)
+	_, err := r.pool.Exec(ctx, `UPDATE alert_outbox SET failed = true, claimed_at = NULL, claimed_by = NULL WHERE id = $1`, id)
 	return err
 }
 
 func (r *PostgresRepository) MarkOutboxPublished(ctx context.Context, id uuid.UUID) error {
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
-	_, err := r.pool.Exec(ctx, `UPDATE alert_outbox SET published = true WHERE id = $1`, id)
+	_, err := r.pool.Exec(ctx, `UPDATE alert_outbox SET published = true, processed_at = NOW(), claimed_at = NULL, claimed_by = NULL WHERE id = $1`, id)
 	return err
 }
 

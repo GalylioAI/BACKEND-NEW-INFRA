@@ -7,9 +7,11 @@ import (
 )
 
 const (
-	OTPTypeEmailVerify   = "email_verify"
-	OTPTypeTwoFactor     = "2fa"
-	OTPTypePasswordReset = "password_reset"
+	OTPTypeEmailVerify      = "email_verify"
+	OTPTypeTwoFactorLogin   = "2fa_login"
+	OTPTypeTwoFactorEnable  = "2fa_enable"
+	OTPTypeTwoFactorDisable = "2fa_disable"
+	OTPTypePasswordReset    = "password_reset"
 
 	ProviderManual = "manual"
 	ProviderGoogle = "google"
@@ -34,6 +36,20 @@ type PasswordResetToken struct {
 	Used      bool
 	ExpiresAt time.Time
 	CreatedAt time.Time
+}
+
+type TwoFactorChallenge struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	JTI         string
+	Purpose     string
+	OTPHash     string
+	Attempts    int16
+	MaxAttempts int16
+	ExpiresAt   time.Time
+	ConsumedAt  *time.Time
+	RevokedAt   *time.Time
+	CreatedAt   time.Time
 }
 
 type User struct {

@@ -103,18 +103,70 @@ func TestUpdateProfileTreatsFieldsAsOptional(t *testing.T) {
 	}
 }
 
+func TestChangeRoleRequiresSuperadminAndProtectsLastSuperadmin(t *testing.T) {
+	targetID := uuid.New()
+	adminActor := actor(uuid.New(), domain.RoleAdmin)
+	superActor := actor(uuid.New(), domain.RoleSuperAdmin)
+	repo := &fakeUserRepo{current: domain.User{ID: targetID, Role: domain.RoleUser}, superadminCount: 2}
+	svc := service.New(repo, fakeAuthClient{})
+
+	if _, err := svc.ChangeRole(context.Background(), adminActor, targetID, domain.RoleAdmin); apperr.From(err).Status != 403 {
+		t.Fatalf("expected admin role change to be forbidden, got %v", err)
+	}
+	if _, err := svc.ChangeRole(context.Background(), superActor, targetID, domain.RoleSuperAdmin); err != nil {
+		t.Fatalf("expected superadmin role change to pass: %v", err)
+	}
+	if repo.changedRole != domain.RoleSuperAdmin {
+		t.Fatalf("expected role to change to superadmin, got %q", repo.changedRole)
+	}
+
+	repo.current = domain.User{ID: superActor.ID, Role: domain.RoleSuperAdmin}
+	repo.superadminCount = 1
+	if _, err := svc.ChangeRole(context.Background(), superActor, superActor.ID, domain.RoleAdmin); apperr.From(err).Status != 403 {
+		t.Fatalf("expected last superadmin demotion to be forbidden, got %v", err)
+	}
+}
+
+func TestTargetAwareBanAndDeleteRequireSuperadminForAdminTargets(t *testing.T) {
+	targetID := uuid.New()
+	adminActor := actor(uuid.New(), domain.RoleAdmin)
+	superActor := actor(uuid.New(), domain.RoleSuperAdmin)
+	repo := &fakeUserRepo{current: domain.User{ID: targetID, Role: domain.RoleAdmin}, superadminCount: 2}
+	svc := service.New(repo, fakeAuthClient{})
+
+	if _, err := svc.SetBan(context.Background(), adminActor, targetID, true, nil); apperr.From(err).Status != 403 {
+		t.Fatalf("expected admin banning admin to be forbidden, got %v", err)
+	}
+	if _, err := svc.SetBan(context.Background(), superActor, targetID, true, nil); err != nil {
+		t.Fatalf("expected superadmin banning admin to pass: %v", err)
+	}
+
+	if err := svc.SoftDeleteManagedUser(context.Background(), adminActor, targetID); apperr.From(err).Status != 403 {
+		t.Fatalf("expected admin deleting admin to be forbidden, got %v", err)
+	}
+	if err := svc.SoftDeleteManagedUser(context.Background(), superActor, targetID); err != nil {
+		t.Fatalf("expected superadmin deleting admin to pass: %v", err)
+	}
+}
+
+func actor(id uuid.UUID, role string) service.Actor {
+	return service.Actor{ID: id, Role: role}
+}
+
 type fakeAuthClient struct{}
 
 func (fakeAuthClient) RevokeAllRefreshTokens(context.Context, uuid.UUID) error { return nil }
 
 type fakeUserRepo struct {
-	emailExists    bool
-	usernameExists bool
-	phoneExists    bool
-	created        repository.CreateUserParams
-	updated        repository.UpdateProfileParams
-	current        domain.User
-	eventType      string
+	emailExists     bool
+	usernameExists  bool
+	phoneExists     bool
+	created         repository.CreateUserParams
+	updated         repository.UpdateProfileParams
+	current         domain.User
+	eventType       string
+	changedRole     string
+	superadminCount int
 }
 
 func (f *fakeUserRepo) CreateUserWithOutbox(_ context.Context, params repository.CreateUserParams, eventType string, _ any) (domain.User, error) {
@@ -174,11 +226,14 @@ func (f *fakeUserRepo) SoftDelete(context.Context, uuid.UUID) error { return nil
 func (f *fakeUserRepo) List(context.Context, int, int) ([]domain.User, int64, error) {
 	return nil, 0, nil
 }
-func (f *fakeUserRepo) ChangeRole(context.Context, uuid.UUID, string) (domain.User, error) {
-	return domain.User{}, nil
+func (f *fakeUserRepo) ChangeRole(_ context.Context, _ uuid.UUID, role string) (domain.User, error) {
+	f.changedRole = role
+	user := f.current
+	user.Role = role
+	return user, nil
 }
 func (f *fakeUserRepo) SetBan(context.Context, uuid.UUID, bool, *string) (domain.User, error) {
-	return domain.User{}, nil
+	return f.current, nil
 }
 func (f *fakeUserRepo) RecordLoginFailure(context.Context, uuid.UUID, *time.Time) error {
 	return nil
@@ -194,6 +249,15 @@ func (f *fakeUserRepo) SetTwoFactor(context.Context, uuid.UUID, bool) (domain.Us
 	return domain.User{}, nil
 }
 func (f *fakeUserRepo) UpdatePasswordHash(context.Context, uuid.UUID, string) error {
+	return nil
+}
+func (f *fakeUserRepo) CountActiveSuperAdmins(context.Context) (int, error) {
+	if f.superadminCount == 0 {
+		return 1, nil
+	}
+	return f.superadminCount, nil
+}
+func (f *fakeUserRepo) CreateAuditEvent(context.Context, string, uuid.UUID, uuid.UUID, any) error {
 	return nil
 }
 func (f *fakeUserRepo) Ping(context.Context) error { return nil }

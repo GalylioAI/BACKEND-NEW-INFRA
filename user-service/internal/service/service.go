@@ -32,6 +32,16 @@ type AuthClient interface {
 	RevokeAllRefreshTokens(ctx context.Context, userID uuid.UUID) error
 }
 
+type Actor struct {
+	ID   uuid.UUID
+	Role string
+}
+
+type Options struct {
+	LoginMaxAttempts       int16
+	AccountLockoutDuration time.Duration
+}
+
 type HTTPAuthClient struct {
 	baseURL string
 	secret  string
@@ -76,13 +86,23 @@ func (c *HTTPAuthClient) RevokeAllRefreshTokens(ctx context.Context, userID uuid
 	return nil
 }
 
-func New(repo repository.Repository, authClient AuthClient) *Service {
+func New(repo repository.Repository, authClient AuthClient, options ...Options) *Service {
+	maxAttempts := int16(5)
+	lockoutDuration := 15 * time.Minute
+	if len(options) > 0 {
+		if options[0].LoginMaxAttempts > 0 {
+			maxAttempts = options[0].LoginMaxAttempts
+		}
+		if options[0].AccountLockoutDuration > 0 {
+			lockoutDuration = options[0].AccountLockoutDuration
+		}
+	}
 	return &Service{
 		repo:            repo,
 		authClient:      authClient,
 		validator:       validate.New(),
-		lockoutFailures: 5,
-		lockoutWindow:   15 * time.Minute,
+		lockoutFailures: maxAttempts,
+		lockoutWindow:   lockoutDuration,
 	}
 }
 
@@ -295,15 +315,25 @@ func (s *Service) SoftDelete(ctx context.Context, id uuid.UUID) error {
 	return s.authClient.RevokeAllRefreshTokens(ctx, id)
 }
 
-func (s *Service) SoftDeleteManagedUser(ctx context.Context, id uuid.UUID) error {
+func (s *Service) SoftDeleteManagedUser(ctx context.Context, actor Actor, id uuid.UUID) error {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return err
 	}
-	if user.Role == domain.RoleSuperAdmin {
-		return apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin accounts cannot be deleted via API.")
+	if user.Role == domain.RoleSuperAdmin && actor.Role == domain.RoleSuperAdmin {
+		if err := s.ensureNotLastSuperAdmin(ctx, user.ID, actor.ID); err != nil {
+			s.audit(ctx, "last_superadmin_action_blocked", user.ID, actor.ID, map[string]any{"action": "delete", "target_role": user.Role})
+			return err
+		}
 	}
-	return s.SoftDelete(ctx, id)
+	if err := s.authorizeTargetMutation(actor, user); err != nil {
+		return err
+	}
+	if err := s.SoftDelete(ctx, id); err != nil {
+		return err
+	}
+	s.audit(ctx, "user_deleted", id, actor.ID, map[string]any{"target_role": user.Role})
+	return nil
 }
 
 func (s *Service) ListUsers(ctx context.Context, page, perPage int) ([]domain.PublicUser, map[string]int, error) {
@@ -336,31 +366,46 @@ func (s *Service) GetAny(ctx context.Context, id uuid.UUID) (domain.PublicUser, 
 	return domain.Public(user), nil
 }
 
-func (s *Service) ChangeRole(ctx context.Context, id uuid.UUID, role string) (domain.PublicUser, error) {
-	if role != domain.RoleUser && role != domain.RoleAdmin {
-		return domain.PublicUser{}, apperr.New(http.StatusUnprocessableEntity, apperr.CodeInvalidRole, "Role must be user or admin.")
+func (s *Service) ChangeRole(ctx context.Context, actor Actor, id uuid.UUID, role string) (domain.PublicUser, error) {
+	if actor.Role != domain.RoleSuperAdmin {
+		return domain.PublicUser{}, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin access is required.")
+	}
+	if role != domain.RoleUser && role != domain.RoleAdmin && role != domain.RoleSuperAdmin {
+		return domain.PublicUser{}, apperr.New(http.StatusUnprocessableEntity, apperr.CodeInvalidRole, "Role must be user, admin, or superadmin.")
 	}
 	current, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return domain.PublicUser{}, err
 	}
-	if current.Role == domain.RoleSuperAdmin {
-		return domain.PublicUser{}, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin role cannot be changed via API.")
+	if current.Role == domain.RoleSuperAdmin && role != domain.RoleSuperAdmin {
+		if err := s.ensureNotLastSuperAdmin(ctx, current.ID, actor.ID); err != nil {
+			s.audit(ctx, "last_superadmin_action_blocked", current.ID, actor.ID, map[string]any{"action": "change_role", "new_role": role})
+			return domain.PublicUser{}, err
+		}
 	}
 	user, err := s.repo.ChangeRole(ctx, id, role)
 	if err != nil {
 		return domain.PublicUser{}, err
 	}
+	s.audit(ctx, "user_role_changed", id, actor.ID, map[string]any{"old_role": current.Role, "new_role": role})
 	return domain.Public(user), nil
 }
 
-func (s *Service) SetBan(ctx context.Context, id uuid.UUID, banned bool, reason *string) (domain.PublicUser, error) {
+func (s *Service) SetBan(ctx context.Context, actor Actor, id uuid.UUID, banned bool, reason *string) (domain.PublicUser, error) {
 	current, err := s.repo.GetByID(ctx, id)
 	if err != nil {
 		return domain.PublicUser{}, err
 	}
-	if current.Role == domain.RoleSuperAdmin && banned {
-		return domain.PublicUser{}, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin accounts cannot be banned via API.")
+	if banned {
+		if current.Role == domain.RoleSuperAdmin && actor.Role == domain.RoleSuperAdmin {
+			if err := s.ensureNotLastSuperAdmin(ctx, current.ID, actor.ID); err != nil {
+				s.audit(ctx, "last_superadmin_action_blocked", current.ID, actor.ID, map[string]any{"action": "ban", "target_role": current.Role})
+				return domain.PublicUser{}, err
+			}
+		}
+		if err := s.authorizeTargetMutation(actor, current); err != nil {
+			return domain.PublicUser{}, err
+		}
 	}
 	if reason != nil {
 		trimmed := strings.TrimSpace(*reason)
@@ -373,7 +418,36 @@ func (s *Service) SetBan(ctx context.Context, id uuid.UUID, banned bool, reason 
 	if banned {
 		_ = s.authClient.RevokeAllRefreshTokens(ctx, id)
 	}
+	s.audit(ctx, "user_banned", id, actor.ID, map[string]any{"is_banned": banned, "target_role": current.Role})
 	return domain.Public(user), nil
+}
+
+func (s *Service) authorizeTargetMutation(actor Actor, target domain.User) error {
+	if actor.Role != domain.RoleAdmin && actor.Role != domain.RoleSuperAdmin {
+		return apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Admin access is required.")
+	}
+	if (target.Role == domain.RoleAdmin || target.Role == domain.RoleSuperAdmin) && actor.Role != domain.RoleSuperAdmin {
+		return apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin access is required for admin targets.")
+	}
+	return nil
+}
+
+func (s *Service) ensureNotLastSuperAdmin(ctx context.Context, targetID, actorID uuid.UUID) error {
+	count, err := s.repo.CountActiveSuperAdmins(ctx)
+	if err != nil {
+		return err
+	}
+	if count <= 1 {
+		return apperr.New(http.StatusForbidden, apperr.CodeForbidden, "The last active superadmin cannot be removed, banned, deleted, or demoted.")
+	}
+	return nil
+}
+
+func (s *Service) audit(ctx context.Context, eventType string, userID, actorID uuid.UUID, metadata any) {
+	if s.repo == nil {
+		return
+	}
+	_ = s.repo.CreateAuditEvent(ctx, eventType, userID, actorID, metadata)
 }
 
 func (s *Service) CredentialByIdentifier(ctx context.Context, identifier string) (domain.CredentialUser, error) {

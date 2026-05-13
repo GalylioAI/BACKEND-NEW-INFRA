@@ -17,6 +17,7 @@ import (
 	"backend/shared/apperr"
 	"backend/shared/password"
 
+	jwtlib "github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -80,6 +81,29 @@ func TestManualLoginWithTwoFactorIssuesPendingJWTAndSendsOTP(t *testing.T) {
 	}
 }
 
+func TestGoogleLoginWithTwoFactorIssuesPendingJWTAndSendsOTP(t *testing.T) {
+	user := verifiedManualUser(t, true)
+	user.AuthProvider = domain.ProviderGoogle
+	user.PasswordHash = nil
+	repo := &fakeAuthRepo{}
+	otp := &fakeOTPClient{}
+	svc := service.New(repo, &fakeUserClient{user: user}, otp, testJWTManager(t), fakeGoogleVerifier{claims: service.GoogleClaims{Email: user.Email, Name: user.FullName}}, 30*24*time.Hour)
+
+	result, tokens, err := svc.GoogleLogin(context.Background(), "google-id-token", "device", net.ParseIP("127.0.0.1"))
+	if err != nil {
+		t.Fatalf("GoogleLogin returned error: %v", err)
+	}
+	if !result.TwoFactorRequired || result.TwoFactorSessionToken == "" {
+		t.Fatal("expected Google login to require 2FA")
+	}
+	if tokens.AccessToken != "" || tokens.RefreshToken != "" || repo.refreshCreated {
+		t.Fatal("Google login must not issue normal tokens before 2FA verification")
+	}
+	if !otp.sent {
+		t.Fatal("expected 2FA OTP to be requested")
+	}
+}
+
 func TestRefreshRotatesTokenAndIssuesAccess(t *testing.T) {
 	user := verifiedManualUser(t, false)
 	repo := &fakeAuthRepo{rotateUserID: user.ID}
@@ -94,6 +118,23 @@ func TestRefreshRotatesTokenAndIssuesAccess(t *testing.T) {
 	}
 	if !repo.refreshRotated {
 		t.Fatal("expected refresh token rotation")
+	}
+}
+
+func TestIssuedAccessTokenContainsAccessType(t *testing.T) {
+	user := verifiedManualUser(t, false)
+	manager := testJWTManager(t)
+	raw, _, err := manager.IssueAccess(user)
+	if err != nil {
+		t.Fatalf("IssueAccess returned error: %v", err)
+	}
+	parsed, _, err := jwtlib.NewParser().ParseUnverified(raw, jwtlib.MapClaims{})
+	if err != nil {
+		t.Fatalf("ParseUnverified returned error: %v", err)
+	}
+	claims := parsed.Claims.(jwtlib.MapClaims)
+	if claims["typ"] != "access" {
+		t.Fatalf("expected typ=access, got %#v", claims["typ"])
 	}
 }
 
@@ -163,6 +204,9 @@ func (f *fakeAuthRepo) RevokeRefreshToken(context.Context, string) error { retur
 func (f *fakeAuthRepo) RevokeAllRefreshTokens(context.Context, uuid.UUID) error {
 	return nil
 }
+func (f *fakeAuthRepo) CreateAuditEvent(context.Context, string, uuid.UUID, net.IP, string, any) error {
+	return nil
+}
 func (f *fakeAuthRepo) CreateTwoFactorSession(context.Context, uuid.UUID, string, time.Time) error {
 	f.twoFactorCreated = true
 	return nil
@@ -174,10 +218,12 @@ func (f *fakeAuthRepo) Ping(context.Context) error { return nil }
 
 type fakeOTPClient struct {
 	sent bool
+	jti  string
 }
 
-func (f *fakeOTPClient) SendLogin2FA(context.Context, uuid.UUID) error {
+func (f *fakeOTPClient) SendLogin2FA(_ context.Context, _ uuid.UUID, jti string) error {
 	f.sent = true
+	f.jti = jti
 	return nil
 }
 
@@ -201,4 +247,16 @@ func (f *fakeUserClient) RecordLoginSuccess(context.Context, uuid.UUID) error {
 }
 func (f *fakeUserClient) GetOrCreateGoogle(context.Context, string, string, string) (domain.User, bool, error) {
 	return f.user, false, nil
+}
+
+type fakeGoogleVerifier struct {
+	claims service.GoogleClaims
+	err    error
+}
+
+func (f fakeGoogleVerifier) Verify(context.Context, string) (service.GoogleClaims, error) {
+	if f.err != nil {
+		return service.GoogleClaims{}, f.err
+	}
+	return f.claims, nil
 }

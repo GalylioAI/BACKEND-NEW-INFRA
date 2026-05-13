@@ -16,6 +16,11 @@ func New(service, env string) zerolog.Logger {
 	if env != "production" {
 		level = zerolog.DebugLevel
 	}
+	if configured := strings.TrimSpace(os.Getenv("LOG_LEVEL")); configured != "" {
+		if parsed, err := zerolog.ParseLevel(configured); err == nil {
+			level = parsed
+		}
+	}
 	zerolog.SetGlobalLevel(level)
 	return zerolog.New(os.Stdout).With().Timestamp().Str("service", service).Logger()
 }

@@ -146,7 +146,7 @@ func (h *Handler) deleteMe(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
-	if !requireAdmin(w, r) {
+	if _, ok := requireAdmin(w, r); !ok {
 		return
 	}
 	page := queryInt(r, "page", 1)
@@ -160,7 +160,7 @@ func (h *Handler) listUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
-	if !requireAdmin(w, r) {
+	if _, ok := requireAdmin(w, r); !ok {
 		return
 	}
 	id, ok := parsePathUUID(w, r, "id")
@@ -176,7 +176,8 @@ func (h *Handler) getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) changeRole(w http.ResponseWriter, r *http.Request) {
-	if !requireAdmin(w, r) {
+	actor, ok := requireSuperAdmin(w, r)
+	if !ok {
 		return
 	}
 	id, ok := parsePathUUID(w, r, "id")
@@ -190,7 +191,7 @@ func (h *Handler) changeRole(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, r, err)
 		return
 	}
-	user, err := h.service.ChangeRole(r.Context(), id, req.Role)
+	user, err := h.service.ChangeRole(r.Context(), service.Actor{ID: actor.ID, Role: string(actor.Role)}, id, req.Role)
 	if err != nil {
 		httpjson.WriteError(w, r, err)
 		return
@@ -199,7 +200,8 @@ func (h *Handler) changeRole(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) setBan(w http.ResponseWriter, r *http.Request) {
-	if !requireAdmin(w, r) {
+	actor, ok := requireAdmin(w, r)
+	if !ok {
 		return
 	}
 	id, ok := parsePathUUID(w, r, "id")
@@ -214,7 +216,7 @@ func (h *Handler) setBan(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, r, err)
 		return
 	}
-	user, err := h.service.SetBan(r.Context(), id, req.IsBanned, req.Reason)
+	user, err := h.service.SetBan(r.Context(), service.Actor{ID: actor.ID, Role: string(actor.Role)}, id, req.IsBanned, req.Reason)
 	if err != nil {
 		httpjson.WriteError(w, r, err)
 		return
@@ -223,14 +225,15 @@ func (h *Handler) setBan(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
-	if !requireAdmin(w, r) {
+	actor, ok := requireAdmin(w, r)
+	if !ok {
 		return
 	}
 	id, ok := parsePathUUID(w, r, "id")
 	if !ok {
 		return
 	}
-	if err := h.service.SoftDeleteManagedUser(r.Context(), id); err != nil {
+	if err := h.service.SoftDeleteManagedUser(r.Context(), service.Actor{ID: actor.ID, Role: string(actor.Role)}, id); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}
@@ -385,22 +388,22 @@ func (h *Handler) internalGoogle(w http.ResponseWriter, r *http.Request) {
 	httpjson.Write(w, r, http.StatusOK, map[string]any{"user": user, "created": created})
 }
 
-func requireAdmin(w http.ResponseWriter, r *http.Request) bool {
+func requireAdmin(w http.ResponseWriter, r *http.Request) (userctx.User, bool) {
 	user, _ := userctx.FromContext(r.Context())
 	if !userctx.IsAdmin(user.Role) {
 		httpjson.WriteError(w, r, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Admin access is required."))
-		return false
+		return userctx.User{}, false
 	}
-	return true
+	return user, true
 }
 
-func requireSuperAdmin(w http.ResponseWriter, r *http.Request) bool {
+func requireSuperAdmin(w http.ResponseWriter, r *http.Request) (userctx.User, bool) {
 	user, _ := userctx.FromContext(r.Context())
-	if user.Role != userctx.RoleSuperAdmin {
+	if !userctx.IsSuperAdmin(user.Role) {
 		httpjson.WriteError(w, r, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "Superadmin access is required."))
-		return false
+		return userctx.User{}, false
 	}
-	return true
+	return user, true
 }
 
 func parsePathUUID(w http.ResponseWriter, r *http.Request, name string) (uuid.UUID, bool) {

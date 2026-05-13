@@ -21,11 +21,20 @@ func (r *PostgresRepository) PendingOutbox(ctx context.Context, limit int) ([]Ou
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, event_type, payload, created_at
-		FROM outbox_events
-		WHERE published_at IS NULL
-		ORDER BY created_at
-		LIMIT $1`, limit)
+		WITH claim AS (
+			SELECT id
+			FROM outbox_events
+			WHERE published_at IS NULL
+			  AND (claimed_at IS NULL OR claimed_at < NOW() - INTERVAL '5 minutes')
+			ORDER BY created_at
+			LIMIT $1
+			FOR UPDATE SKIP LOCKED
+		)
+		UPDATE outbox_events o
+		SET claimed_at = NOW(), claimed_by = 'user-service'
+		FROM claim
+		WHERE o.id = claim.id
+		RETURNING o.id, o.event_type, o.payload, o.created_at`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -44,6 +53,6 @@ func (r *PostgresRepository) PendingOutbox(ctx context.Context, limit int) ([]Ou
 func (r *PostgresRepository) MarkOutboxPublished(ctx context.Context, id uuid.UUID) error {
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
-	_, err := r.pool.Exec(ctx, `UPDATE outbox_events SET published_at = NOW() WHERE id = $1`, id)
+	_, err := r.pool.Exec(ctx, `UPDATE outbox_events SET published_at = NOW(), processed_at = NOW(), claimed_at = NULL, claimed_by = NULL WHERE id = $1`, id)
 	return err
 }

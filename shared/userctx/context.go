@@ -52,6 +52,27 @@ func FromContext(ctx context.Context) (User, bool) {
 	return user, ok
 }
 
+func RoleRank(role Role) int {
+	switch role {
+	case RoleUser:
+		return 10
+	case RoleAdmin:
+		return 20
+	case RoleSuperAdmin:
+		return 30
+	default:
+		return 0
+	}
+}
+
+func HasMinRole(role, minimum Role) bool {
+	return RoleRank(role) >= RoleRank(minimum) && RoleRank(minimum) > 0
+}
+
 func IsAdmin(role Role) bool {
-	return role == RoleAdmin || role == RoleSuperAdmin
+	return HasMinRole(role, RoleAdmin)
+}
+
+func IsSuperAdmin(role Role) bool {
+	return role == RoleSuperAdmin
 }

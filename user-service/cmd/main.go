@@ -48,7 +48,10 @@ func main() {
 
 	repo := repository.New(pool)
 	authClient := service.NewHTTPAuthClient(cfg.AuthServiceURL, cfg.InternalSecret)
-	userService := service.New(repo, authClient)
+	userService := service.New(repo, authClient, service.Options{
+		LoginMaxAttempts:       int16(cfg.LoginMaxAttempts),
+		AccountLockoutDuration: cfg.AccountLockoutDuration,
+	})
 
 	var publisher rabbit.Publisher = rabbit.NoopPublisher{}
 	var rabbitCheck health.Checker = func(context.Context) error { return nil }

@@ -37,8 +37,9 @@ func (h *Handler) Routes() http.Handler {
 	mux.Handle("POST /otp/email/verify", internalOnly(http.HandlerFunc(h.verifyEmail)))
 	mux.Handle("POST /otp/2fa/enable", protected(h.enableTwoFactor))
 	mux.Handle("POST /otp/2fa/disable", protected(h.disableTwoFactor))
+	mux.Handle("POST /otp/2fa/enable/verify", protected(h.verifyEnableTwoFactor))
 
-	mux.HandleFunc("POST /otp/2fa/verify", h.verifyTwoFactor)
+	mux.Handle("POST /otp/2fa/login/verify", internalOnly(http.HandlerFunc(h.verifyLoginTwoFactor)))
 	mux.HandleFunc("POST /otp/password-reset/send", h.sendPasswordReset)
 	mux.HandleFunc("POST /otp/password-reset/verify", h.verifyPasswordReset)
 	mux.HandleFunc("POST /otp/password-reset/apply", h.applyPasswordReset)
@@ -97,31 +98,47 @@ func (h *Handler) enableTwoFactor(w http.ResponseWriter, r *http.Request) {
 	if !decodeAndValidate(w, r, &req) {
 		return
 	}
-	sessionToken, err := h.service.EnableTwoFactor(r.Context(), user.ID, req.Password)
-	if err != nil {
+	if err := h.service.EnableTwoFactor(r.Context(), user.ID, req.Password); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}
 	httpjson.Write(w, r, http.StatusOK, map[string]string{
-		"message":       "Enter the code sent to your email to confirm 2FA activation",
-		"session_token": sessionToken,
+		"message": "Enter the code sent to your email to confirm 2FA activation",
 	})
 }
 
-func (h *Handler) verifyTwoFactor(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) verifyEnableTwoFactor(w http.ResponseWriter, r *http.Request) {
+	user, ok := userctx.FromContext(r.Context())
+	if !ok {
+		httpjson.WriteError(w, r, apperr.New(http.StatusUnauthorized, apperr.CodeUnauthorized, "Authentication is required."))
+		return
+	}
 	var req struct {
-		Code         string `json:"code" validate:"required,len=6,numeric"`
-		SessionToken string `json:"session_token" validate:"omitempty,max=4096"`
+		Code string `json:"code" validate:"required,len=6,numeric"`
 	}
 	if !decodeAndValidate(w, r, &req) {
 		return
 	}
-	sessionToken := twoFactorSessionToken(r, req.SessionToken)
-	if sessionToken == "" {
-		httpjson.WriteError(w, r, apperr.Validation(apperr.FieldErrors{"session_token": "2FA session token is required."}))
+	if err := h.service.VerifyEnableTwoFactor(r.Context(), user.ID, req.Code); err != nil {
+		httpjson.WriteError(w, r, err)
 		return
 	}
-	tokens, message, err := h.service.VerifyTwoFactor(r.Context(), req.Code, sessionToken)
+	httpjson.Write(w, r, http.StatusOK, map[string]string{"message": "2FA enabled successfully"})
+}
+
+func (h *Handler) verifyLoginTwoFactor(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Code string `json:"code" validate:"required,len=6,numeric"`
+	}
+	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+	sessionToken := twoFactorPendingToken(r)
+	if sessionToken == "" {
+		httpjson.WriteError(w, r, apperr.Validation(apperr.FieldErrors{"authorization": "2FA pending token is required."}))
+		return
+	}
+	tokens, err := h.service.VerifyLoginTwoFactor(r.Context(), req.Code, sessionToken)
 	if err != nil {
 		httpjson.WriteError(w, r, err)
 		return
@@ -129,21 +146,17 @@ func (h *Handler) verifyTwoFactor(w http.ResponseWriter, r *http.Request) {
 	for _, cookie := range tokens.SetCookie {
 		w.Header().Add("Set-Cookie", cookie)
 	}
-	if tokens.AccessToken != "" {
-		httpjson.Write(w, r, http.StatusOK, map[string]any{"access_token": tokens.AccessToken, "access_token_expires_at": tokens.AccessTokenExpiresAt})
-		return
-	}
-	httpjson.Write(w, r, http.StatusOK, map[string]string{"message": message})
+	httpjson.Write(w, r, http.StatusOK, map[string]any{"access_token": tokens.AccessToken, "access_token_expires_at": tokens.AccessTokenExpiresAt})
 }
 
-func twoFactorSessionToken(r *http.Request, bodyToken string) string {
-	if token := strings.TrimSpace(r.Header.Get("X-2FA-Session-Token")); token != "" {
+func twoFactorPendingToken(r *http.Request) string {
+	if token := strings.TrimSpace(r.Header.Get("X-2FA-Pending-Token")); token != "" {
 		return token
 	}
 	if token := bearerToken(r.Header.Get("Authorization")); token != "" {
 		return token
 	}
-	return strings.TrimSpace(bodyToken)
+	return ""
 }
 
 func bearerToken(header string) string {
@@ -227,6 +240,7 @@ func (h *Handler) applyPasswordReset(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) internalSendLoginTwoFactor(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		UserID uuid.UUID `json:"user_id"`
+		JTI    string    `json:"jti"`
 	}
 	if err := httpjson.Decode(r, &req); err != nil {
 		httpjson.WriteError(w, r, err)
@@ -236,7 +250,11 @@ func (h *Handler) internalSendLoginTwoFactor(w http.ResponseWriter, r *http.Requ
 		httpjson.WriteError(w, r, apperr.Validation(apperr.FieldErrors{"user_id": "This field is required."}))
 		return
 	}
-	if err := h.service.SendLoginTwoFactor(r.Context(), req.UserID); err != nil {
+	if strings.TrimSpace(req.JTI) == "" {
+		httpjson.WriteError(w, r, apperr.Validation(apperr.FieldErrors{"jti": "This field is required."}))
+		return
+	}
+	if err := h.service.SendLoginTwoFactor(r.Context(), req.UserID, req.JTI); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}

@@ -86,7 +86,7 @@ If 2FA is enabled, the response is still `200`, but no full JWT is issued:
 }
 ```
 
-Complete login with `POST /otp/2fa/verify`.
+Complete login with `POST /otp/2fa/login/verify`.
 
 Common errors: `INVALID_CREDENTIALS`, `ACCOUNT_NOT_VERIFIED`, `ACCOUNT_BANNED`, `ACCOUNT_LOCKED`, `USE_GOOGLE_LOGIN`.
 
@@ -98,15 +98,15 @@ Common errors: `INVALID_CREDENTIALS`, `ACCOUNT_NOT_VERIFIED`, `ACCOUNT_BANNED`, 
 }
 ```
 
-Returns the same access token/cookie shape as manual login.
+Returns the same access token/cookie shape as manual login, or a 2FA pending-token response when the Google user has 2FA enabled.
 
 ### `POST /auth/refresh`
 
-Uses the HttpOnly `refresh_token` cookie. Send with browser credentials enabled. Returns a new access token and rotates the refresh cookie.
+Uses the HttpOnly refresh cookie. Send with browser credentials enabled. Returns a new access token and rotates the refresh cookie.
 
 ### `POST /auth/logout`
 
-Protected. Revokes the current refresh token and clears the cookie.
+Optional access JWT. Always clears the refresh cookie. If a valid session can be identified, revokes the current refresh token.
 
 ### `POST /auth/logout-all`
 
@@ -175,22 +175,23 @@ All require `admin` or `superadmin` unless noted.
 
 - `GET /users?page=1&per_page=20`
 - `GET /users/{id}`
-- `PUT /users/{id}/ban` with `{ "is_banned": true, "reason": "..." }`
-- `PUT /users/{id}/role` with `{ "role": "admin" }`, superadmin only
-- `DELETE /users/{id}`, superadmin only
+- `PUT /users/{id}/ban` with `{ "is_banned": true, "reason": "..." }`; admin may affect users, superadmin required for admin/superadmin targets
+- `PUT /users/{id}/role` with `{ "role": "admin" }` or `{ "role": "superadmin" }`, superadmin only
+- `DELETE /users/{id}`; admin may delete users, superadmin required for admin/superadmin targets
 
 ## OTP Endpoints
 
 ### `POST /otp/email/send`
 
-Protected. Sends a verification OTP to the current user's email.
+Public. Sends a verification OTP to the submitted email when the account exists and is eligible.
 
 ### `POST /otp/email/verify`
 
-Protected.
+Public.
 
 ```json
 {
+  "email": "jane@example.com",
   "code": "847291"
 }
 ```
@@ -207,16 +208,11 @@ Protected.
 }
 ```
 
-Sends a 2FA OTP and returns a pending session token for activation.
+Verifies the current password and sends a 2FA enable OTP.
 
-### `POST /otp/2fa/verify`
+### `POST /otp/2fa/enable/verify`
 
-Public because it is used before login completes.
-
-For login 2FA, send the `two_factor_session_token` returned by `/auth/login` as
-`Authorization: Bearer <2fa-pending-jwt>`. For confirming 2FA enablement while
-already signed in, send the normal access token as `Authorization: Bearer <access-token>`.
-The legacy body `session_token` is still accepted for login-token compatibility.
+Protected. Confirms 2FA enablement with the setup OTP.
 
 ```json
 {
@@ -224,7 +220,21 @@ The legacy body `session_token` is still accepted for login-token compatibility.
 }
 ```
 
-For login context, returns a full access token and refresh cookie. For enable context, enables 2FA.
+### `POST /otp/2fa/login/verify`
+
+Public pending-token endpoint because it is used before login completes.
+
+For login 2FA, send the `two_factor_session_token` returned by `/auth/login` as
+`Authorization: Bearer <2fa-pending-jwt>`. Normal access tokens and body session
+tokens are rejected.
+
+```json
+{
+  "code": "847291"
+}
+```
+
+Returns a full access token and refresh cookie.
 
 ### `POST /otp/2fa/disable`
 

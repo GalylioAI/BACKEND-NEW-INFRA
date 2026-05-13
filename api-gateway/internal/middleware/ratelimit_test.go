@@ -44,7 +44,8 @@ func TestClientIPTrustsConfiguredProxyCIDR(t *testing.T) {
 func TestPublicOTPVerifyRoutesUseStrictRateLimit(t *testing.T) {
 	routes := []string{
 		"POST /otp/email/verify",
-		"POST /otp/2fa/verify",
+		"POST /otp/2fa/login/verify",
+		"POST /otp/2fa/enable/verify",
 		"POST /otp/password-reset/verify",
 		"POST /otp/password-reset/apply",
 	}

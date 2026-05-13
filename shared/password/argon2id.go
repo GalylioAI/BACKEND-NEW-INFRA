@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -29,7 +30,17 @@ var DefaultParams = Params{
 }
 
 func Hash(plain string) (string, error) {
-	return HashWithParams(plain, DefaultParams)
+	return HashWithParams(plain, ParamsFromEnv())
+}
+
+func ParamsFromEnv() Params {
+	params := DefaultParams
+	params.Memory = uint32(envInt("PASSWORD_HASH_MEMORY_KIB", int(params.Memory)))
+	params.Iterations = uint32(envInt("PASSWORD_HASH_ITERATIONS", int(params.Iterations)))
+	params.Parallelism = uint8(envInt("PASSWORD_HASH_PARALLELISM", int(params.Parallelism)))
+	params.SaltLength = uint32(envInt("PASSWORD_HASH_SALT_BYTES", int(params.SaltLength)))
+	params.KeyLength = uint32(envInt("PASSWORD_HASH_KEY_BYTES", int(params.KeyLength)))
+	return params
 }
 
 func HashWithParams(plain string, params Params) (string, error) {
@@ -41,6 +52,18 @@ func HashWithParams(plain string, params Params) (string, error) {
 	encodedSalt := base64.RawStdEncoding.EncodeToString(salt)
 	encodedKey := base64.RawStdEncoding.EncodeToString(key)
 	return fmt.Sprintf("$argon2id$v=19$m=%d,t=%d,p=%d$%s$%s", params.Memory, params.Iterations, params.Parallelism, encodedSalt, encodedKey), nil
+}
+
+func envInt(key string, fallback int) int {
+	raw := strings.TrimSpace(os.Getenv(key))
+	if raw == "" {
+		return fallback
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		return fallback
+	}
+	return value
 }
 
 func Verify(plain, encoded string) (bool, error) {

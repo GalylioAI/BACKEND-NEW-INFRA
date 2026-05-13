@@ -97,6 +97,13 @@ func (s *Service) UpdateAlert(ctx context.Context, userID, alertID uuid.UUID, re
 	if err := validateAlertFields(current.ProductID, req.Type, req.Threshold); err != nil {
 		return domain.Alert{}, err
 	}
+	if req.Type != current.Type {
+		if duplicate, err := s.repo.GetDuplicateActiveAlert(ctx, userID, current.ProductID, req.Type); err == nil && duplicate.ID != alertID {
+			return domain.Alert{}, apperr.New(http.StatusConflict, domain.ErrDuplicateAlert, "An active alert already exists for this product and type.")
+		} else if err != nil && apperr.From(err).Code != domain.ErrAlertNotFound {
+			return domain.Alert{}, err
+		}
+	}
 	return s.repo.UpdateAlert(ctx, alertID, userID, req.Type, req.Threshold)
 }
 

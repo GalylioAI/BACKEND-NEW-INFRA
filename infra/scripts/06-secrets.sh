@@ -39,7 +39,8 @@ CORS_ALLOWED_ORIGINS=https://yourdomain.com
 JWT_ISSUER=your-app-name
 JWT_AUDIENCE=your-app-client
 JWT_ACCESS_EXPIRY=15m
-JWT_REFRESH_EXPIRY=720h
+JWT_2FA_PENDING_EXPIRY=5m
+REFRESH_TOKEN_EXPIRY=720h
 
 # --- Internal secret ---
 # Generate: openssl rand -hex 32

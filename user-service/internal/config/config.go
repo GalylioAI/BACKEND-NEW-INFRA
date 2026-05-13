@@ -9,16 +9,18 @@ import (
 )
 
 type Config struct {
-	AppPort              string
-	AppEnv               string
-	AllowedOrigins       []string
-	InternalSecret       string
-	AuthServiceURL       string
-	RabbitMQURL          string
-	MigrationDatabaseURL string
-	DB                   db.Config
-	RateLimitMax         int
-	RateLimitWindow      time.Duration
+	AppPort                string
+	AppEnv                 string
+	AllowedOrigins         []string
+	InternalSecret         string
+	AuthServiceURL         string
+	RabbitMQURL            string
+	MigrationDatabaseURL   string
+	DB                     db.Config
+	LoginMaxAttempts       int
+	AccountLockoutDuration time.Duration
+	RateLimitMax           int
+	RateLimitWindow        time.Duration
 }
 
 func Load() (Config, error) {
@@ -43,6 +45,14 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	loginMaxAttempts, err := sharedcfg.Int("LOGIN_MAX_ATTEMPTS", 5)
+	if err != nil {
+		return Config{}, err
+	}
+	lockoutDuration, err := sharedcfg.Duration("ACCOUNT_LOCKOUT_DURATION", 15*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
 		AppPort:              port,
 		AppEnv:               sharedcfg.String("APP_ENV", "development"),
@@ -57,11 +67,14 @@ func Load() (Config, error) {
 			Name:         sharedcfg.String("DB_NAME", "user_db"),
 			User:         sharedcfg.String("DB_USER", "user_user"),
 			Password:     sharedcfg.String("DB_PASSWORD", "user_pass"),
+			SSLMode:      sharedcfg.String("DB_SSLMODE", "disable"),
 			MaxOpenConns: int32(maxOpen),
 			MaxIdleConns: int32(maxIdle),
 		},
-		RateLimitMax:    rateMax,
-		RateLimitWindow: rateWindow,
+		LoginMaxAttempts:       loginMaxAttempts,
+		AccountLockoutDuration: lockoutDuration,
+		RateLimitMax:           rateMax,
+		RateLimitWindow:        rateWindow,
 	}
 	if cfg.InternalSecret == "" && cfg.AppEnv == "production" {
 		return Config{}, fmt.Errorf("INTERNAL_SECRET is required in production")

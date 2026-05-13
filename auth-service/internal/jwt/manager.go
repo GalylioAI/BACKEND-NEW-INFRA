@@ -20,6 +20,7 @@ type Manager struct {
 }
 
 type Claims struct {
+	Type  string `json:"typ"`
 	Role  string `json:"role"`
 	Email string `json:"email"`
 	jwtlib.RegisteredClaims
@@ -27,7 +28,7 @@ type Claims struct {
 
 type PendingClaims struct {
 	Type    string `json:"typ"`
-	Context string `json:"context"`
+	Purpose string `json:"purpose"`
 	jwtlib.RegisteredClaims
 }
 
@@ -55,6 +56,7 @@ func (m *Manager) IssueAccess(user domain.User) (string, time.Time, error) {
 	now := time.Now().UTC()
 	expiresAt := now.Add(m.accessTTL)
 	claims := Claims{
+		Type:  "access",
 		Role:  user.Role,
 		Email: user.Email,
 		RegisteredClaims: jwtlib.RegisteredClaims{
@@ -71,24 +73,25 @@ func (m *Manager) IssueAccess(user domain.User) (string, time.Time, error) {
 	return signed, expiresAt, err
 }
 
-func (m *Manager) IssuePendingTwoFactor(userID uuid.UUID, contextValue string, ttl time.Duration) (string, time.Time, error) {
+func (m *Manager) IssuePendingTwoFactor(userID uuid.UUID, purpose string, ttl time.Duration) (string, time.Time, string, error) {
 	now := time.Now().UTC()
 	expiresAt := now.Add(ttl)
+	jti := uuid.NewString()
 	claims := PendingClaims{
 		Type:    "2fa_pending",
-		Context: contextValue,
+		Purpose: purpose,
 		RegisteredClaims: jwtlib.RegisteredClaims{
 			Issuer:    m.issuer,
 			Subject:   userID.String(),
 			Audience:  jwtlib.ClaimStrings{m.audience},
 			ExpiresAt: jwtlib.NewNumericDate(expiresAt),
 			IssuedAt:  jwtlib.NewNumericDate(now),
-			ID:        uuid.NewString(),
+			ID:        jti,
 		},
 	}
 	token := jwtlib.NewWithClaims(jwtlib.SigningMethodRS256, claims)
 	signed, err := token.SignedString(m.privateKey)
-	return signed, expiresAt, err
+	return signed, expiresAt, jti, err
 }
 
 func (m *Manager) Verify(raw string) (*Claims, error) {
@@ -99,7 +102,7 @@ func (m *Manager) Verify(raw string) (*Claims, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !token.Valid {
+	if !token.Valid || claims.Type != "access" {
 		return nil, jwtlib.ErrTokenInvalidClaims
 	}
 	return claims, nil
@@ -113,7 +116,7 @@ func (m *Manager) VerifyPendingTwoFactor(raw string) (*PendingClaims, error) {
 	if err != nil {
 		return nil, err
 	}
-	if !token.Valid || claims.Type != "2fa_pending" {
+	if !token.Valid || claims.Type != "2fa_pending" || claims.Purpose == "" {
 		return nil, jwtlib.ErrTokenInvalidClaims
 	}
 	return claims, nil

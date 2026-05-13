@@ -88,7 +88,7 @@ export async function apiFetch<T>(
 
 ## Token Lifecycle
 
-Access tokens expire after 15 minutes. Refresh tokens live in an HttpOnly cookie and are rotated by `POST /auth/refresh`.
+Access token expiry is configured by `JWT_ACCESS_EXPIRY`. Refresh tokens are opaque, live in an HttpOnly cookie, and are rotated by `POST /auth/refresh`.
 
 Recommended frontend behavior:
 
@@ -172,7 +172,7 @@ Treat the pending token as short-lived sensitive state and keep it in memory.
 ## 2FA Login Completion
 
 ```ts
-const res = await apiFetch<{ access_token: string }>("/otp/2fa/verify", {
+const res = await apiFetch<{ access_token: string }>("/otp/2fa/login/verify", {
   method: "POST",
   authToken: pendingToken,
   body: JSON.stringify({
@@ -185,18 +185,21 @@ if (res.success) {
 }
 ```
 
-For confirming 2FA enablement after `POST /otp/2fa/enable`, call the same endpoint
-with the normal access token as `authToken` and `{ code }` in the body. Login 2FA
-must still use the short-lived pending token from `/auth/login`.
+For confirming 2FA enablement after `POST /otp/2fa/enable`, call
+`POST /otp/2fa/enable/verify` with the normal access token as `authToken` and
+`{ code }` in the body. Login 2FA must use the short-lived pending token from
+`/auth/login`.
 
 ## Logout
 
 ```ts
-await apiFetch("/auth/logout", { method: "POST" });
+await apiFetch("/auth/logout", { method: "POST", authToken: getAccessTokenOrNull() });
 setAccessToken(null);
 ```
 
-For "logout everywhere", call `POST /auth/logout-all`.
+`POST /auth/logout` still clears the refresh cookie if the access token is missing
+or expired. For "logout everywhere", call `POST /auth/logout-all` with a valid
+access token.
 
 ## Profile
 

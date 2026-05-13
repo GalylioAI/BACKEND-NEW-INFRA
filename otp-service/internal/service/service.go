@@ -26,8 +26,10 @@ import (
 )
 
 const (
-	otpTTL        = 10 * time.Minute
-	resetTokenTTL = 15 * time.Minute
+	defaultOTPTTL            = 10 * time.Minute
+	defaultResetTokenTTL     = 15 * time.Minute
+	defaultTwoFactorOTPTTL   = 10 * time.Minute
+	defaultTwoFactorAttempts = int16(3)
 )
 
 type Service struct {
@@ -36,6 +38,7 @@ type Service struct {
 	authClient  client.AuthClient
 	publisher   rabbit.Publisher
 	jwtVerifier *PendingJWTVerifier
+	options     Options
 }
 
 type PendingJWTVerifier struct {
@@ -46,21 +49,74 @@ type PendingJWTVerifier struct {
 
 type PendingClaims struct {
 	Type    string `json:"typ"`
-	Context string `json:"context"`
+	Purpose string `json:"purpose"`
 	jwtlib.RegisteredClaims
 }
 
 type AccessClaims struct {
+	Type  string `json:"typ"`
 	Role  string `json:"role"`
 	Email string `json:"email"`
 	jwtlib.RegisteredClaims
 }
 
-func New(repo repository.Repository, userClient client.UserClient, authClient client.AuthClient, publisher rabbit.Publisher, verifier *PendingJWTVerifier) *Service {
+type Options struct {
+	EmailVerificationOTPTTL time.Duration
+	PasswordResetOTPTTL     time.Duration
+	PasswordResetTokenTTL   time.Duration
+	TwoFactorLoginOTPTTL    time.Duration
+	TwoFactorEnableOTPTTL   time.Duration
+	TwoFactorDisableOTPTTL  time.Duration
+	TwoFactorMaxAttempts    int16
+}
+
+func DefaultOptions() Options {
+	return Options{
+		EmailVerificationOTPTTL: defaultOTPTTL,
+		PasswordResetOTPTTL:     defaultOTPTTL,
+		PasswordResetTokenTTL:   defaultResetTokenTTL,
+		TwoFactorLoginOTPTTL:    defaultTwoFactorOTPTTL,
+		TwoFactorEnableOTPTTL:   defaultTwoFactorOTPTTL,
+		TwoFactorDisableOTPTTL:  defaultTwoFactorOTPTTL,
+		TwoFactorMaxAttempts:    defaultTwoFactorAttempts,
+	}
+}
+
+func New(repo repository.Repository, userClient client.UserClient, authClient client.AuthClient, publisher rabbit.Publisher, verifier *PendingJWTVerifier, options ...Options) *Service {
 	if publisher == nil {
 		publisher = rabbit.NoopPublisher{}
 	}
-	return &Service{repo: repo, userClient: userClient, authClient: authClient, publisher: publisher, jwtVerifier: verifier}
+	cfg := DefaultOptions()
+	if len(options) > 0 {
+		cfg = options[0].withDefaults()
+	}
+	return &Service{repo: repo, userClient: userClient, authClient: authClient, publisher: publisher, jwtVerifier: verifier, options: cfg}
+}
+
+func (o Options) withDefaults() Options {
+	defaults := DefaultOptions()
+	if o.EmailVerificationOTPTTL <= 0 {
+		o.EmailVerificationOTPTTL = defaults.EmailVerificationOTPTTL
+	}
+	if o.PasswordResetOTPTTL <= 0 {
+		o.PasswordResetOTPTTL = defaults.PasswordResetOTPTTL
+	}
+	if o.PasswordResetTokenTTL <= 0 {
+		o.PasswordResetTokenTTL = defaults.PasswordResetTokenTTL
+	}
+	if o.TwoFactorLoginOTPTTL <= 0 {
+		o.TwoFactorLoginOTPTTL = defaults.TwoFactorLoginOTPTTL
+	}
+	if o.TwoFactorEnableOTPTTL <= 0 {
+		o.TwoFactorEnableOTPTTL = defaults.TwoFactorEnableOTPTTL
+	}
+	if o.TwoFactorDisableOTPTTL <= 0 {
+		o.TwoFactorDisableOTPTTL = defaults.TwoFactorDisableOTPTTL
+	}
+	if o.TwoFactorMaxAttempts <= 0 {
+		o.TwoFactorMaxAttempts = defaults.TwoFactorMaxAttempts
+	}
+	return o
 }
 
 func NewPendingJWTVerifier(publicKeyPath, issuer, audience string) (*PendingJWTVerifier, error) {
@@ -75,44 +131,32 @@ func NewPendingJWTVerifier(publicKeyPath, issuer, audience string) (*PendingJWTV
 	return &PendingJWTVerifier{publicKey: publicKey, issuer: issuer, audience: audience}, nil
 }
 
-func (v *PendingJWTVerifier) Verify(raw string) (uuid.UUID, string, error) {
-	if userID, contextValue, err := v.verifyPending(raw); err == nil {
-		return userID, contextValue, nil
-	}
-	if userID, err := v.verifyAccess(raw); err == nil {
-		return userID, "2fa_enable", nil
-	}
-	return uuid.Nil, "", invalidTwoFactorSession()
+type VerifiedPendingClaims struct {
+	UserID uuid.UUID
+	JTI    string
 }
 
-func (v *PendingJWTVerifier) verifyPending(raw string) (uuid.UUID, string, error) {
+func (v *PendingJWTVerifier) VerifyLoginPending(raw string) (VerifiedPendingClaims, error) {
+	userID, jti, purpose, err := v.verifyPending(raw)
+	if err != nil || purpose != domain.OTPTypeTwoFactorLogin {
+		return VerifiedPendingClaims{}, invalidTwoFactorSession()
+	}
+	return VerifiedPendingClaims{UserID: userID, JTI: jti}, nil
+}
+
+func (v *PendingJWTVerifier) verifyPending(raw string) (uuid.UUID, string, string, error) {
 	claims := &PendingClaims{}
 	parsed, err := jwtlib.ParseWithClaims(raw, claims, func(token *jwtlib.Token) (any, error) {
 		return v.publicKey, nil
 	}, jwtlib.WithIssuer(v.issuer), jwtlib.WithAudience(v.audience), jwtlib.WithValidMethods([]string{jwtlib.SigningMethodRS256.Alg()}))
-	if err != nil || !parsed.Valid || claims.Type != "2fa_pending" {
-		return uuid.Nil, "", invalidTwoFactorSession()
+	if err != nil || !parsed.Valid || claims.Type != "2fa_pending" || claims.ID == "" {
+		return uuid.Nil, "", "", invalidTwoFactorSession()
 	}
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return uuid.Nil, "", invalidTwoFactorSession()
+		return uuid.Nil, "", "", invalidTwoFactorSession()
 	}
-	return userID, claims.Context, nil
-}
-
-func (v *PendingJWTVerifier) verifyAccess(raw string) (uuid.UUID, error) {
-	claims := &AccessClaims{}
-	parsed, err := jwtlib.ParseWithClaims(raw, claims, func(token *jwtlib.Token) (any, error) {
-		return v.publicKey, nil
-	}, jwtlib.WithIssuer(v.issuer), jwtlib.WithAudience(v.audience), jwtlib.WithValidMethods([]string{jwtlib.SigningMethodRS256.Alg()}))
-	if err != nil || !parsed.Valid || claims.Role == "" || claims.Email == "" {
-		return uuid.Nil, invalidTwoFactorSession()
-	}
-	userID, err := uuid.Parse(claims.Subject)
-	if err != nil {
-		return uuid.Nil, invalidTwoFactorSession()
-	}
-	return userID, nil
+	return userID, claims.ID, claims.Purpose, nil
 }
 
 func invalidTwoFactorSession() error {
@@ -168,7 +212,7 @@ func (s *Service) sendEmailVerificationForUser(ctx context.Context, user domain.
 	return s.publishMail(ctx, "mail.send.email_verify", user, "email_verify", map[string]any{
 		"full_name":          user.FullName,
 		"otp_code":           plain,
-		"expires_in_minutes": 10,
+		"expires_in_minutes": int(s.options.EmailVerificationOTPTTL.Minutes()),
 	})
 }
 
@@ -201,7 +245,7 @@ func (s *Service) VerifyEmailByEmail(ctx context.Context, email, code string) er
 	return s.VerifyEmail(ctx, user.ID, code)
 }
 
-func (s *Service) SendLoginTwoFactor(ctx context.Context, userID uuid.UUID) error {
+func (s *Service) SendLoginTwoFactor(ctx context.Context, userID uuid.UUID, jti string) error {
 	user, err := s.userClient.GetByID(ctx, userID)
 	if err != nil {
 		return err
@@ -209,74 +253,91 @@ func (s *Service) SendLoginTwoFactor(ctx context.Context, userID uuid.UUID) erro
 	if user.IsBanned {
 		return apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
 	}
-	plain, err := s.issueOTP(ctx, user.ID, domain.OTPTypeTwoFactor)
+	plain, err := s.issueTwoFactorChallenge(ctx, user.ID, jti, domain.OTPTypeTwoFactorLogin, s.options.TwoFactorLoginOTPTTL)
 	if err != nil {
 		return err
 	}
 	return s.publishMail(ctx, "mail.send.otp_2fa", user, "otp_2fa", map[string]any{
 		"full_name":          user.FullName,
 		"otp_code":           plain,
-		"expires_in_minutes": 10,
+		"expires_in_minutes": int(s.options.TwoFactorLoginOTPTTL.Minutes()),
 	})
 }
 
-func (s *Service) EnableTwoFactor(ctx context.Context, userID uuid.UUID, currentPassword string) (string, error) {
+func (s *Service) EnableTwoFactor(ctx context.Context, userID uuid.UUID, currentPassword string) error {
 	if err := s.userClient.VerifyPassword(ctx, userID, currentPassword); err != nil {
-		return "", err
-	}
-	if err := s.SendLoginTwoFactor(ctx, userID); err != nil {
-		return "", err
-	}
-	pending, err := s.authClient.IssuePendingTwoFactor(ctx, userID, "2fa_enable")
-	if err != nil {
-		return "", err
-	}
-	return pending.SessionToken, nil
-}
-
-func (s *Service) VerifyTwoFactor(ctx context.Context, code, sessionToken string) (client.TokenPair, string, error) {
-	if s.jwtVerifier == nil {
-		return client.TokenPair{}, "", apperr.New(http.StatusInternalServerError, apperr.CodeInternal, "2FA verifier is not configured.")
-	}
-	userID, contextValue, err := s.jwtVerifier.Verify(sessionToken)
-	if err != nil {
-		return client.TokenPair{}, "", err
+		return err
 	}
 	user, err := s.userClient.GetByID(ctx, userID)
 	if err != nil {
-		return client.TokenPair{}, "", err
+		return err
 	}
 	if user.IsBanned {
-		return client.TokenPair{}, "", apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+		return apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	plain, err := s.issueTwoFactorChallenge(ctx, user.ID, uuid.NewString(), domain.OTPTypeTwoFactorEnable, s.options.TwoFactorEnableOTPTTL)
+	if err != nil {
+		return err
+	}
+	return s.publishMail(ctx, "mail.send.otp_2fa", user, "otp_2fa", map[string]any{
+		"full_name":          user.FullName,
+		"otp_code":           plain,
+		"expires_in_minutes": int(s.options.TwoFactorEnableOTPTTL.Minutes()),
+	})
+}
+
+func (s *Service) VerifyLoginTwoFactor(ctx context.Context, code, pendingToken string) (client.TokenPair, error) {
+	if s.jwtVerifier == nil {
+		return client.TokenPair{}, apperr.New(http.StatusInternalServerError, apperr.CodeInternal, "2FA verifier is not configured.")
+	}
+	claims, err := s.jwtVerifier.VerifyLoginPending(pendingToken)
+	if err != nil {
+		return client.TokenPair{}, err
+	}
+	userID := claims.UserID
+	user, err := s.userClient.GetByID(ctx, userID)
+	if err != nil {
+		return client.TokenPair{}, err
+	}
+	if user.IsBanned {
+		return client.TokenPair{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
 	}
 	if !user.IsVerified {
-		return client.TokenPair{}, "", apperr.New(http.StatusForbidden, apperr.CodeAccountNotVerified, "Please verify your account before continuing.")
+		return client.TokenPair{}, apperr.New(http.StatusForbidden, apperr.CodeAccountNotVerified, "Please verify your account before continuing.")
 	}
-	if err := s.verifyOTP(ctx, userID, domain.OTPTypeTwoFactor, code); err != nil {
-		return client.TokenPair{}, "", err
+	if err := s.verifyTwoFactorChallenge(ctx, userID, claims.JTI, domain.OTPTypeTwoFactorLogin, code); err != nil {
+		return client.TokenPair{}, err
 	}
-	switch contextValue {
-	case "login":
-		tokens, err := s.authClient.IssueJWT(ctx, userID)
-		return tokens, "", err
-	case "2fa_enable":
-		if err := s.userClient.SetTwoFactor(ctx, userID, true); err != nil {
-			return client.TokenPair{}, "", err
-		}
-		return client.TokenPair{}, "2FA enabled successfully", nil
-	default:
-		return client.TokenPair{}, "", invalidTwoFactorSession()
+	return s.authClient.IssueJWT(ctx, userID)
+}
+
+func (s *Service) VerifyEnableTwoFactor(ctx context.Context, userID uuid.UUID, code string) error {
+	if err := s.verifyLatestTwoFactorChallenge(ctx, userID, domain.OTPTypeTwoFactorEnable, code); err != nil {
+		return err
 	}
+	return s.userClient.SetTwoFactor(ctx, userID, true)
 }
 
 func (s *Service) DisableTwoFactor(ctx context.Context, userID uuid.UUID, code string) (string, error) {
 	if strings.TrimSpace(code) == "" {
-		if err := s.SendLoginTwoFactor(ctx, userID); err != nil {
+		user, err := s.userClient.GetByID(ctx, userID)
+		if err != nil {
+			return "", err
+		}
+		plain, err := s.issueTwoFactorChallenge(ctx, userID, uuid.NewString(), domain.OTPTypeTwoFactorDisable, s.options.TwoFactorDisableOTPTTL)
+		if err != nil {
+			return "", err
+		}
+		if err := s.publishMail(ctx, "mail.send.otp_2fa", user, "otp_2fa", map[string]any{
+			"full_name":          user.FullName,
+			"otp_code":           plain,
+			"expires_in_minutes": int(s.options.TwoFactorDisableOTPTTL.Minutes()),
+		}); err != nil {
 			return "", err
 		}
 		return "Enter the code sent to your email to confirm 2FA disable", nil
 	}
-	if err := s.verifyOTP(ctx, userID, domain.OTPTypeTwoFactor, code); err != nil {
+	if err := s.verifyLatestTwoFactorChallenge(ctx, userID, domain.OTPTypeTwoFactorDisable, code); err != nil {
 		return "", err
 	}
 	if err := s.userClient.SetTwoFactor(ctx, userID, false); err != nil {
@@ -304,7 +365,7 @@ func (s *Service) SendPasswordReset(ctx context.Context, email string) error {
 	return s.publishMail(ctx, "mail.send.password_reset", user, "password_reset", map[string]any{
 		"full_name":          user.FullName,
 		"otp_code":           plain,
-		"expires_in_minutes": 10,
+		"expires_in_minutes": int(s.options.PasswordResetOTPTTL.Minutes()),
 	})
 }
 
@@ -323,7 +384,7 @@ func (s *Service) VerifyPasswordReset(ctx context.Context, email, code string) (
 	if err := s.repo.InvalidateResetTokens(ctx, user.ID); err != nil {
 		return "", err
 	}
-	if _, err := s.repo.CreatePasswordResetToken(ctx, user.ID, token.SHA256(resetToken), time.Now().UTC().Add(resetTokenTTL)); err != nil {
+	if _, err := s.repo.CreatePasswordResetToken(ctx, user.ID, token.SHA256(resetToken), time.Now().UTC().Add(s.options.PasswordResetTokenTTL)); err != nil {
 		return "", err
 	}
 	return resetToken, nil
@@ -347,12 +408,12 @@ func (s *Service) ApplyPasswordReset(ctx context.Context, resetToken, newPasswor
 	if err != nil {
 		return err
 	}
-	if err := s.repo.MarkResetTokenUsed(ctx, record.ID); err != nil {
-		return err
-	}
 	user, err := s.userClient.GetByID(ctx, record.UserID)
 	if err != nil {
 		return err
+	}
+	if user.IsBanned {
+		return apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
 	}
 	hash, err := password.Hash(newPassword)
 	if err != nil {
@@ -362,6 +423,9 @@ func (s *Service) ApplyPasswordReset(ctx context.Context, resetToken, newPasswor
 		return err
 	}
 	if err := s.authClient.RevokeSessions(ctx, record.UserID); err != nil {
+		return err
+	}
+	if err := s.repo.MarkResetTokenUsed(ctx, record.ID); err != nil {
 		return err
 	}
 	return s.publishMail(ctx, "mail.send.password_changed", user, "password_changed", map[string]any{
@@ -393,10 +457,78 @@ func (s *Service) issueOTP(ctx context.Context, userID uuid.UUID, otpType string
 	if err != nil {
 		return "", err
 	}
-	if _, err := s.repo.CreateOTPCode(ctx, userID, hash, otpType, time.Now().UTC().Add(otpTTL)); err != nil {
+	ttl := s.otpTTL(otpType)
+	if _, err := s.repo.CreateOTPCode(ctx, userID, hash, otpType, time.Now().UTC().Add(ttl)); err != nil {
 		return "", err
 	}
 	return plain, nil
+}
+
+func (s *Service) otpTTL(otpType string) time.Duration {
+	switch otpType {
+	case domain.OTPTypeEmailVerify:
+		return s.options.EmailVerificationOTPTTL
+	case domain.OTPTypePasswordReset:
+		return s.options.PasswordResetOTPTTL
+	default:
+		return defaultOTPTTL
+	}
+}
+
+func (s *Service) issueTwoFactorChallenge(ctx context.Context, userID uuid.UUID, jti, purpose string, ttl time.Duration) (string, error) {
+	retryAfter, err := s.repo.CheckAndIncrementRateLimit(ctx, userID, purpose)
+	if err != nil {
+		return "", err
+	}
+	if retryAfter > 0 {
+		return "", apperr.WithRetryAfter(http.StatusTooManyRequests, apperr.CodeOTPRateLimited, "Too many verification codes requested. Please try again later.", retryAfter)
+	}
+	if err := s.repo.RevokeTwoFactorChallenges(ctx, userID, purpose); err != nil {
+		return "", err
+	}
+	plain, hash, err := GenerateOTP()
+	if err != nil {
+		return "", err
+	}
+	_, err = s.repo.CreateTwoFactorChallenge(ctx, userID, jti, purpose, hash, time.Now().UTC().Add(ttl), s.options.TwoFactorMaxAttempts)
+	return plain, err
+}
+
+func (s *Service) verifyTwoFactorChallenge(ctx context.Context, userID uuid.UUID, jti, purpose, plain string) error {
+	if len(plain) != 6 {
+		return apperr.New(http.StatusUnprocessableEntity, apperr.CodeValidationError, "OTP code must be exactly 6 digits.")
+	}
+	challenge, err := s.repo.GetTwoFactorChallengeByJTI(ctx, userID, jti, purpose)
+	if err != nil {
+		return err
+	}
+	return s.verifyChallengeCode(ctx, challenge, plain)
+}
+
+func (s *Service) verifyLatestTwoFactorChallenge(ctx context.Context, userID uuid.UUID, purpose, plain string) error {
+	if len(plain) != 6 {
+		return apperr.New(http.StatusUnprocessableEntity, apperr.CodeValidationError, "OTP code must be exactly 6 digits.")
+	}
+	challenge, err := s.repo.GetLatestTwoFactorChallenge(ctx, userID, purpose)
+	if err != nil {
+		return err
+	}
+	return s.verifyChallengeCode(ctx, challenge, plain)
+}
+
+func (s *Service) verifyChallengeCode(ctx context.Context, challenge domain.TwoFactorChallenge, plain string) error {
+	challenge, err := s.repo.IncrementTwoFactorChallengeAttempts(ctx, challenge.ID)
+	if err != nil {
+		return err
+	}
+	if !VerifyOTP(plain, challenge.OTPHash) {
+		if challenge.Attempts >= challenge.MaxAttempts {
+			_ = s.repo.ConsumeTwoFactorChallenge(ctx, challenge.ID)
+			return apperr.New(http.StatusTooManyRequests, apperr.CodeOTPMaxAttempts, "Maximum verification attempts exceeded.")
+		}
+		return apperr.New(http.StatusUnauthorized, apperr.CodeOTPInvalid, "Verification code is invalid.")
+	}
+	return s.repo.ConsumeTwoFactorChallenge(ctx, challenge.ID)
 }
 
 func (s *Service) verifyOTP(ctx context.Context, userID uuid.UUID, otpType, plain string) error {

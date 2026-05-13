@@ -15,12 +15,18 @@ type Config struct {
 	Name         string
 	User         string
 	Password     string
+	SSLMode      string
 	MaxOpenConns int32
 	MaxIdleConns int32
+	QueryTimeout time.Duration
 }
 
 func Connect(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=disable", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
+	sslMode := cfg.SSLMode
+	if sslMode == "" {
+		sslMode = "disable"
+	}
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name, sslMode)
 	poolCfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
 		return nil, err

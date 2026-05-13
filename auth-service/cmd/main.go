@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"backend/auth-service/internal/client"
 	"backend/auth-service/internal/config"
@@ -53,10 +52,18 @@ func main() {
 	repo := repository.New(pool)
 	userClient := client.NewHTTPUserClient(cfg.UserServiceURL, cfg.InternalSecret)
 	otpClient := client.NewHTTPOTPClient(cfg.OTPServiceURL, cfg.InternalSecret)
-	authService := service.New(repo, userClient, otpClient, jwtManager, service.GoogleIDTokenVerifier{ClientID: cfg.GoogleClientID}, cfg.JWTRefreshExpiry)
+	authService := service.New(repo, userClient, otpClient, jwtManager, service.GoogleIDTokenVerifier{ClientID: cfg.GoogleClientID}, cfg.RefreshTokenExpiry, cfg.JWTTwoFactorPendingExpiry)
 	readiness := health.NewReadiness()
 	healthHandler := health.ReadyHandler("1.0.0", readiness, map[string]health.Checker{"database": authService.Ping})
-	root := handler.New(authService, cfg.InternalSecret, cfg.JWTRefreshExpiry, cfg.RefreshCookieSecure, cfg.CookieDomain, healthHandler).Routes()
+	root := handler.New(authService, cfg.InternalSecret, handler.RefreshCookieConfig{
+		Name:     cfg.RefreshCookieName,
+		Path:     cfg.RefreshCookiePath,
+		Domain:   cfg.CookieDomain,
+		MaxAge:   cfg.RefreshCookieMaxAge,
+		HTTPOnly: cfg.RefreshCookieHTTPOnly,
+		Secure:   cfg.RefreshCookieSecure,
+		SameSite: sameSite(cfg.RefreshCookieSameSite),
+	}, healthHandler).Routes()
 	app := middleware.Chain(root,
 		middleware.Recovery(logger),
 		middleware.RequestID,
@@ -69,10 +76,10 @@ func main() {
 	server := &http.Server{
 		Addr:              ":" + cfg.AppPort,
 		Handler:           app,
-		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+		ReadTimeout:       cfg.ReadTimeout,
+		WriteTimeout:      cfg.WriteTimeout,
+		IdleTimeout:       cfg.IdleTimeout,
 	}
 
 	readiness.MarkReady()
@@ -85,10 +92,23 @@ func main() {
 
 	<-ctx.Done()
 	readiness.MarkNotReady()
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		logger.Error().Err(err).Msg("http_shutdown_failed")
 	}
 	logger.Info().Msg("shutdown_complete")
+}
+
+func sameSite(value string) http.SameSite {
+	switch value {
+	case "None", "none", "NONE":
+		return http.SameSiteNoneMode
+	case "Lax", "lax", "LAX":
+		return http.SameSiteLaxMode
+	case "Strict", "strict", "STRICT", "":
+		return http.SameSiteStrictMode
+	default:
+		return http.SameSiteStrictMode
+	}
 }

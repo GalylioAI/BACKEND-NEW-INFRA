@@ -26,6 +26,7 @@ type Service struct {
 	jwtManager    *authjwt.Manager
 	google        GoogleVerifier
 	refreshExpiry time.Duration
+	pendingExpiry time.Duration
 }
 
 type GoogleVerifier interface {
@@ -73,11 +74,15 @@ type LoginResult struct {
 	TwoFactorSessionToken string    `json:"two_factor_session_token,omitempty"`
 }
 
-func New(repo repository.Repository, userClient client.UserClient, otpClient client.OTPClient, jwtManager *authjwt.Manager, google GoogleVerifier, refreshExpiry time.Duration) *Service {
+func New(repo repository.Repository, userClient client.UserClient, otpClient client.OTPClient, jwtManager *authjwt.Manager, google GoogleVerifier, refreshExpiry time.Duration, pendingExpiry ...time.Duration) *Service {
 	if otpClient == nil {
 		otpClient = client.NoopOTPClient{}
 	}
-	return &Service{repo: repo, userClient: userClient, otpClient: otpClient, jwtManager: jwtManager, google: google, refreshExpiry: refreshExpiry}
+	pendingTTL := 5 * time.Minute
+	if len(pendingExpiry) > 0 && pendingExpiry[0] > 0 {
+		pendingTTL = pendingExpiry[0]
+	}
+	return &Service{repo: repo, userClient: userClient, otpClient: otpClient, jwtManager: jwtManager, google: google, refreshExpiry: refreshExpiry, pendingExpiry: pendingTTL}
 }
 
 type ManualLoginRequest struct {
@@ -109,16 +114,18 @@ func (s *Service) ManualLogin(ctx context.Context, req ManualLoginRequest, devic
 	ok, verifyErr := password.Verify(req.Password, *user.PasswordHash)
 	if verifyErr != nil || !ok {
 		_ = s.userClient.RecordLoginFailure(ctx, user.ID, user.FailedLoginAttempts)
+		s.audit(ctx, "login_failed", user.ID, ip, deviceInfo, map[string]any{"provider": domain.ProviderManual})
 		return LoginResult{}, domain.Tokens{}, apperr.InvalidCredentials()
 	}
 	if user.TwoFactorEnabled {
-		sessionToken, _, err := s.jwtManager.IssuePendingTwoFactor(user.ID, "login", 5*time.Minute)
+		sessionToken, _, jti, err := s.jwtManager.IssuePendingTwoFactor(user.ID, "2fa_login", s.pendingExpiry)
 		if err != nil {
 			return LoginResult{}, domain.Tokens{}, err
 		}
-		if err := s.otpClient.SendLogin2FA(ctx, user.ID); err != nil {
+		if err := s.otpClient.SendLogin2FA(ctx, user.ID, jti); err != nil {
 			return LoginResult{}, domain.Tokens{}, err
 		}
+		s.audit(ctx, "2fa_required", user.ID, ip, deviceInfo, map[string]any{"provider": domain.ProviderManual, "jti": jti})
 		return LoginResult{TwoFactorRequired: true, TwoFactorSessionToken: sessionToken}, domain.Tokens{}, nil
 	}
 	tokens, err := s.issueTokenPair(ctx, user, deviceInfo, ip)
@@ -126,6 +133,7 @@ func (s *Service) ManualLogin(ctx context.Context, req ManualLoginRequest, devic
 		return LoginResult{}, domain.Tokens{}, err
 	}
 	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	s.audit(ctx, "login_success", user.ID, ip, deviceInfo, map[string]any{"provider": domain.ProviderManual})
 	return LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}, tokens, nil
 }
 
@@ -141,11 +149,23 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string, deviceInfo st
 	if user.IsBanned {
 		return LoginResult{}, domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
 	}
+	if user.TwoFactorEnabled {
+		sessionToken, _, jti, err := s.jwtManager.IssuePendingTwoFactor(user.ID, "2fa_login", s.pendingExpiry)
+		if err != nil {
+			return LoginResult{}, domain.Tokens{}, err
+		}
+		if err := s.otpClient.SendLogin2FA(ctx, user.ID, jti); err != nil {
+			return LoginResult{}, domain.Tokens{}, err
+		}
+		s.audit(ctx, "2fa_required", user.ID, ip, deviceInfo, map[string]any{"provider": domain.ProviderGoogle, "jti": jti})
+		return LoginResult{TwoFactorRequired: true, TwoFactorSessionToken: sessionToken}, domain.Tokens{}, nil
+	}
 	tokens, err := s.issueTokenPair(ctx, user, deviceInfo, ip)
 	if err != nil {
 		return LoginResult{}, domain.Tokens{}, err
 	}
 	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	s.audit(ctx, "login_success", user.ID, ip, deviceInfo, map[string]any{"provider": domain.ProviderGoogle})
 	return LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}, tokens, nil
 }
 
@@ -157,8 +177,11 @@ func (s *Service) Refresh(ctx context.Context, rawRefreshToken string, deviceInf
 	if err != nil {
 		return domain.Tokens{}, err
 	}
-	userID, _, err := s.repo.RotateRefreshToken(ctx, token.SHA256(rawRefreshToken), token.SHA256(newRefresh), deviceInfo, ip, time.Now().UTC().Add(s.refreshExpiry))
+	userID, reused, err := s.repo.RotateRefreshToken(ctx, token.SHA256(rawRefreshToken), token.SHA256(newRefresh), deviceInfo, ip, time.Now().UTC().Add(s.refreshExpiry))
 	if err != nil {
+		if reused {
+			s.audit(ctx, "refresh_reuse_detected", userID, ip, deviceInfo, nil)
+		}
 		return domain.Tokens{}, err
 	}
 	user, err := s.userClient.GetByID(ctx, userID)
@@ -173,18 +196,28 @@ func (s *Service) Refresh(ctx context.Context, rawRefreshToken string, deviceInf
 	if err != nil {
 		return domain.Tokens{}, err
 	}
+	s.audit(ctx, "refresh_success", user.ID, ip, deviceInfo, nil)
 	return domain.Tokens{AccessToken: access, ExpiresAt: expiresAt, RefreshToken: newRefresh}, nil
 }
 
-func (s *Service) Logout(ctx context.Context, rawRefreshToken string) error {
+func (s *Service) Logout(ctx context.Context, rawRefreshToken string, deviceInfo string, ip net.IP) error {
 	if rawRefreshToken == "" {
+		s.audit(ctx, "logout", uuid.Nil, ip, deviceInfo, map[string]any{"refresh_cookie_present": false})
 		return nil
 	}
-	return s.repo.RevokeRefreshToken(ctx, token.SHA256(rawRefreshToken))
+	err := s.repo.RevokeRefreshToken(ctx, token.SHA256(rawRefreshToken))
+	if err == nil {
+		s.audit(ctx, "logout", uuid.Nil, ip, deviceInfo, map[string]any{"refresh_cookie_present": true})
+	}
+	return err
 }
 
 func (s *Service) LogoutAll(ctx context.Context, userID uuid.UUID) error {
-	return s.repo.RevokeAllRefreshTokens(ctx, userID)
+	err := s.repo.RevokeAllRefreshTokens(ctx, userID)
+	if err == nil {
+		s.audit(ctx, "logout_all", userID, nil, "", nil)
+	}
+	return err
 }
 
 func (s *Service) CompleteTwoFactor(ctx context.Context, sessionToken string, deviceInfo string, ip net.IP) (domain.Tokens, error) {
@@ -201,6 +234,7 @@ func (s *Service) CompleteTwoFactor(ctx context.Context, sessionToken string, de
 		return domain.Tokens{}, err
 	}
 	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	s.audit(ctx, "2fa_login_success", user.ID, ip, deviceInfo, nil)
 	return tokens, nil
 }
 
@@ -217,11 +251,12 @@ func (s *Service) IssueTokenPairForUser(ctx context.Context, userID uuid.UUID, d
 		return domain.Tokens{}, err
 	}
 	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
+	s.audit(ctx, "login_success", user.ID, ip, deviceInfo, map[string]any{"issued_by": "internal"})
 	return tokens, nil
 }
 
 func (s *Service) IssuePendingTwoFactor(ctx context.Context, userID uuid.UUID, contextValue string) (string, time.Time, error) {
-	if contextValue != "login" && contextValue != "2fa_enable" {
+	if contextValue != "2fa_login" && contextValue != "login" {
 		return "", time.Time{}, apperr.New(http.StatusUnprocessableEntity, apperr.CodeValidationError, "Invalid 2FA context.")
 	}
 	user, err := s.userClient.GetByID(ctx, userID)
@@ -231,7 +266,15 @@ func (s *Service) IssuePendingTwoFactor(ctx context.Context, userID uuid.UUID, c
 	if user.IsBanned {
 		return "", time.Time{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
 	}
-	return s.jwtManager.IssuePendingTwoFactor(userID, contextValue, 5*time.Minute)
+	pending, expiresAt, _, err := s.jwtManager.IssuePendingTwoFactor(userID, "2fa_login", s.pendingExpiry)
+	return pending, expiresAt, err
+}
+
+func (s *Service) audit(ctx context.Context, eventType string, userID uuid.UUID, ip net.IP, userAgent string, metadata any) {
+	if s.repo == nil {
+		return
+	}
+	_ = s.repo.CreateAuditEvent(ctx, eventType, userID, ip, userAgent, metadata)
 }
 
 func (s *Service) Ping(ctx context.Context) error {

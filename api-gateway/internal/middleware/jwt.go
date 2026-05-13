@@ -10,6 +10,7 @@ import (
 )
 
 type AppClaims struct {
+	Type  string `json:"typ"`
 	Role  string `json:"role"`
 	Email string `json:"email"`
 	jwtlib.RegisteredClaims
@@ -36,7 +37,7 @@ func JWT(publicKey *rsa.PublicKey, issuer, audience string) func(http.Handler) h
 				writeError(w, r, http.StatusUnauthorized, "INVALID_TOKEN", "Access token is invalid.")
 				return
 			}
-			if claims.Subject == "" || claims.Role == "" || claims.Email == "" {
+			if claims.Subject == "" || claims.Type != "access" || claims.Role == "" || claims.Email == "" {
 				writeError(w, r, http.StatusUnauthorized, "INVALID_TOKEN", "Token claims are malformed.")
 				return
 			}

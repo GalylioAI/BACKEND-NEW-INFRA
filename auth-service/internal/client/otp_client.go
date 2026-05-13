@@ -15,12 +15,12 @@ import (
 )
 
 type OTPClient interface {
-	SendLogin2FA(ctx context.Context, userID uuid.UUID) error
+	SendLogin2FA(ctx context.Context, userID uuid.UUID, jti string) error
 }
 
 type NoopOTPClient struct{}
 
-func (NoopOTPClient) SendLogin2FA(context.Context, uuid.UUID) error { return nil }
+func (NoopOTPClient) SendLogin2FA(context.Context, uuid.UUID, string) error { return nil }
 
 type HTTPOTPClient struct {
 	baseURL string
@@ -32,11 +32,11 @@ func NewHTTPOTPClient(baseURL, secret string) *HTTPOTPClient {
 	return &HTTPOTPClient{baseURL: strings.TrimRight(baseURL, "/"), secret: secret, client: &http.Client{Timeout: 5 * time.Second}}
 }
 
-func (c *HTTPOTPClient) SendLogin2FA(ctx context.Context, userID uuid.UUID) error {
+func (c *HTTPOTPClient) SendLogin2FA(ctx context.Context, userID uuid.UUID, jti string) error {
 	if c.baseURL == "" {
 		return nil
 	}
-	body, err := json.Marshal(map[string]string{"user_id": userID.String()})
+	body, err := json.Marshal(map[string]string{"user_id": userID.String(), "jti": jti})
 	if err != nil {
 		return err
 	}

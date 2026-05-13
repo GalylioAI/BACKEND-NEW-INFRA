@@ -52,6 +52,8 @@ type Repository interface {
 	List(ctx context.Context, page, perPage int) ([]domain.User, int64, error)
 	ChangeRole(ctx context.Context, id uuid.UUID, role string) (domain.User, error)
 	SetBan(ctx context.Context, id uuid.UUID, banned bool, reason *string) (domain.User, error)
+	CountActiveSuperAdmins(ctx context.Context) (int, error)
+	CreateAuditEvent(ctx context.Context, eventType string, userID, actorID uuid.UUID, metadata any) error
 	RecordLoginFailure(ctx context.Context, id uuid.UUID, lockedUntil *time.Time) error
 	RecordLoginSuccess(ctx context.Context, id uuid.UUID) error
 	ListGouvernorats(ctx context.Context) ([]domain.Gouvernorat, error)
@@ -59,6 +61,27 @@ type Repository interface {
 	SetTwoFactor(ctx context.Context, id uuid.UUID, enabled bool) (domain.User, error)
 	UpdatePasswordHash(ctx context.Context, id uuid.UUID, passwordHash string) error
 	Ping(ctx context.Context) error
+}
+
+func (r *PostgresRepository) CreateAuditEvent(ctx context.Context, eventType string, userID, actorID uuid.UUID, metadata any) error {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	body, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	var nullableUser any
+	if userID != uuid.Nil {
+		nullableUser = userID
+	}
+	var nullableActor any
+	if actorID != uuid.Nil {
+		nullableActor = actorID
+	}
+	_, err = r.pool.Exec(ctx, `
+		INSERT INTO audit_events (event_type, user_id, actor_user_id, metadata)
+		VALUES ($1, $2, $3, $4)`, eventType, nullableUser, nullableActor, string(body))
+	return err
 }
 
 type PostgresRepository struct {
@@ -235,6 +258,17 @@ func (r *PostgresRepository) SetBan(ctx context.Context, id uuid.UUID, banned bo
 		RETURNING id, full_name, username, email, phone, password_hash, gouvernorat_id, role, auth_provider,
 		          is_verified, is_banned, ban_reason, two_factor_enabled, two_factor_enabled_at, failed_login_attempts, locked_until,
 		          last_login_at, deleted_at, created_at, updated_at`, id, banned, reason))
+}
+
+func (r *PostgresRepository) CountActiveSuperAdmins(ctx context.Context) (int, error) {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	var count int
+	err := r.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		FROM users
+		WHERE role = 'superadmin' AND is_banned = false AND deleted_at IS NULL`).Scan(&count)
+	return count, err
 }
 
 func (r *PostgresRepository) RecordLoginFailure(ctx context.Context, id uuid.UUID, lockedUntil *time.Time) error {

@@ -38,9 +38,9 @@ func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) ht
 		authorization := req.Header.Get("Authorization")
 		originalDirector(req)
 		req.Host = target.Host
-		if req.Method == http.MethodPost && req.URL.Path == "/otp/2fa/verify" {
+		if req.Method == http.MethodPost && req.URL.Path == "/otp/2fa/login/verify" {
 			if token := bearerToken(authorization); token != "" {
-				req.Header.Set("X-2FA-Session-Token", token)
+				req.Header.Set("X-2FA-Pending-Token", token)
 			}
 		}
 		req.Header.Del("Authorization")

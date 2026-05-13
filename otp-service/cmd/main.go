@@ -69,7 +69,15 @@ func main() {
 		rabbitCheck = amqpPublisher.Check
 	}
 
-	otpService := service.New(repo, userClient, authClient, publisher, verifier)
+	otpService := service.New(repo, userClient, authClient, publisher, verifier, service.Options{
+		EmailVerificationOTPTTL: cfg.EmailVerificationOTPTTL,
+		PasswordResetOTPTTL:     cfg.PasswordResetOTPTTL,
+		PasswordResetTokenTTL:   cfg.PasswordResetTokenTTL,
+		TwoFactorLoginOTPTTL:    cfg.TwoFactorLoginOTPTTL,
+		TwoFactorEnableOTPTTL:   cfg.TwoFactorEnableOTPTTL,
+		TwoFactorDisableOTPTTL:  cfg.TwoFactorDisableOTPTTL,
+		TwoFactorMaxAttempts:    int16(cfg.OTPMaxAttempts),
+	})
 	if amqpPublisher != nil {
 		startUserCreatedConsumer(ctx, amqpPublisher, otpService, logger)
 	}

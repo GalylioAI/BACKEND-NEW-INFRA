@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"net"
 	"net/http"
@@ -22,9 +23,27 @@ type Repository interface {
 	RotateRefreshToken(ctx context.Context, oldHash, newHash, deviceInfo string, ip net.IP, expiresAt time.Time) (uuid.UUID, bool, error)
 	RevokeRefreshToken(ctx context.Context, tokenHash string) error
 	RevokeAllRefreshTokens(ctx context.Context, userID uuid.UUID) error
+	CreateAuditEvent(ctx context.Context, eventType string, userID uuid.UUID, ip net.IP, userAgent string, metadata any) error
 	CreateTwoFactorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error
 	ConsumeTwoFactorSession(ctx context.Context, tokenHash string) (uuid.UUID, error)
 	Ping(ctx context.Context) error
+}
+
+func (r *PostgresRepository) CreateAuditEvent(ctx context.Context, eventType string, userID uuid.UUID, ip net.IP, userAgent string, metadata any) error {
+	ctx, cancel := shareddb.Timeout(ctx)
+	defer cancel()
+	body, err := json.Marshal(metadata)
+	if err != nil {
+		return err
+	}
+	var nullableUser any
+	if userID != uuid.Nil {
+		nullableUser = userID
+	}
+	_, err = r.pool.Exec(ctx, `
+		INSERT INTO audit_events (event_type, user_id, ip_address, user_agent, metadata)
+		VALUES ($1, $2, $3, $4, $5)`, eventType, nullableUser, nullIP(ip), nullString(userAgent), string(body))
+	return err
 }
 
 type PostgresRepository struct {
@@ -69,6 +88,7 @@ func (r *PostgresRepository) RotateRefreshToken(ctx context.Context, oldHash, ne
 		if _, err := tx.Exec(ctx, `UPDATE refresh_tokens SET revoked = true WHERE user_id = $1`, record.UserID); err != nil {
 			return uuid.Nil, true, err
 		}
+		_, _ = tx.Exec(ctx, `UPDATE refresh_tokens SET reused_at = NOW() WHERE id = $1 AND reused_at IS NULL`, record.ID)
 		if err := tx.Commit(ctx); err != nil {
 			return uuid.Nil, true, err
 		}
@@ -77,7 +97,7 @@ func (r *PostgresRepository) RotateRefreshToken(ctx context.Context, oldHash, ne
 	if time.Now().UTC().After(record.ExpiresAt) {
 		return record.UserID, false, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidRefreshToken, "Refresh token is invalid.")
 	}
-	if _, err := tx.Exec(ctx, `UPDATE refresh_tokens SET revoked = true WHERE id = $1`, record.ID); err != nil {
+	if _, err := tx.Exec(ctx, `UPDATE refresh_tokens SET revoked = true, replaced_by_token_hash = $2 WHERE id = $1`, record.ID, newHash); err != nil {
 		return uuid.Nil, false, err
 	}
 	if _, err := tx.Exec(ctx, `
