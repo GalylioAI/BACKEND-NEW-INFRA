@@ -338,7 +338,7 @@ func (r *PostgresRepository) UpdatePasswordHash(ctx context.Context, id uuid.UUI
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
 	result, err := r.pool.Exec(ctx, `
-		UPDATE users SET password_hash = $2
+		UPDATE users SET password_hash = $2, updated_at = NOW()
 		WHERE id = $1 AND deleted_at IS NULL`, id, passwordHash)
 	if err != nil {
 		return err

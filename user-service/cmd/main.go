@@ -51,6 +51,7 @@ func main() {
 	userService := service.New(repo, authClient, service.Options{
 		LoginMaxAttempts:       int16(cfg.LoginMaxAttempts),
 		AccountLockoutDuration: cfg.AccountLockoutDuration,
+		RecentAuthWindow:       cfg.RecentAuthWindow,
 	})
 
 	var publisher rabbit.Publisher = rabbit.NoopPublisher{}

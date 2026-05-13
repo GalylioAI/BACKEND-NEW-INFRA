@@ -4,15 +4,20 @@ import (
 	"crypto/rsa"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	jwtlib "github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 type AppClaims struct {
-	Type  string `json:"typ"`
-	Role  string `json:"role"`
-	Email string `json:"email"`
+	Type        string   `json:"typ"`
+	Role        string   `json:"role"`
+	Email       string   `json:"email"`
+	AuthTime    int64    `json:"auth_time"`
+	AuthMethods []string `json:"amr"`
+	SessionID   string   `json:"sid"`
 	jwtlib.RegisteredClaims
 }
 
@@ -37,13 +42,20 @@ func JWT(publicKey *rsa.PublicKey, issuer, audience string) func(http.Handler) h
 				writeError(w, r, http.StatusUnauthorized, "INVALID_TOKEN", "Access token is invalid.")
 				return
 			}
-			if claims.Subject == "" || claims.Type != "access" || claims.Role == "" || claims.Email == "" {
+			if claims.Subject == "" || claims.Type != "access" || claims.Role == "" || claims.Email == "" || claims.AuthTime <= 0 || len(claims.AuthMethods) == 0 || strings.TrimSpace(claims.SessionID) == "" {
+				writeError(w, r, http.StatusUnauthorized, "INVALID_TOKEN", "Token claims are malformed.")
+				return
+			}
+			if _, err := uuid.Parse(claims.SessionID); err != nil {
 				writeError(w, r, http.StatusUnauthorized, "INVALID_TOKEN", "Token claims are malformed.")
 				return
 			}
 			r.Header.Set("X-User-Id", claims.Subject)
 			r.Header.Set("X-User-Role", claims.Role)
 			r.Header.Set("X-User-Email", claims.Email)
+			r.Header.Set("X-Auth-Time", strconv.FormatInt(claims.AuthTime, 10))
+			r.Header.Set("X-Auth-Methods", strings.Join(claims.AuthMethods, ","))
+			r.Header.Set("X-Session-Id", claims.SessionID)
 			next.ServeHTTP(w, r)
 		})
 	}

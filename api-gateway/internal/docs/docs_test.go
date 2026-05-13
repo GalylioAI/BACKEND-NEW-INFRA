@@ -28,4 +28,19 @@ func TestRegisterServesSwaggerAndOpenAPI(t *testing.T) {
 	if !strings.Contains(spec.Body.String(), "openapi: 3.0.3") {
 		t.Fatal("expected embedded OpenAPI document")
 	}
+	body := spec.Body.String()
+	if strings.Contains(body, "/otp/2fa/verify:") {
+		t.Fatal("old ambiguous 2FA endpoint must not be present in OpenAPI")
+	}
+	for _, path := range []string{
+		"/otp/2fa/login/verify:",
+		"/otp/2fa/enable/verify:",
+		"/otp/2fa/disable/verify:",
+		"/users/me/password/set:",
+		"twoFactorPendingAuth:",
+	} {
+		if !strings.Contains(body, path) {
+			t.Fatalf("expected OpenAPI to contain %s", path)
+		}
+	}
 }

@@ -3,6 +3,9 @@ package userctx
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"backend/shared/apperr"
 
@@ -10,9 +13,12 @@ import (
 )
 
 const (
-	HeaderUserID    = "X-User-Id"
-	HeaderUserRole  = "X-User-Role"
-	HeaderUserEmail = "X-User-Email"
+	HeaderUserID      = "X-User-Id"
+	HeaderUserRole    = "X-User-Role"
+	HeaderUserEmail   = "X-User-Email"
+	HeaderAuthTime    = "X-Auth-Time"
+	HeaderAuthMethods = "X-Auth-Methods"
+	HeaderSessionID   = "X-Session-Id"
 )
 
 type Role string
@@ -24,9 +30,12 @@ const (
 )
 
 type User struct {
-	ID    uuid.UUID
-	Role  Role
-	Email string
+	ID          uuid.UUID
+	Role        Role
+	Email       string
+	AuthTime    time.Time
+	AuthMethods []string
+	SessionID   uuid.UUID
 }
 
 type key struct{}
@@ -40,7 +49,30 @@ func FromHeaders(r *http.Request) (User, error) {
 	if role != RoleUser && role != RoleAdmin && role != RoleSuperAdmin {
 		return User{}, apperr.New(http.StatusForbidden, apperr.CodeForbidden, "You do not have permission to perform this action.")
 	}
-	return User{ID: id, Role: role, Email: r.Header.Get(HeaderUserEmail)}, nil
+	user := User{ID: id, Role: role, Email: r.Header.Get(HeaderUserEmail)}
+	if raw := strings.TrimSpace(r.Header.Get(HeaderAuthTime)); raw != "" {
+		seconds, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || seconds <= 0 {
+			return User{}, apperr.New(http.StatusUnauthorized, apperr.CodeUnauthorized, "Authentication is required.")
+		}
+		user.AuthTime = time.Unix(seconds, 0).UTC()
+	}
+	if raw := strings.TrimSpace(r.Header.Get(HeaderAuthMethods)); raw != "" {
+		for _, method := range strings.Split(raw, ",") {
+			method = strings.TrimSpace(method)
+			if method != "" {
+				user.AuthMethods = append(user.AuthMethods, method)
+			}
+		}
+	}
+	if raw := strings.TrimSpace(r.Header.Get(HeaderSessionID)); raw != "" {
+		sessionID, err := uuid.Parse(raw)
+		if err != nil {
+			return User{}, apperr.New(http.StatusUnauthorized, apperr.CodeUnauthorized, "Authentication is required.")
+		}
+		user.SessionID = sessionID
+	}
+	return user, nil
 }
 
 func With(ctx context.Context, user User) context.Context {

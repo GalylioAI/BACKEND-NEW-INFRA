@@ -41,6 +41,8 @@ JWT_AUDIENCE=your-app-client
 JWT_ACCESS_EXPIRY=15m
 JWT_2FA_PENDING_EXPIRY=5m
 REFRESH_TOKEN_EXPIRY=720h
+RECENT_AUTH_WINDOW=10m
+OTP_RESEND_COOLDOWN=1m
 
 # --- Internal secret ---
 # Generate: openssl rand -hex 32

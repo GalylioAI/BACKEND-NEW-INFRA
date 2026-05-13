@@ -182,8 +182,11 @@ func (c RateLimitConfig) limitForRoute(routeKey string) routeLimit {
 	case "POST /users/signup",
 		"POST /otp/email/send",
 		"POST /otp/email/verify",
+		"POST /otp/2fa/enable",
+		"POST /otp/2fa/disable",
 		"POST /otp/2fa/login/verify",
 		"POST /otp/2fa/enable/verify",
+		"POST /otp/2fa/disable/verify",
 		"POST /otp/password-reset/send",
 		"POST /otp/password-reset/verify",
 		"POST /otp/password-reset/apply":

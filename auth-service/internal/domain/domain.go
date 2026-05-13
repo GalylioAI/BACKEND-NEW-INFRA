@@ -38,9 +38,12 @@ type Tokens struct {
 }
 
 type RefreshRecord struct {
-	ID        uuid.UUID
-	UserID    uuid.UUID
-	TokenHash string
-	Revoked   bool
-	ExpiresAt time.Time
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	TokenHash   string
+	Revoked     bool
+	ExpiresAt   time.Time
+	AuthTime    time.Time
+	AuthMethods []string
+	SessionID   uuid.UUID
 }

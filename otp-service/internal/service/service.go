@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"backend/otp-service/internal/client"
@@ -48,8 +47,9 @@ type PendingJWTVerifier struct {
 }
 
 type PendingClaims struct {
-	Type    string `json:"typ"`
-	Purpose string `json:"purpose"`
+	Type        string   `json:"typ"`
+	Purpose     string   `json:"purpose"`
+	AuthMethods []string `json:"amr"`
 	jwtlib.RegisteredClaims
 }
 
@@ -68,6 +68,7 @@ type Options struct {
 	TwoFactorEnableOTPTTL   time.Duration
 	TwoFactorDisableOTPTTL  time.Duration
 	TwoFactorMaxAttempts    int16
+	OTPResendCooldown       time.Duration
 }
 
 func DefaultOptions() Options {
@@ -79,6 +80,7 @@ func DefaultOptions() Options {
 		TwoFactorEnableOTPTTL:   defaultTwoFactorOTPTTL,
 		TwoFactorDisableOTPTTL:  defaultTwoFactorOTPTTL,
 		TwoFactorMaxAttempts:    defaultTwoFactorAttempts,
+		OTPResendCooldown:       time.Minute,
 	}
 }
 
@@ -116,6 +118,9 @@ func (o Options) withDefaults() Options {
 	if o.TwoFactorMaxAttempts <= 0 {
 		o.TwoFactorMaxAttempts = defaults.TwoFactorMaxAttempts
 	}
+	if o.OTPResendCooldown <= 0 {
+		o.OTPResendCooldown = defaults.OTPResendCooldown
+	}
 	return o
 }
 
@@ -132,31 +137,35 @@ func NewPendingJWTVerifier(publicKeyPath, issuer, audience string) (*PendingJWTV
 }
 
 type VerifiedPendingClaims struct {
-	UserID uuid.UUID
-	JTI    string
+	UserID      uuid.UUID
+	JTI         string
+	AuthMethods []string
 }
 
 func (v *PendingJWTVerifier) VerifyLoginPending(raw string) (VerifiedPendingClaims, error) {
-	userID, jti, purpose, err := v.verifyPending(raw)
+	userID, jti, purpose, authMethods, err := v.verifyPending(raw)
 	if err != nil || purpose != domain.OTPTypeTwoFactorLogin {
 		return VerifiedPendingClaims{}, invalidTwoFactorSession()
 	}
-	return VerifiedPendingClaims{UserID: userID, JTI: jti}, nil
+	if len(authMethods) == 0 {
+		authMethods = []string{"password"}
+	}
+	return VerifiedPendingClaims{UserID: userID, JTI: jti, AuthMethods: authMethods}, nil
 }
 
-func (v *PendingJWTVerifier) verifyPending(raw string) (uuid.UUID, string, string, error) {
+func (v *PendingJWTVerifier) verifyPending(raw string) (uuid.UUID, string, string, []string, error) {
 	claims := &PendingClaims{}
 	parsed, err := jwtlib.ParseWithClaims(raw, claims, func(token *jwtlib.Token) (any, error) {
 		return v.publicKey, nil
 	}, jwtlib.WithIssuer(v.issuer), jwtlib.WithAudience(v.audience), jwtlib.WithValidMethods([]string{jwtlib.SigningMethodRS256.Alg()}))
 	if err != nil || !parsed.Valid || claims.Type != "2fa_pending" || claims.ID == "" {
-		return uuid.Nil, "", "", invalidTwoFactorSession()
+		return uuid.Nil, "", "", nil, invalidTwoFactorSession()
 	}
 	userID, err := uuid.Parse(claims.Subject)
 	if err != nil {
-		return uuid.Nil, "", "", invalidTwoFactorSession()
+		return uuid.Nil, "", "", nil, invalidTwoFactorSession()
 	}
-	return userID, claims.ID, claims.Purpose, nil
+	return userID, claims.ID, claims.Purpose, claims.AuthMethods, nil
 }
 
 func invalidTwoFactorSession() error {
@@ -308,7 +317,7 @@ func (s *Service) VerifyLoginTwoFactor(ctx context.Context, code, pendingToken s
 	if err := s.verifyTwoFactorChallenge(ctx, userID, claims.JTI, domain.OTPTypeTwoFactorLogin, code); err != nil {
 		return client.TokenPair{}, err
 	}
-	return s.authClient.IssueJWT(ctx, userID)
+	return s.authClient.IssueJWT(ctx, userID, withOTP(claims.AuthMethods))
 }
 
 func (s *Service) VerifyEnableTwoFactor(ctx context.Context, userID uuid.UUID, code string) error {
@@ -318,32 +327,36 @@ func (s *Service) VerifyEnableTwoFactor(ctx context.Context, userID uuid.UUID, c
 	return s.userClient.SetTwoFactor(ctx, userID, true)
 }
 
-func (s *Service) DisableTwoFactor(ctx context.Context, userID uuid.UUID, code string) (string, error) {
-	if strings.TrimSpace(code) == "" {
-		user, err := s.userClient.GetByID(ctx, userID)
-		if err != nil {
-			return "", err
-		}
-		plain, err := s.issueTwoFactorChallenge(ctx, userID, uuid.NewString(), domain.OTPTypeTwoFactorDisable, s.options.TwoFactorDisableOTPTTL)
-		if err != nil {
-			return "", err
-		}
-		if err := s.publishMail(ctx, "mail.send.otp_2fa", user, "otp_2fa", map[string]any{
-			"full_name":          user.FullName,
-			"otp_code":           plain,
-			"expires_in_minutes": int(s.options.TwoFactorDisableOTPTTL.Minutes()),
-		}); err != nil {
-			return "", err
-		}
-		return "Enter the code sent to your email to confirm 2FA disable", nil
+func (s *Service) StartDisableTwoFactor(ctx context.Context, userID uuid.UUID, currentPassword string) error {
+	user, err := s.userClient.GetByID(ctx, userID)
+	if err != nil {
+		return err
 	}
+	if user.IsBanned {
+		return apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+	}
+	if user.PasswordHash == nil {
+		return apperr.New(http.StatusForbidden, apperr.CodeLocalPasswordRequired, "Set a local password before disabling 2FA.")
+	}
+	if err := s.userClient.VerifyPassword(ctx, userID, currentPassword); err != nil {
+		return err
+	}
+	plain, err := s.issueTwoFactorChallenge(ctx, userID, uuid.NewString(), domain.OTPTypeTwoFactorDisable, s.options.TwoFactorDisableOTPTTL)
+	if err != nil {
+		return err
+	}
+	return s.publishMail(ctx, "mail.send.otp_2fa", user, "otp_2fa", map[string]any{
+		"full_name":          user.FullName,
+		"otp_code":           plain,
+		"expires_in_minutes": int(s.options.TwoFactorDisableOTPTTL.Minutes()),
+	})
+}
+
+func (s *Service) VerifyDisableTwoFactor(ctx context.Context, userID uuid.UUID, code string) error {
 	if err := s.verifyLatestTwoFactorChallenge(ctx, userID, domain.OTPTypeTwoFactorDisable, code); err != nil {
-		return "", err
+		return err
 	}
-	if err := s.userClient.SetTwoFactor(ctx, userID, false); err != nil {
-		return "", err
-	}
-	return "2FA disabled successfully", nil
+	return s.userClient.SetTwoFactor(ctx, userID, false)
 }
 
 func (s *Service) SendPasswordReset(ctx context.Context, email string) error {
@@ -355,7 +368,7 @@ func (s *Service) SendPasswordReset(ctx context.Context, email string) error {
 	if err != nil {
 		return nil
 	}
-	if user.IsBanned || user.AuthProvider != domain.ProviderManual {
+	if user.IsBanned || user.PasswordHash == nil {
 		return nil
 	}
 	plain, err := s.issueOTP(ctx, user.ID, domain.OTPTypePasswordReset)
@@ -443,7 +456,7 @@ func (s *Service) Ping(ctx context.Context) error {
 }
 
 func (s *Service) issueOTP(ctx context.Context, userID uuid.UUID, otpType string) (string, error) {
-	retryAfter, err := s.repo.CheckAndIncrementRateLimit(ctx, userID, otpType)
+	retryAfter, err := s.repo.CheckAndIncrementRateLimit(ctx, userID, otpType, s.options.OTPResendCooldown)
 	if err != nil {
 		return "", err
 	}
@@ -476,7 +489,7 @@ func (s *Service) otpTTL(otpType string) time.Duration {
 }
 
 func (s *Service) issueTwoFactorChallenge(ctx context.Context, userID uuid.UUID, jti, purpose string, ttl time.Duration) (string, error) {
-	retryAfter, err := s.repo.CheckAndIncrementRateLimit(ctx, userID, purpose)
+	retryAfter, err := s.repo.CheckAndIncrementRateLimit(ctx, userID, purpose, s.options.OTPResendCooldown)
 	if err != nil {
 		return "", err
 	}
@@ -560,4 +573,26 @@ func (s *Service) publishMail(ctx context.Context, routingKey string, user domai
 		"locale":   "en",
 		"data":     data,
 	})
+}
+
+func withOTP(methods []string) []string {
+	out := make([]string, 0, len(methods)+1)
+	seen := map[string]struct{}{}
+	for _, method := range methods {
+		if method == "" {
+			continue
+		}
+		if _, ok := seen[method]; ok {
+			continue
+		}
+		seen[method] = struct{}{}
+		out = append(out, method)
+	}
+	if _, ok := seen["otp"]; !ok {
+		out = append(out, "otp")
+	}
+	if len(out) == 1 {
+		return []string{"password", "otp"}
+	}
+	return out
 }

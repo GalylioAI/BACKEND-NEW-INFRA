@@ -71,10 +71,12 @@ func (r *Router) routes() http.Handler {
 	r.authenticated(mux, "GET /users/me", user)
 	r.authenticated(mux, "PUT /users/me", user)
 	r.authenticated(mux, "PUT /users/me/password", user)
+	r.authenticated(mux, "POST /users/me/password/set", user)
 	r.authenticated(mux, "DELETE /users/me", user)
 	r.authenticated(mux, "POST /otp/2fa/enable", otp)
 	r.authenticated(mux, "POST /otp/2fa/disable", otp)
 	r.authenticated(mux, "POST /otp/2fa/enable/verify", otp)
+	r.authenticated(mux, "POST /otp/2fa/disable/verify", otp)
 
 	r.authenticated(mux, "POST /favorites", favorites)
 	r.authenticated(mux, "GET /favorites", favorites)

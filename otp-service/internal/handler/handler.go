@@ -38,6 +38,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.Handle("POST /otp/2fa/enable", protected(h.enableTwoFactor))
 	mux.Handle("POST /otp/2fa/disable", protected(h.disableTwoFactor))
 	mux.Handle("POST /otp/2fa/enable/verify", protected(h.verifyEnableTwoFactor))
+	mux.Handle("POST /otp/2fa/disable/verify", protected(h.verifyDisableTwoFactor))
 
 	mux.Handle("POST /otp/2fa/login/verify", internalOnly(http.HandlerFunc(h.verifyLoginTwoFactor)))
 	mux.HandleFunc("POST /otp/password-reset/send", h.sendPasswordReset)
@@ -173,22 +174,35 @@ func (h *Handler) disableTwoFactor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Code string `json:"code"`
+		CurrentPassword string `json:"current_password" validate:"required,max=128"`
 	}
-	if err := httpjson.Decode(r, &req); err != nil {
+	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+	if err := h.service.StartDisableTwoFactor(r.Context(), user.ID, req.CurrentPassword); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}
-	if req.Code != "" && len(req.Code) != 6 {
-		httpjson.WriteError(w, r, apperr.Validation(apperr.FieldErrors{"code": "Must be exactly 6 digits."}))
+	httpjson.Write(w, r, http.StatusOK, map[string]string{"message": "Enter the code sent to your email to confirm 2FA disable"})
+}
+
+func (h *Handler) verifyDisableTwoFactor(w http.ResponseWriter, r *http.Request) {
+	user, ok := userctx.FromContext(r.Context())
+	if !ok {
+		httpjson.WriteError(w, r, apperr.New(http.StatusUnauthorized, apperr.CodeUnauthorized, "Authentication is required."))
 		return
 	}
-	message, err := h.service.DisableTwoFactor(r.Context(), user.ID, req.Code)
-	if err != nil {
+	var req struct {
+		Code string `json:"code" validate:"required,len=6,numeric"`
+	}
+	if !decodeAndValidate(w, r, &req) {
+		return
+	}
+	if err := h.service.VerifyDisableTwoFactor(r.Context(), user.ID, req.Code); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}
-	httpjson.Write(w, r, http.StatusOK, map[string]string{"message": message})
+	httpjson.Write(w, r, http.StatusOK, map[string]string{"message": "2FA disabled successfully"})
 }
 
 func (h *Handler) sendPasswordReset(w http.ResponseWriter, r *http.Request) {

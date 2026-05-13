@@ -65,6 +65,11 @@ func TestRouteAuthContract(t *testing.T) {
 			}
 			userAdminHits.Add(1)
 			w.WriteHeader(http.StatusNoContent)
+		case "/users/me/password/set":
+			if r.Header.Get("X-Auth-Methods") == "" || r.Header.Get("X-Auth-Time") == "" || r.Header.Get("X-Session-Id") == "" {
+				t.Fatalf("expected auth context headers to reach user service")
+			}
+			w.WriteHeader(http.StatusNoContent)
 		default:
 			http.NotFound(w, r)
 		}
@@ -146,6 +151,41 @@ func TestRouteAuthContract(t *testing.T) {
 		}
 	})
 
+	t.Run("disable 2fa verify requires access token", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/otp/2fa/disable/verify", strings.NewReader(`{"code":"123456"}`))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected protected disable verify route to reject missing bearer, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("protected 2fa routes reject pending token type", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/otp/2fa/disable", strings.NewReader(`{"current_password":"Strong$123"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+signGatewayPendingToken(t, key, "user-1"))
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusUnauthorized {
+			t.Fatalf("expected pending token to be rejected on access route, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("disable 2fa verify forwards with valid access token", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/otp/2fa/disable/verify", strings.NewReader(`{"code":"123456"}`))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+signGatewayToken(t, key, "user-1", "user"))
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("expected protected disable verify route to pass, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
 	t.Run("protected route rejects missing bearer", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/favorites", nil)
 		rec := httptest.NewRecorder()
@@ -153,6 +193,17 @@ func TestRouteAuthContract(t *testing.T) {
 		handler.ServeHTTP(rec, req)
 		if rec.Code != http.StatusUnauthorized {
 			t.Fatalf("expected 401 for missing bearer, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
+	t.Run("password set route forwards auth context", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/users/me/password/set", strings.NewReader(`{"new_password":"Strong$123","new_password_confirm":"Strong$123"}`))
+		req.Header.Set("Authorization", "Bearer "+signGatewayToken(t, key, "user-1", "user"))
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("expected password set route to pass, got %d: %s", rec.Code, rec.Body.String())
 		}
 	})
 
@@ -225,24 +276,59 @@ func TestRouteAuthContract(t *testing.T) {
 	})
 }
 
-func signGatewayToken(t *testing.T, key *rsa.PrivateKey, subject, role string) string {
+func signGatewayPendingToken(t *testing.T, key *rsa.PrivateKey, subject string) string {
 	t.Helper()
 	claims := jwtlib.MapClaims{
-		"iss":   "issuer",
-		"aud":   "audience",
-		"sub":   subject,
-		"role":  role,
-		"email": subject + "@example.com",
-		"typ":   "access",
-		"exp":   time.Now().Add(time.Hour).Unix(),
-		"iat":   time.Now().Add(-time.Minute).Unix(),
-		"jti":   subject + "-jti",
+		"iss":     "issuer",
+		"aud":     "audience",
+		"sub":     subject,
+		"typ":     "2fa_pending",
+		"purpose": "2fa_login",
+		"exp":     time.Now().Add(time.Hour).Unix(),
+		"iat":     time.Now().Add(-time.Minute).Unix(),
+		"jti":     subject + "-pending-jti",
 	}
 	token, err := jwtlib.NewWithClaims(jwtlib.SigningMethodRS256, claims).SignedString(key)
 	if err != nil {
 		t.Fatalf("sign token: %v", err)
 	}
 	return token
+}
+
+func signGatewayToken(t *testing.T, key *rsa.PrivateKey, subject, role string) string {
+	t.Helper()
+	claims := jwtlib.MapClaims{
+		"iss":       "issuer",
+		"aud":       "audience",
+		"sub":       subject,
+		"role":      role,
+		"email":     subject + "@example.com",
+		"typ":       "access",
+		"auth_time": time.Now().Add(-time.Minute).Unix(),
+		"amr":       []string{"password"},
+		"sid":       uuidLike(subject),
+		"exp":       time.Now().Add(time.Hour).Unix(),
+		"iat":       time.Now().Add(-time.Minute).Unix(),
+		"jti":       subject + "-jti",
+	}
+	token, err := jwtlib.NewWithClaims(jwtlib.SigningMethodRS256, claims).SignedString(key)
+	if err != nil {
+		t.Fatalf("sign token: %v", err)
+	}
+	return token
+}
+
+func uuidLike(seed string) string {
+	switch seed {
+	case "admin-1":
+		return "00000000-0000-0000-0000-000000000001"
+	case "superadmin-1":
+		return "00000000-0000-0000-0000-000000000002"
+	case "banned-1":
+		return "00000000-0000-0000-0000-000000000003"
+	default:
+		return "00000000-0000-0000-0000-000000000004"
+	}
 }
 
 func signGatewayTokenWithoutType(t *testing.T, key *rsa.PrivateKey, subject, role string) string {

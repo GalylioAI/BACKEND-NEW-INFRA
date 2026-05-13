@@ -68,6 +68,7 @@ func (h *Handler) Routes() http.Handler {
 	internal := middleware.RequireInternalSecret(h.internalSecret)
 	mux.Handle("POST /internal/auth/revoke-all", internal(http.HandlerFunc(h.internalRevokeAll)))
 	mux.Handle("DELETE /internal/auth/sessions/{user_id}", internal(http.HandlerFunc(h.internalDeleteSessions)))
+	mux.Handle("DELETE /internal/auth/sessions/{user_id}/others/{session_id}", internal(http.HandlerFunc(h.internalDeleteOtherSessions)))
 	mux.Handle("POST /internal/auth/issue-jwt", internal(http.HandlerFunc(h.internalIssueJWT)))
 	mux.Handle("POST /internal/auth/2fa-pending", internal(http.HandlerFunc(h.internalTwoFAPending)))
 	mux.Handle("POST /internal/auth/2fa/complete", internal(http.HandlerFunc(h.internalCompleteTwoFactor)))
@@ -193,15 +194,34 @@ func (h *Handler) internalDeleteSessions(w http.ResponseWriter, r *http.Request)
 	httpjson.WriteNoContent(w, r)
 }
 
+func (h *Handler) internalDeleteOtherSessions(w http.ResponseWriter, r *http.Request) {
+	userID, err := uuid.Parse(r.PathValue("user_id"))
+	if err != nil {
+		httpjson.WriteError(w, r, apperr.New(http.StatusBadRequest, apperr.CodeValidationError, "Invalid UUID path parameter."))
+		return
+	}
+	sessionID, err := uuid.Parse(r.PathValue("session_id"))
+	if err != nil {
+		httpjson.WriteError(w, r, apperr.New(http.StatusBadRequest, apperr.CodeValidationError, "Invalid UUID path parameter."))
+		return
+	}
+	if err := h.service.RevokeOtherRefreshTokens(r.Context(), userID, sessionID); err != nil {
+		httpjson.WriteError(w, r, err)
+		return
+	}
+	httpjson.WriteNoContent(w, r)
+}
+
 func (h *Handler) internalIssueJWT(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		UserID uuid.UUID `json:"user_id"`
+		UserID      uuid.UUID `json:"user_id"`
+		AuthMethods []string  `json:"auth_methods"`
 	}
 	if err := httpjson.Decode(r, &req); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}
-	tokens, err := h.service.IssueTokenPairForUser(r.Context(), req.UserID, r.UserAgent(), clientIP(r))
+	tokens, err := h.service.IssueTokenPairForUser(r.Context(), req.UserID, req.AuthMethods, r.UserAgent(), clientIP(r))
 	if err != nil {
 		httpjson.WriteError(w, r, err)
 		return

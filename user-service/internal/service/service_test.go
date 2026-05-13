@@ -16,7 +16,7 @@ import (
 
 func TestSignupValidatesAndNormalizesUser(t *testing.T) {
 	repo := &fakeUserRepo{}
-	svc := service.New(repo, fakeAuthClient{})
+	svc := service.New(repo, &fakeAuthClient{})
 	user, err := svc.Signup(context.Background(), service.SignupRequest{
 		FullName:      "Jane Doe",
 		Username:      "JaneD",
@@ -51,7 +51,7 @@ func TestSignupValidatesAndNormalizesUser(t *testing.T) {
 
 func TestSignupReturnsFieldConflict(t *testing.T) {
 	repo := &fakeUserRepo{emailExists: true}
-	svc := service.New(repo, fakeAuthClient{})
+	svc := service.New(repo, &fakeAuthClient{})
 	_, err := svc.Signup(context.Background(), service.SignupRequest{
 		FullName:      "Jane Doe",
 		Username:      "janed",
@@ -83,7 +83,7 @@ func TestUpdateProfileTreatsFieldsAsOptional(t *testing.T) {
 		Role:          domain.RoleUser,
 		AuthProvider:  domain.ProviderManual,
 	}}
-	svc := service.New(repo, fakeAuthClient{})
+	svc := service.New(repo, &fakeAuthClient{})
 
 	_, err := svc.UpdateProfile(context.Background(), id, service.UpdateProfileRequest{Phone: &newPhone})
 	if err != nil {
@@ -108,7 +108,7 @@ func TestChangeRoleRequiresSuperadminAndProtectsLastSuperadmin(t *testing.T) {
 	adminActor := actor(uuid.New(), domain.RoleAdmin)
 	superActor := actor(uuid.New(), domain.RoleSuperAdmin)
 	repo := &fakeUserRepo{current: domain.User{ID: targetID, Role: domain.RoleUser}, superadminCount: 2}
-	svc := service.New(repo, fakeAuthClient{})
+	svc := service.New(repo, &fakeAuthClient{})
 
 	if _, err := svc.ChangeRole(context.Background(), adminActor, targetID, domain.RoleAdmin); apperr.From(err).Status != 403 {
 		t.Fatalf("expected admin role change to be forbidden, got %v", err)
@@ -132,7 +132,7 @@ func TestTargetAwareBanAndDeleteRequireSuperadminForAdminTargets(t *testing.T) {
 	adminActor := actor(uuid.New(), domain.RoleAdmin)
 	superActor := actor(uuid.New(), domain.RoleSuperAdmin)
 	repo := &fakeUserRepo{current: domain.User{ID: targetID, Role: domain.RoleAdmin}, superadminCount: 2}
-	svc := service.New(repo, fakeAuthClient{})
+	svc := service.New(repo, &fakeAuthClient{})
 
 	if _, err := svc.SetBan(context.Background(), adminActor, targetID, true, nil); apperr.From(err).Status != 403 {
 		t.Fatalf("expected admin banning admin to be forbidden, got %v", err)
@@ -149,24 +149,155 @@ func TestTargetAwareBanAndDeleteRequireSuperadminForAdminTargets(t *testing.T) {
 	}
 }
 
+func TestSetPasswordRequiresRecentTwoFactorProofWhenTwoFactorEnabled(t *testing.T) {
+	userID := uuid.New()
+	repo := &fakeUserRepo{current: domain.User{
+		ID:               userID,
+		Email:            "google@example.com",
+		AuthProvider:     domain.ProviderGoogle,
+		PasswordHash:     nil,
+		TwoFactorEnabled: true,
+	}}
+	svc := service.New(repo, &fakeAuthClient{}, service.Options{RecentAuthWindow: 10 * time.Minute})
+
+	err := svc.SetPassword(context.Background(), service.AuthContext{
+		UserID:      userID,
+		AuthTime:    time.Now().Add(-time.Minute),
+		AuthMethods: []string{service.AuthMethodGoogle},
+		SessionID:   uuid.New(),
+	}, service.SetPasswordRequest{
+		NewPassword:        "Strong$123",
+		NewPasswordConfirm: "Strong$123",
+	})
+
+	app := apperr.From(err)
+	if app.Status != 403 || app.Code != apperr.CodeRecentAuthRequired {
+		t.Fatalf("expected recent 2FA proof error, got %#v", app)
+	}
+	if repo.updatedPasswordHash != "" {
+		t.Fatal("password hash must not be stored without recent 2FA proof")
+	}
+}
+
+func TestSetPasswordStoresHashAuditsAndRevokesOtherSessions(t *testing.T) {
+	userID := uuid.New()
+	sessionID := uuid.New()
+	auth := &fakeAuthClient{}
+	repo := &fakeUserRepo{current: domain.User{
+		ID:               userID,
+		Email:            "google@example.com",
+		AuthProvider:     domain.ProviderGoogle,
+		PasswordHash:     nil,
+		TwoFactorEnabled: true,
+	}}
+	svc := service.New(repo, auth, service.Options{RecentAuthWindow: 10 * time.Minute})
+
+	err := svc.SetPassword(context.Background(), service.AuthContext{
+		UserID:      userID,
+		AuthTime:    time.Now().Add(-time.Minute),
+		AuthMethods: []string{service.AuthMethodGoogle, service.AuthMethodOTP},
+		SessionID:   sessionID,
+	}, service.SetPasswordRequest{
+		NewPassword:        "Strong$123",
+		NewPasswordConfirm: "Strong$123",
+	})
+	if err != nil {
+		t.Fatalf("SetPassword returned error: %v", err)
+	}
+	if repo.updatedPasswordHash == "" || repo.updatedPasswordHash == "Strong$123" {
+		t.Fatal("expected password to be stored as a hash")
+	}
+	if ok, err := password.Verify("Strong$123", repo.updatedPasswordHash); err != nil || !ok {
+		t.Fatalf("stored hash did not verify: ok=%v err=%v", ok, err)
+	}
+	if repo.auditEvent != "password_set" {
+		t.Fatalf("expected password_set audit event, got %q", repo.auditEvent)
+	}
+	if auth.revokedOtherUserID != userID || auth.revokedOtherSessionID != sessionID {
+		t.Fatalf("expected other sessions revoked for current session, got user=%s session=%s", auth.revokedOtherUserID, auth.revokedOtherSessionID)
+	}
+}
+
+func TestSetPasswordRejectsUsersWhoAlreadyHaveLocalPassword(t *testing.T) {
+	userID := uuid.New()
+	hash, err := password.HashWithParams("Strong$123", password.Params{Memory: 1024, Iterations: 1, Parallelism: 1, SaltLength: 16, KeyLength: 32})
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	repo := &fakeUserRepo{current: domain.User{
+		ID:           userID,
+		Email:        "linked@example.com",
+		AuthProvider: domain.ProviderGoogle,
+		PasswordHash: &hash,
+	}}
+	svc := service.New(repo, &fakeAuthClient{})
+
+	err = svc.SetPassword(context.Background(), service.AuthContext{
+		UserID:      userID,
+		AuthTime:    time.Now(),
+		AuthMethods: []string{service.AuthMethodGoogle},
+		SessionID:   uuid.New(),
+	}, service.SetPasswordRequest{
+		NewPassword:        "Another$123",
+		NewPasswordConfirm: "Another$123",
+	})
+
+	app := apperr.From(err)
+	if app.Status != 409 {
+		t.Fatalf("expected conflict for existing password, got %#v", app)
+	}
+}
+
+func TestVerifyPasswordAllowsGoogleAccountWithLocalPassword(t *testing.T) {
+	hash, err := password.HashWithParams("Strong$123", password.Params{Memory: 1024, Iterations: 1, Parallelism: 1, SaltLength: 16, KeyLength: 32})
+	if err != nil {
+		t.Fatalf("hash password: %v", err)
+	}
+	repo := &fakeUserRepo{current: domain.User{
+		ID:           uuid.New(),
+		AuthProvider: domain.ProviderGoogle,
+		PasswordHash: &hash,
+	}}
+	svc := service.New(repo, &fakeAuthClient{})
+
+	if err := svc.VerifyPassword(context.Background(), repo.current.ID, "Strong$123"); err != nil {
+		t.Fatalf("VerifyPassword should allow linked Google users with a local password: %v", err)
+	}
+}
+
 func actor(id uuid.UUID, role string) service.Actor {
 	return service.Actor{ID: id, Role: role}
 }
 
-type fakeAuthClient struct{}
+type fakeAuthClient struct {
+	revokedAllUserID      uuid.UUID
+	revokedOtherUserID    uuid.UUID
+	revokedOtherSessionID uuid.UUID
+}
 
-func (fakeAuthClient) RevokeAllRefreshTokens(context.Context, uuid.UUID) error { return nil }
+func (f *fakeAuthClient) RevokeAllRefreshTokens(_ context.Context, userID uuid.UUID) error {
+	f.revokedAllUserID = userID
+	return nil
+}
+
+func (f *fakeAuthClient) RevokeOtherRefreshTokens(_ context.Context, userID, sessionID uuid.UUID) error {
+	f.revokedOtherUserID = userID
+	f.revokedOtherSessionID = sessionID
+	return nil
+}
 
 type fakeUserRepo struct {
-	emailExists     bool
-	usernameExists  bool
-	phoneExists     bool
-	created         repository.CreateUserParams
-	updated         repository.UpdateProfileParams
-	current         domain.User
-	eventType       string
-	changedRole     string
-	superadminCount int
+	emailExists         bool
+	usernameExists      bool
+	phoneExists         bool
+	created             repository.CreateUserParams
+	updated             repository.UpdateProfileParams
+	current             domain.User
+	eventType           string
+	auditEvent          string
+	changedRole         string
+	updatedPasswordHash string
+	superadminCount     int
 }
 
 func (f *fakeUserRepo) CreateUserWithOutbox(_ context.Context, params repository.CreateUserParams, eventType string, _ any) (domain.User, error) {
@@ -248,7 +379,8 @@ func (f *fakeUserRepo) MarkVerified(context.Context, uuid.UUID) (domain.User, er
 func (f *fakeUserRepo) SetTwoFactor(context.Context, uuid.UUID, bool) (domain.User, error) {
 	return domain.User{}, nil
 }
-func (f *fakeUserRepo) UpdatePasswordHash(context.Context, uuid.UUID, string) error {
+func (f *fakeUserRepo) UpdatePasswordHash(_ context.Context, _ uuid.UUID, passwordHash string) error {
+	f.updatedPasswordHash = passwordHash
 	return nil
 }
 func (f *fakeUserRepo) CountActiveSuperAdmins(context.Context) (int, error) {
@@ -257,7 +389,8 @@ func (f *fakeUserRepo) CountActiveSuperAdmins(context.Context) (int, error) {
 	}
 	return f.superadminCount, nil
 }
-func (f *fakeUserRepo) CreateAuditEvent(context.Context, string, uuid.UUID, uuid.UUID, any) error {
+func (f *fakeUserRepo) CreateAuditEvent(_ context.Context, eventType string, _ uuid.UUID, _ uuid.UUID, _ any) error {
+	f.auditEvent = eventType
 	return nil
 }
 func (f *fakeUserRepo) Ping(context.Context) error { return nil }

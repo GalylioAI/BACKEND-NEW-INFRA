@@ -88,7 +88,7 @@ export async function apiFetch<T>(
 
 ## Token Lifecycle
 
-Access token expiry is configured by `JWT_ACCESS_EXPIRY`. Refresh tokens are opaque, live in an HttpOnly cookie, and are rotated by `POST /auth/refresh`.
+Access token expiry is configured by `JWT_ACCESS_EXPIRY`. Refresh tokens are opaque, live in an HttpOnly cookie, and are rotated by `POST /auth/refresh`. Refreshed access tokens preserve the original login `auth_time` and `amr`, so refresh does not extend recent-auth freshness.
 
 Recommended frontend behavior:
 
@@ -185,10 +185,57 @@ if (res.success) {
 }
 ```
 
-For confirming 2FA enablement after `POST /otp/2fa/enable`, call
-`POST /otp/2fa/enable/verify` with the normal access token as `authToken` and
-`{ code }` in the body. Login 2FA must use the short-lived pending token from
-`/auth/login`.
+## 2FA Settings
+
+Enablement is a two-step flow. Start with the normal access token and current password:
+
+```ts
+await apiFetch("/otp/2fa/enable", {
+  method: "POST",
+  body: JSON.stringify({ password: currentPassword }),
+});
+```
+
+Then confirm with the OTP:
+
+```ts
+await apiFetch("/otp/2fa/enable/verify", {
+  method: "POST",
+  body: JSON.stringify({ code }),
+});
+```
+
+Disablement is also two-step. Start with a local password:
+
+```ts
+await apiFetch("/otp/2fa/disable", {
+  method: "POST",
+  body: JSON.stringify({ current_password: currentPassword }),
+});
+```
+
+Then confirm with the OTP:
+
+```ts
+await apiFetch("/otp/2fa/disable/verify", {
+  method: "POST",
+  body: JSON.stringify({ code }),
+});
+```
+
+OAuth-only users without a local password receive `LOCAL_PASSWORD_REQUIRED`. They must set a local password first:
+
+```ts
+await apiFetch("/users/me/password/set", {
+  method: "POST",
+  body: JSON.stringify({
+    new_password: newPassword,
+    new_password_confirm: newPasswordConfirm,
+  }),
+});
+```
+
+If the account has 2FA enabled, call password set only after a recent 2FA-completed login. Password set keeps the current session active and revokes other refresh sessions.
 
 ## Logout
 

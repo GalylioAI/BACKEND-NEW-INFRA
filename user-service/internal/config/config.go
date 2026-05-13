@@ -19,6 +19,7 @@ type Config struct {
 	DB                     db.Config
 	LoginMaxAttempts       int
 	AccountLockoutDuration time.Duration
+	RecentAuthWindow       time.Duration
 	RateLimitMax           int
 	RateLimitWindow        time.Duration
 }
@@ -53,6 +54,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	recentAuthWindow, err := sharedcfg.Duration("RECENT_AUTH_WINDOW", 10*time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
 		AppPort:              port,
 		AppEnv:               sharedcfg.String("APP_ENV", "development"),
@@ -73,6 +78,7 @@ func Load() (Config, error) {
 		},
 		LoginMaxAttempts:       loginMaxAttempts,
 		AccountLockoutDuration: lockoutDuration,
+		RecentAuthWindow:       recentAuthWindow,
 		RateLimitMax:           rateMax,
 		RateLimitWindow:        rateWindow,
 	}

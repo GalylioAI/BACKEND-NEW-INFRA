@@ -77,6 +77,7 @@ func main() {
 		TwoFactorEnableOTPTTL:   cfg.TwoFactorEnableOTPTTL,
 		TwoFactorDisableOTPTTL:  cfg.TwoFactorDisableOTPTTL,
 		TwoFactorMaxAttempts:    int16(cfg.OTPMaxAttempts),
+		OTPResendCooldown:       cfg.OTPResendCooldown,
 	})
 	if amqpPublisher != nil {
 		startUserCreatedConsumer(ctx, amqpPublisher, otpService, logger)

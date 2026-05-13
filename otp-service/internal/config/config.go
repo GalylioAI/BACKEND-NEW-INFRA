@@ -27,6 +27,7 @@ type Config struct {
 	TwoFactorEnableOTPTTL   time.Duration
 	TwoFactorDisableOTPTTL  time.Duration
 	OTPMaxAttempts          int
+	OTPResendCooldown       time.Duration
 	MigrationDatabaseURL    string
 	DB                      db.Config
 	RateLimitMax            int
@@ -82,6 +83,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	otpResendCooldown, err := sharedcfg.Duration("OTP_RESEND_COOLDOWN", time.Minute)
+	if err != nil {
+		return Config{}, err
+	}
 	cfg := Config{
 		AppPort:                 sharedcfg.String("APP_PORT", "8083"),
 		AppEnv:                  sharedcfg.String("APP_ENV", "development"),
@@ -101,6 +106,7 @@ func Load() (Config, error) {
 		TwoFactorEnableOTPTTL:   twoFactorEnableTTL,
 		TwoFactorDisableOTPTTL:  twoFactorDisableTTL,
 		OTPMaxAttempts:          otpMaxAttempts,
+		OTPResendCooldown:       otpResendCooldown,
 		MigrationDatabaseURL:    sharedcfg.String("MIGRATION_DATABASE_URL", ""),
 		DB: db.Config{
 			Host:         sharedcfg.String("DB_HOST", "localhost"),

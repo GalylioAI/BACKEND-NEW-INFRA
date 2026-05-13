@@ -34,6 +34,16 @@ func TestManualLoginIssuesTokenPair(t *testing.T) {
 	if result.AccessToken == "" || tokens.RefreshToken == "" {
 		t.Fatal("expected access and refresh tokens")
 	}
+	claims := parseTokenClaims(t, result.AccessToken)
+	if got := claimStrings(claims["amr"]); len(got) != 1 || got[0] != "password" {
+		t.Fatalf("expected password amr, got %#v", claims["amr"])
+	}
+	if _, ok := claims["auth_time"].(float64); !ok {
+		t.Fatalf("expected auth_time claim, got %#v", claims["auth_time"])
+	}
+	if _, ok := claims["sid"].(string); !ok {
+		t.Fatalf("expected sid claim, got %#v", claims["sid"])
+	}
 	if !repo.refreshCreated {
 		t.Fatal("expected refresh token to be stored")
 	}
@@ -70,6 +80,10 @@ func TestManualLoginWithTwoFactorIssuesPendingJWTAndSendsOTP(t *testing.T) {
 	if !result.TwoFactorRequired || result.TwoFactorSessionToken == "" {
 		t.Fatal("expected 2FA session token")
 	}
+	pendingClaims := parseTokenClaims(t, result.TwoFactorSessionToken)
+	if got := claimStrings(pendingClaims["amr"]); len(got) != 1 || got[0] != "password" {
+		t.Fatalf("expected pending token to preserve password primary method, got %#v", pendingClaims["amr"])
+	}
 	if tokens.RefreshToken != "" || repo.refreshCreated {
 		t.Fatal("refresh token must not be issued before 2FA verification")
 	}
@@ -96,6 +110,10 @@ func TestGoogleLoginWithTwoFactorIssuesPendingJWTAndSendsOTP(t *testing.T) {
 	if !result.TwoFactorRequired || result.TwoFactorSessionToken == "" {
 		t.Fatal("expected Google login to require 2FA")
 	}
+	pendingClaims := parseTokenClaims(t, result.TwoFactorSessionToken)
+	if got := claimStrings(pendingClaims["amr"]); len(got) != 1 || got[0] != "google" {
+		t.Fatalf("expected pending token to preserve google primary method, got %#v", pendingClaims["amr"])
+	}
 	if tokens.AccessToken != "" || tokens.RefreshToken != "" || repo.refreshCreated {
 		t.Fatal("Google login must not issue normal tokens before 2FA verification")
 	}
@@ -106,7 +124,14 @@ func TestGoogleLoginWithTwoFactorIssuesPendingJWTAndSendsOTP(t *testing.T) {
 
 func TestRefreshRotatesTokenAndIssuesAccess(t *testing.T) {
 	user := verifiedManualUser(t, false)
-	repo := &fakeAuthRepo{rotateUserID: user.ID}
+	authTime := time.Now().Add(-30 * time.Minute).UTC()
+	sessionID := uuid.New()
+	repo := &fakeAuthRepo{rotateRecord: domain.RefreshRecord{
+		UserID:      user.ID,
+		AuthTime:    authTime,
+		AuthMethods: []string{"password", "otp"},
+		SessionID:   sessionID,
+	}}
 	svc := service.New(repo, &fakeUserClient{user: user}, &fakeOTPClient{}, testJWTManager(t), nil, 30*24*time.Hour)
 
 	tokens, err := svc.Refresh(context.Background(), "old-refresh-token", "", nil)
@@ -118,6 +143,16 @@ func TestRefreshRotatesTokenAndIssuesAccess(t *testing.T) {
 	}
 	if !repo.refreshRotated {
 		t.Fatal("expected refresh token rotation")
+	}
+	claims := parseTokenClaims(t, tokens.AccessToken)
+	if got := claimStrings(claims["amr"]); len(got) != 2 || got[0] != "password" || got[1] != "otp" {
+		t.Fatalf("expected refresh to preserve amr, got %#v", claims["amr"])
+	}
+	if got := int64(claims["auth_time"].(float64)); got != authTime.Unix() {
+		t.Fatalf("expected refresh to preserve auth_time %d, got %d", authTime.Unix(), got)
+	}
+	if got := claims["sid"]; got != sessionID.String() {
+		t.Fatalf("expected refresh to preserve session id, got %#v", got)
 	}
 }
 
@@ -135,6 +170,21 @@ func TestIssuedAccessTokenContainsAccessType(t *testing.T) {
 	claims := parsed.Claims.(jwtlib.MapClaims)
 	if claims["typ"] != "access" {
 		t.Fatalf("expected typ=access, got %#v", claims["typ"])
+	}
+}
+
+func TestIssueTokenPairForUserUsesProvidedAuthMethodsFor2FALogin(t *testing.T) {
+	user := verifiedManualUser(t, true)
+	repo := &fakeAuthRepo{}
+	svc := service.New(repo, &fakeUserClient{user: user}, &fakeOTPClient{}, testJWTManager(t), nil, 30*24*time.Hour)
+
+	tokens, err := svc.IssueTokenPairForUser(context.Background(), user.ID, []string{"google", "otp"}, "device", net.ParseIP("127.0.0.1"))
+	if err != nil {
+		t.Fatalf("IssueTokenPairForUser returned error: %v", err)
+	}
+	claims := parseTokenClaims(t, tokens.AccessToken)
+	if got := claimStrings(claims["amr"]); len(got) != 2 || got[0] != "google" || got[1] != "otp" {
+		t.Fatalf("expected google+otp amr, got %#v", claims["amr"])
 	}
 }
 
@@ -189,19 +239,22 @@ type fakeAuthRepo struct {
 	refreshCreated   bool
 	refreshRotated   bool
 	twoFactorCreated bool
-	rotateUserID     uuid.UUID
+	rotateRecord     domain.RefreshRecord
 }
 
-func (f *fakeAuthRepo) CreateRefreshToken(context.Context, uuid.UUID, string, string, net.IP, time.Time) error {
+func (f *fakeAuthRepo) CreateRefreshToken(context.Context, uuid.UUID, string, string, net.IP, time.Time, time.Time, []string, uuid.UUID) error {
 	f.refreshCreated = true
 	return nil
 }
-func (f *fakeAuthRepo) RotateRefreshToken(context.Context, string, string, string, net.IP, time.Time) (uuid.UUID, bool, error) {
+func (f *fakeAuthRepo) RotateRefreshToken(context.Context, string, string, string, net.IP, time.Time) (domain.RefreshRecord, bool, error) {
 	f.refreshRotated = true
-	return f.rotateUserID, false, nil
+	return f.rotateRecord, false, nil
 }
 func (f *fakeAuthRepo) RevokeRefreshToken(context.Context, string) error { return nil }
 func (f *fakeAuthRepo) RevokeAllRefreshTokens(context.Context, uuid.UUID) error {
+	return nil
+}
+func (f *fakeAuthRepo) RevokeOtherRefreshTokens(context.Context, uuid.UUID, uuid.UUID) error {
 	return nil
 }
 func (f *fakeAuthRepo) CreateAuditEvent(context.Context, string, uuid.UUID, net.IP, string, any) error {
@@ -212,9 +265,31 @@ func (f *fakeAuthRepo) CreateTwoFactorSession(context.Context, uuid.UUID, string
 	return nil
 }
 func (f *fakeAuthRepo) ConsumeTwoFactorSession(context.Context, string) (uuid.UUID, error) {
-	return f.rotateUserID, nil
+	return f.rotateRecord.UserID, nil
 }
 func (f *fakeAuthRepo) Ping(context.Context) error { return nil }
+
+func parseTokenClaims(t *testing.T, raw string) jwtlib.MapClaims {
+	t.Helper()
+	parsed, _, err := jwtlib.NewParser().ParseUnverified(raw, jwtlib.MapClaims{})
+	if err != nil {
+		t.Fatalf("ParseUnverified returned error: %v", err)
+	}
+	return parsed.Claims.(jwtlib.MapClaims)
+}
+
+func claimStrings(raw any) []string {
+	values, ok := raw.([]any)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		text, _ := value.(string)
+		out = append(out, text)
+	}
+	return out
+}
 
 type fakeOTPClient struct {
 	sent bool

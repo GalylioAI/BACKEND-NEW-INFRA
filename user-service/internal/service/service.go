@@ -21,15 +21,17 @@ import (
 )
 
 type Service struct {
-	repo            repository.Repository
-	authClient      AuthClient
-	validator       *validate.Validator
-	lockoutFailures int16
-	lockoutWindow   time.Duration
+	repo             repository.Repository
+	authClient       AuthClient
+	validator        *validate.Validator
+	lockoutFailures  int16
+	lockoutWindow    time.Duration
+	recentAuthWindow time.Duration
 }
 
 type AuthClient interface {
 	RevokeAllRefreshTokens(ctx context.Context, userID uuid.UUID) error
+	RevokeOtherRefreshTokens(ctx context.Context, userID, sessionID uuid.UUID) error
 }
 
 type Actor struct {
@@ -40,6 +42,20 @@ type Actor struct {
 type Options struct {
 	LoginMaxAttempts       int16
 	AccountLockoutDuration time.Duration
+	RecentAuthWindow       time.Duration
+}
+
+const (
+	AuthMethodPassword = "password"
+	AuthMethodGoogle   = "google"
+	AuthMethodOTP      = "otp"
+)
+
+type AuthContext struct {
+	UserID      uuid.UUID
+	AuthTime    time.Time
+	AuthMethods []string
+	SessionID   uuid.UUID
 }
 
 type HTTPAuthClient struct {
@@ -86,9 +102,30 @@ func (c *HTTPAuthClient) RevokeAllRefreshTokens(ctx context.Context, userID uuid
 	return nil
 }
 
+func (c *HTTPAuthClient) RevokeOtherRefreshTokens(ctx context.Context, userID, sessionID uuid.UUID) error {
+	if c.baseURL == "" {
+		return nil
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, c.baseURL+"/internal/auth/sessions/"+userID.String()+"/others/"+sessionID.String(), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set(middleware.HeaderInternalSecret, c.secret)
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("auth service revoke-other failed with status %d", resp.StatusCode)
+	}
+	return nil
+}
+
 func New(repo repository.Repository, authClient AuthClient, options ...Options) *Service {
 	maxAttempts := int16(5)
 	lockoutDuration := 15 * time.Minute
+	recentAuthWindow := 10 * time.Minute
 	if len(options) > 0 {
 		if options[0].LoginMaxAttempts > 0 {
 			maxAttempts = options[0].LoginMaxAttempts
@@ -96,13 +133,17 @@ func New(repo repository.Repository, authClient AuthClient, options ...Options) 
 		if options[0].AccountLockoutDuration > 0 {
 			lockoutDuration = options[0].AccountLockoutDuration
 		}
+		if options[0].RecentAuthWindow > 0 {
+			recentAuthWindow = options[0].RecentAuthWindow
+		}
 	}
 	return &Service{
-		repo:            repo,
-		authClient:      authClient,
-		validator:       validate.New(),
-		lockoutFailures: maxAttempts,
-		lockoutWindow:   lockoutDuration,
+		repo:             repo,
+		authClient:       authClient,
+		validator:        validate.New(),
+		lockoutFailures:  maxAttempts,
+		lockoutWindow:    lockoutDuration,
+		recentAuthWindow: recentAuthWindow,
 	}
 }
 
@@ -125,6 +166,11 @@ type UpdateProfileRequest struct {
 type ChangePasswordRequest struct {
 	CurrentPassword string `json:"current_password" validate:"required,max=128"`
 	NewPassword     string `json:"new_password" validate:"required,min=8,max=128"`
+}
+
+type SetPasswordRequest struct {
+	NewPassword        string `json:"new_password" validate:"required,min=8,max=128"`
+	NewPasswordConfirm string `json:"new_password_confirm" validate:"required,min=8,max=128"`
 }
 
 func (s *Service) Signup(ctx context.Context, req SignupRequest) (domain.PublicUser, error) {
@@ -284,8 +330,8 @@ func (s *Service) ChangePassword(ctx context.Context, id uuid.UUID, req ChangePa
 	if err != nil {
 		return err
 	}
-	if user.AuthProvider != domain.ProviderManual || user.PasswordHash == nil {
-		return apperr.New(http.StatusForbidden, apperr.CodeInvalidProvider, "Password changes are only available for manual accounts.")
+	if user.PasswordHash == nil {
+		return apperr.New(http.StatusForbidden, apperr.CodeInvalidProvider, "Password changes require a local password.")
 	}
 	ok, err := password.Verify(req.CurrentPassword, *user.PasswordHash)
 	if err != nil || !ok {
@@ -306,6 +352,41 @@ func (s *Service) ChangePassword(ctx context.Context, id uuid.UUID, req ChangePa
 		return err
 	}
 	return s.authClient.RevokeAllRefreshTokens(ctx, id)
+}
+
+func (s *Service) SetPassword(ctx context.Context, auth AuthContext, req SetPasswordRequest) error {
+	user, err := s.repo.GetByID(ctx, auth.UserID)
+	if err != nil {
+		return err
+	}
+	if user.PasswordHash != nil {
+		return apperr.New(http.StatusConflict, apperr.CodeConflict, "A local password is already set. Use password change instead.")
+	}
+	if user.TwoFactorEnabled && !auth.hasRecentMethod(AuthMethodOTP, s.recentAuthWindow) {
+		return apperr.New(http.StatusForbidden, apperr.CodeRecentAuthRequired, "Recent 2FA verification is required before setting a local password.")
+	}
+	fields := apperr.FieldErrors{}
+	if req.NewPassword != req.NewPasswordConfirm {
+		fields["new_password_confirm"] = "Passwords must match."
+	}
+	if len(req.NewPassword) > 128 || !validate.StrongPassword(req.NewPassword) {
+		fields["new_password"] = "Password must be at least 8 characters and include uppercase, number, and special character."
+	}
+	if len(fields) > 0 {
+		return apperr.Validation(fields)
+	}
+	hash, err := password.Hash(req.NewPassword)
+	if err != nil {
+		return err
+	}
+	if err := s.repo.UpdatePasswordHash(ctx, auth.UserID, hash); err != nil {
+		return err
+	}
+	s.audit(ctx, "password_set", auth.UserID, auth.UserID, map[string]any{"auth_methods": auth.AuthMethods})
+	if auth.SessionID == uuid.Nil {
+		return s.authClient.RevokeAllRefreshTokens(ctx, auth.UserID)
+	}
+	return s.authClient.RevokeOtherRefreshTokens(ctx, auth.UserID, auth.SessionID)
 }
 
 func (s *Service) SoftDelete(ctx context.Context, id uuid.UUID) error {
@@ -506,14 +587,26 @@ func (s *Service) VerifyPassword(ctx context.Context, id uuid.UUID, plain string
 	if err != nil {
 		return err
 	}
-	if user.AuthProvider != domain.ProviderManual || user.PasswordHash == nil {
-		return apperr.New(http.StatusForbidden, apperr.CodeInvalidProvider, "Password verification is only available for manual accounts.")
+	if user.PasswordHash == nil {
+		return apperr.New(http.StatusForbidden, apperr.CodeLocalPasswordRequired, "A local password is required.")
 	}
 	ok, err := password.Verify(plain, *user.PasswordHash)
 	if err != nil || !ok {
 		return apperr.New(http.StatusUnauthorized, apperr.CodeInvalidCurrentPass, "Current password is incorrect.")
 	}
 	return nil
+}
+
+func (auth AuthContext) hasRecentMethod(method string, window time.Duration) bool {
+	if auth.AuthTime.IsZero() || time.Since(auth.AuthTime) > window {
+		return false
+	}
+	for _, current := range auth.AuthMethods {
+		if current == method {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Service) Ping(ctx context.Context) error {

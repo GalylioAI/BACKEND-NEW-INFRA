@@ -22,7 +22,7 @@ type Repository interface {
 	GetActiveOTPCode(ctx context.Context, userID uuid.UUID, otpType string) (domain.OTPCode, error)
 	IncrementOTPAttempts(ctx context.Context, id uuid.UUID) (domain.OTPCode, error)
 	MarkOTPUsed(ctx context.Context, id uuid.UUID) error
-	CheckAndIncrementRateLimit(ctx context.Context, userID uuid.UUID, otpType string) (int, error)
+	CheckAndIncrementRateLimit(ctx context.Context, userID uuid.UUID, otpType string, cooldown time.Duration) (int, error)
 	RevokeTwoFactorChallenges(ctx context.Context, userID uuid.UUID, purpose string) error
 	CreateTwoFactorChallenge(ctx context.Context, userID uuid.UUID, jti, purpose, otpHash string, expiresAt time.Time, maxAttempts int16) (domain.TwoFactorChallenge, error)
 	GetTwoFactorChallengeByJTI(ctx context.Context, userID uuid.UUID, jti, purpose string) (domain.TwoFactorChallenge, error)
@@ -63,7 +63,7 @@ func (r *PostgresRepository) GetTwoFactorChallengeByJTI(ctx context.Context, use
 		SELECT id, user_id, jti, purpose, otp_hash, attempts, max_attempts, expires_at, consumed_at, revoked_at, created_at
 		FROM two_factor_challenges
 		WHERE user_id = $1 AND jti = $2 AND purpose = $3
-		  AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()
+		  AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW() AND attempts < max_attempts
 		LIMIT 1`, userID, jti, purpose))
 }
 
@@ -74,7 +74,7 @@ func (r *PostgresRepository) GetLatestTwoFactorChallenge(ctx context.Context, us
 		SELECT id, user_id, jti, purpose, otp_hash, attempts, max_attempts, expires_at, consumed_at, revoked_at, created_at
 		FROM two_factor_challenges
 		WHERE user_id = $1 AND purpose = $2
-		  AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW()
+		  AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW() AND attempts < max_attempts
 		ORDER BY created_at DESC
 		LIMIT 1`, userID, purpose))
 }
@@ -85,7 +85,7 @@ func (r *PostgresRepository) IncrementTwoFactorChallengeAttempts(ctx context.Con
 	return scanTwoFactorChallenge(r.pool.QueryRow(ctx, `
 		UPDATE two_factor_challenges
 		SET attempts = attempts + 1
-		WHERE id = $1
+		WHERE id = $1 AND consumed_at IS NULL AND revoked_at IS NULL AND expires_at > NOW() AND attempts < max_attempts
 		RETURNING id, user_id, jti, purpose, otp_hash, attempts, max_attempts, expires_at, consumed_at, revoked_at, created_at`, id))
 }
 
@@ -149,9 +149,12 @@ func (r *PostgresRepository) MarkOTPUsed(ctx context.Context, id uuid.UUID) erro
 	return err
 }
 
-func (r *PostgresRepository) CheckAndIncrementRateLimit(ctx context.Context, userID uuid.UUID, otpType string) (int, error) {
+func (r *PostgresRepository) CheckAndIncrementRateLimit(ctx context.Context, userID uuid.UUID, otpType string, cooldown time.Duration) (int, error) {
 	ctx, cancel := shareddb.Timeout(ctx)
 	defer cancel()
+	if cooldown <= 0 {
+		cooldown = time.Minute
+	}
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return 0, err
@@ -177,19 +180,19 @@ func (r *PostgresRepository) CheckAndIncrementRateLimit(ctx context.Context, use
 	}
 
 	now := time.Now().UTC()
-	if now.Sub(windowStart) >= time.Hour {
+	if elapsed := now.Sub(windowStart); elapsed < cooldown {
+		retryAfter := int((cooldown - elapsed).Seconds())
+		if retryAfter < 1 {
+			retryAfter = 1
+		}
+		return retryAfter, nil
+	}
+	if now.Sub(windowStart) >= cooldown {
 		_, err = tx.Exec(ctx, `UPDATE otp_rate_limits SET sent_count = 1, window_start = NOW() WHERE user_id = $1 AND type = $2`, userID, otpType)
 		if err != nil {
 			return 0, err
 		}
 		return 0, tx.Commit(ctx)
-	}
-	if sentCount >= 5 {
-		retryAfter := int(time.Hour.Seconds() - now.Sub(windowStart).Seconds())
-		if retryAfter < 1 {
-			retryAfter = 1
-		}
-		return retryAfter, nil
 	}
 	_, err = tx.Exec(ctx, `UPDATE otp_rate_limits SET sent_count = sent_count + 1 WHERE user_id = $1 AND type = $2`, userID, otpType)
 	if err != nil {

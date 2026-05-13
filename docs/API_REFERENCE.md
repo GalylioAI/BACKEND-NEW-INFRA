@@ -39,6 +39,7 @@ Errors use:
 ## Authentication
 
 Access tokens are RS256 JWTs returned in response bodies. Refresh tokens are HttpOnly cookies named `refresh_token`, scoped to `Path=/auth`.
+Access JWTs include `auth_time`, `amr`, and `sid`. Refresh keeps the original `auth_time` and `amr`; it only renews `iat`, `exp`, and `jti`.
 
 For protected routes, send:
 
@@ -165,6 +166,19 @@ Protected manual users only.
 
 Revokes all refresh tokens and publishes a password-changed mail event.
 
+### `POST /users/me/password/set`
+
+Protected. Sets the first local password for an OAuth-linked account.
+
+```json
+{
+  "new_password": "Strong$123",
+  "new_password_confirm": "Strong$123"
+}
+```
+
+Only users without a local password can use this route. If 2FA is enabled, the access token must come from a recent 2FA-completed login. On success, the current session remains active and all other refresh sessions are revoked.
+
 ### `DELETE /users/me`
 
 Protected. Soft-deletes the current account and revokes sessions.
@@ -208,11 +222,11 @@ Protected.
 }
 ```
 
-Verifies the current password and sends a 2FA enable OTP.
+Verifies the current password, creates a `2fa_enable` challenge, and sends a 2FA enable OTP. It does not enable 2FA yet.
 
 ### `POST /otp/2fa/enable/verify`
 
-Protected. Confirms 2FA enablement with the setup OTP.
+Protected. Confirms 2FA enablement with the setup OTP, consumes the `2fa_enable` challenge, and enables 2FA.
 
 ```json
 {
@@ -234,11 +248,23 @@ tokens are rejected.
 }
 ```
 
-Returns a full access token and refresh cookie.
+Returns a full access token and refresh cookie. The returned access JWT keeps the full method chain in `amr`, for example `["password","otp"]` or `["google","otp"]`.
 
 ### `POST /otp/2fa/disable`
 
-Protected. With no code, sends a disable OTP. With a code, verifies and disables 2FA.
+Protected. Starts 2FA disablement. Requires a local `current_password`, creates a `2fa_disable` challenge, and sends a disable OTP. It does not disable 2FA yet.
+
+OAuth-only users without a local password receive `LOCAL_PASSWORD_REQUIRED` with message `Set a local password before disabling 2FA.`
+
+```json
+{
+  "current_password": "Strong$123"
+}
+```
+
+### `POST /otp/2fa/disable/verify`
+
+Protected. Confirms 2FA disablement with the disable OTP, consumes the `2fa_disable` challenge, and disables 2FA.
 
 ```json
 {

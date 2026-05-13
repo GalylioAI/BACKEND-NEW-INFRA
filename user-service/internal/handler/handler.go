@@ -39,6 +39,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.Handle("GET /users/me", protected)
 	mux.Handle("PUT /users/me", middleware.Chain(http.HandlerFunc(h.updateMe), middleware.RequireInternalSecret(h.internalSecret), middleware.RequireUserContext))
 	mux.Handle("PUT /users/me/password", middleware.Chain(http.HandlerFunc(h.changePassword), middleware.RequireInternalSecret(h.internalSecret), middleware.RequireUserContext))
+	mux.Handle("POST /users/me/password/set", middleware.Chain(http.HandlerFunc(h.setPassword), middleware.RequireInternalSecret(h.internalSecret), middleware.RequireUserContext))
 	mux.Handle("DELETE /users/me", middleware.Chain(http.HandlerFunc(h.deleteMe), middleware.RequireInternalSecret(h.internalSecret), middleware.RequireUserContext))
 
 	mux.Handle("GET /users", middleware.Chain(http.HandlerFunc(h.listUsers), middleware.RequireInternalSecret(h.internalSecret), middleware.RequireUserContext))
@@ -130,6 +131,25 @@ func (h *Handler) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.service.ChangePassword(r.Context(), user.ID, req); err != nil {
+		httpjson.WriteError(w, r, err)
+		return
+	}
+	httpjson.WriteNoContent(w, r)
+}
+
+func (h *Handler) setPassword(w http.ResponseWriter, r *http.Request) {
+	user, _ := userctx.FromContext(r.Context())
+	var req service.SetPasswordRequest
+	if err := httpjson.Decode(r, &req); err != nil {
+		httpjson.WriteError(w, r, err)
+		return
+	}
+	if err := h.service.SetPassword(r.Context(), service.AuthContext{
+		UserID:      user.ID,
+		AuthTime:    user.AuthTime,
+		AuthMethods: user.AuthMethods,
+		SessionID:   user.SessionID,
+	}, req); err != nil {
 		httpjson.WriteError(w, r, err)
 		return
 	}

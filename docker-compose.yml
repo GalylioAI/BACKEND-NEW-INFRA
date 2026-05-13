@@ -360,6 +360,7 @@ services:
       DB_MAX_IDLE_CONNS: 2
       LOGIN_MAX_ATTEMPTS: ${LOGIN_MAX_ATTEMPTS:-5}
       ACCOUNT_LOCKOUT_DURATION: ${ACCOUNT_LOCKOUT_DURATION:-15m}
+      RECENT_AUTH_WINDOW: ${RECENT_AUTH_WINDOW:-10m}
     depends_on:
       pgbouncer-user:
         condition: service_healthy
@@ -455,6 +456,7 @@ services:
       TWO_FACTOR_ENABLE_OTP_EXPIRY: ${TWO_FACTOR_ENABLE_OTP_EXPIRY:-10m}
       TWO_FACTOR_DISABLE_OTP_EXPIRY: ${TWO_FACTOR_DISABLE_OTP_EXPIRY:-10m}
       OTP_MAX_ATTEMPTS: ${OTP_MAX_ATTEMPTS:-3}
+      OTP_RESEND_COOLDOWN: ${OTP_RESEND_COOLDOWN:-1m}
       MIGRATION_DATABASE_URL: postgres://otp_user:${OTP_DB_PASSWORD:-otp_pass}@postgres-otp:5432/otp_db?sslmode=disable
       DB_HOST: pgbouncer-otp
       DB_PORT: 6432

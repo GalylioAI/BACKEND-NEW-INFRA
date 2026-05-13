@@ -73,7 +73,7 @@ paths:
                   maxLength: 4096
       responses:
         "200":
-          description: Access token
+          description: Access token or 2FA pending token
           content:
             application/json:
               schema:
@@ -191,6 +191,37 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/OK"
+  /users/me/password/set:
+    post:
+      tags: [Users]
+      summary: Set a first local password for an OAuth-linked account
+      description: >
+        Requires an access JWT. If 2FA is enabled, the JWT must contain recent
+        2FA proof in its `amr` claim. Existing local-password users must use
+        `PUT /users/me/password` instead.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_password, new_password_confirm]
+              properties:
+                new_password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  format: password
+                new_password_confirm:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  format: password
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
   /otp/email/send:
     post:
       tags: [OTP]
@@ -245,15 +276,41 @@ paths:
   /otp/2fa/disable:
     post:
       tags: [OTP]
-      summary: Send or verify 2FA disable OTP
+      summary: Start 2FA disablement
+      description: >
+        Requires a current local password. OAuth-only users without a local
+        password receive `LOCAL_PASSWORD_REQUIRED` and must set a local password
+        before disabling 2FA.
       security:
         - bearerAuth: []
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
               type: object
+              required: [current_password]
+              properties:
+                current_password:
+                  type: string
+                  maxLength: 128
+                  format: password
+      responses:
+        "200":
+          $ref: "#/components/responses/OK"
+  /otp/2fa/enable/verify:
+    post:
+      tags: [OTP]
+      summary: Confirm 2FA enablement
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
               properties:
                 code:
                   type: string
@@ -263,10 +320,12 @@ paths:
       responses:
         "200":
           $ref: "#/components/responses/OK"
-  /otp/2fa/enable/verify:
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /otp/2fa/disable/verify:
     post:
       tags: [OTP]
-      summary: Confirm 2FA enablement
+      summary: Confirm 2FA disablement
       security:
         - bearerAuth: []
       requestBody:
@@ -296,7 +355,7 @@ paths:
         Authorization header as `Bearer <2fa_pending_token>`. Normal access
         tokens are rejected.
       security:
-        - bearerAuth: []
+        - twoFactorPendingAuth: []
       requestBody:
         required: true
         content:
@@ -667,6 +726,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+    twoFactorPendingAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: 2FA pending JWT
+      description: Use `Authorization: Bearer <2fa_pending_token>` from `/auth/login` or `/auth/google`.
   requestBodies:
     OTPCode:
       required: true

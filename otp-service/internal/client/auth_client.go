@@ -27,7 +27,7 @@ type PendingToken struct {
 }
 
 type AuthClient interface {
-	IssueJWT(ctx context.Context, userID uuid.UUID) (TokenPair, error)
+	IssueJWT(ctx context.Context, userID uuid.UUID, authMethods []string) (TokenPair, error)
 	IssuePendingTwoFactor(ctx context.Context, userID uuid.UUID, contextValue string) (PendingToken, error)
 	RevokeSessions(ctx context.Context, userID uuid.UUID) error
 }
@@ -42,9 +42,9 @@ func NewHTTPAuthClient(baseURL, secret string) *HTTPAuthClient {
 	return &HTTPAuthClient{baseURL: strings.TrimRight(baseURL, "/"), secret: secret, client: &http.Client{Timeout: 5 * time.Second}}
 }
 
-func (c *HTTPAuthClient) IssueJWT(ctx context.Context, userID uuid.UUID) (TokenPair, error) {
+func (c *HTTPAuthClient) IssueJWT(ctx context.Context, userID uuid.UUID, authMethods []string) (TokenPair, error) {
 	var out TokenPair
-	headers, err := c.post(ctx, "/internal/auth/issue-jwt", map[string]string{"user_id": userID.String()}, &out)
+	headers, err := c.post(ctx, "/internal/auth/issue-jwt", map[string]any{"user_id": userID.String(), "auth_methods": authMethods}, &out)
 	if err == nil {
 		out.SetCookie = headers.Values("Set-Cookie")
 	}
