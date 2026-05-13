@@ -2,20 +2,30 @@
 
 This deployment serves the Next.js frontend at `https://1111.tn` and the Go API gateway at `https://backend.1111.tn`. Public traffic must enter through Nginx only.
 
-## Required GitHub Secrets
+## GitHub Secrets
 
 ```text
 VPS_HOST
-VPS_USER
 VPS_SSH_KEY
-VPS_SSH_PORT
-DEPLOY_PATH
-PROD_ENV_BACKEND
-PROD_ENV_FRONTEND
 GHCR_TOKEN
 ```
 
-`PROD_ENV_BACKEND` is the full `/etc/app/secrets/.env` content. `PROD_ENV_FRONTEND` should contain:
+These three are enough when the VPS already has `/etc/app/secrets/.env` and the deploy user/path use the defaults:
+
+- `VPS_USER`: optional, defaults to `deploy`
+- `VPS_SSH_PORT`: optional, defaults to `22`
+- `DEPLOY_PATH`: optional, defaults to `/opt/1111`
+
+Optional env-sync secrets:
+
+```text
+PROD_ENV_BACKEND
+PROD_ENV_FRONTEND
+```
+
+If `PROD_ENV_BACKEND` is set, the deploy workflow overwrites `/etc/app/secrets/.env` with that content. Leave it unset when the VPS env file should be the source of truth.
+
+If `PROD_ENV_FRONTEND` is set, it should contain:
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://backend.1111.tn
