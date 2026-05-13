@@ -10,27 +10,13 @@ VPS_SSH_KEY
 GHCR_TOKEN
 ```
 
-These three are enough when the VPS already has `/etc/app/secrets/.env` and the deploy user/path use the defaults:
+The workflow is intentionally hardcoded for:
 
-- `VPS_USER`: optional, defaults to `deploy`
-- `VPS_SSH_PORT`: optional, defaults to `22`
-- `DEPLOY_PATH`: optional, defaults to `/opt/1111`
+- SSH user: `deploy`
+- SSH port: `22`
+- Deploy path: `/opt/1111`
 
-Optional env-sync secrets:
-
-```text
-PROD_ENV_BACKEND
-PROD_ENV_FRONTEND
-```
-
-If `PROD_ENV_BACKEND` is set, the deploy workflow overwrites `/etc/app/secrets/.env` with that content. Leave it unset when the VPS env file should be the source of truth.
-
-If `PROD_ENV_FRONTEND` is set, it should contain:
-
-```env
-NEXT_PUBLIC_API_BASE_URL=https://backend.1111.tn
-NEXT_PUBLIC_APP_URL=https://1111.tn
-```
+All runtime environment values live on the VPS in `/etc/app/secrets/.env`. The GitHub workflow does not overwrite that file.
 
 ## Backend Environment
 
