@@ -55,14 +55,16 @@ if ! docker network inspect "${APP_INTERNAL_NETWORK}" >/dev/null 2>&1; then
 fi
 
 echo "=== [5/6] App user and directories ==="
-useradd -m -s /bin/bash deploy || echo "User deploy already exists"
-usermod -aG docker deploy
-mkdir -p /opt/app
+usermod -aG docker ubuntu
+mkdir -p /opt/1111
 mkdir -p /etc/app/secrets/keys
-chown -R deploy:deploy /opt/app
-chown -R root:deploy /etc/app/secrets
-chmod 700 /etc/app/secrets
-chmod 700 /etc/app/secrets/keys
+mkdir -p /etc/app/secrets/runtime
+chown -R ubuntu:ubuntu /opt/1111
+chown -R root:ubuntu /etc/app/secrets
+chown -R ubuntu:ubuntu /etc/app/secrets/runtime
+chmod 750 /etc/app/secrets
+chmod 750 /etc/app/secrets/keys
+chmod 770 /etc/app/secrets/runtime
 
 echo "=== [6/6] SSH hardening ==="
 sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
@@ -70,5 +72,5 @@ systemctl reload sshd
 
 echo ""
 echo "=== DONE: 01-system.sh ==="
-echo "IMPORTANT: ensure your SSH public key is in /home/deploy/.ssh/authorized_keys before logging out."
+echo "IMPORTANT: ensure your SSH public key is in /home/ubuntu/.ssh/authorized_keys before logging out."
 echo "NEXT: bash 02-postgres.sh"

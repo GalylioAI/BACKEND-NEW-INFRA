@@ -99,12 +99,12 @@ MAIL_FROM=noreply@1111.tn
 APP_NAME=1111
 ENVEOF
 
-chown root:deploy "${SECRETS_FILE}"
+chown root:ubuntu "${SECRETS_FILE}"
 chmod 640 "${SECRETS_FILE}"
-chown -R root:deploy /etc/app/secrets
+chown -R root:ubuntu /etc/app/secrets
 chmod 750 /etc/app/secrets /etc/app/secrets/keys
-# The deploy user refreshes generated Docker secret files on every release.
-chown deploy:deploy /etc/app/secrets/runtime
+# The ubuntu user refreshes generated Docker secret files on every release.
+chown ubuntu:ubuntu /etc/app/secrets/runtime
 chmod 770 /etc/app/secrets/runtime
 echo "Created ${SECRETS_FILE}"
 echo ""
@@ -113,8 +113,8 @@ echo ""
 echo "NEXT STEPS:"
 echo "1. Fill in all values in ${SECRETS_FILE}."
 echo "2. Copy RS256 keys from your local machine:"
-echo "   scp secrets/jwt_private.pem deploy@YOUR_VPS_IP:/tmp/private.pem"
-echo "   scp secrets/jwt_public.pem  deploy@YOUR_VPS_IP:/tmp/public.pem"
-echo "   ssh deploy@YOUR_VPS_IP 'sudo mv /tmp/private.pem /etc/app/secrets/keys/private.pem && sudo mv /tmp/public.pem /etc/app/secrets/keys/public.pem && sudo chown root:deploy /etc/app/secrets/keys/*.pem && sudo chmod 640 /etc/app/secrets/keys/*.pem'"
+echo "   scp secrets/jwt_private.pem ubuntu@YOUR_VPS_IP:/tmp/private.pem"
+echo "   scp secrets/jwt_public.pem  ubuntu@YOUR_VPS_IP:/tmp/public.pem"
+echo "   ssh ubuntu@YOUR_VPS_IP 'sudo mv /tmp/private.pem /etc/app/secrets/keys/private.pem && sudo mv /tmp/public.pem /etc/app/secrets/keys/public.pem && sudo chown root:ubuntu /etc/app/secrets/keys/*.pem && sudo chmod 640 /etc/app/secrets/keys/*.pem'"
 echo "3. bash 07-pgbouncer.sh"
-echo "4. sudo -u deploy bash /opt/app/infra/scripts/08-materialize-secrets.sh before first manual compose run"
+echo "4. sudo -u ubuntu bash /opt/1111/infra/scripts/08-materialize-secrets.sh before first manual compose run"

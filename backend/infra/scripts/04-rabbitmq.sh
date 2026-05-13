@@ -72,5 +72,5 @@ rabbitmqctl status | grep -q "RabbitMQ" \
 echo ""
 echo "=== DONE: 04-rabbitmq.sh ==="
 echo "RabbitMQ listens on 127.0.0.1 and ${DOCKER_GW}."
-echo "Management UI via SSH tunnel: ssh -L 15672:localhost:15672 deploy@YOUR_VPS_IP"
+echo "Management UI via SSH tunnel: ssh -L 15672:localhost:15672 ubuntu@YOUR_VPS_IP"
 echo "NEXT: EMAIL=you@example.com FRONTEND_DOMAIN=1111.tn BACKEND_DOMAIN=backend.1111.tn bash 05-nginx.sh"

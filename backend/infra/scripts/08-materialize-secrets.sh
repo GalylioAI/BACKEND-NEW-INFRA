@@ -12,12 +12,12 @@ umask 027
 mkdir -p "${OUT_DIR}"
 
 if [ "$(id -u)" -eq 0 ]; then
-  chown deploy:deploy "${OUT_DIR}" 2>/dev/null || true
+  chown ubuntu:ubuntu "${OUT_DIR}" 2>/dev/null || true
   chmod 770 "${OUT_DIR}"
 elif [ ! -w "${OUT_DIR}" ]; then
   echo "Runtime secret directory is not writable: ${OUT_DIR}" >&2
   echo "Run once on the VPS:" >&2
-  echo "  sudo chown deploy:deploy ${OUT_DIR} && sudo chmod 770 ${OUT_DIR}" >&2
+  echo "  sudo chown ubuntu:ubuntu ${OUT_DIR} && sudo chmod 770 ${OUT_DIR}" >&2
   exit 1
 fi
 
@@ -98,7 +98,7 @@ for key, filename in mapping.items():
 PY
 
 if [ "$(id -u)" -eq 0 ]; then
-  chown -R deploy:deploy "${OUT_DIR}" 2>/dev/null || true
+  chown -R ubuntu:ubuntu "${OUT_DIR}" 2>/dev/null || true
 fi
 chmod 770 "${OUT_DIR}"
 find "${OUT_DIR}" -type f -exec chmod 640 {} \;

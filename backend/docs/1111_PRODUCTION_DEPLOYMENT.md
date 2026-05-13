@@ -12,7 +12,7 @@ GHCR_TOKEN
 
 The workflow is intentionally hardcoded for:
 
-- SSH user: `deploy`
+- SSH user: `ubuntu`
 - SSH port: `22`
 - Deploy path: `/opt/1111`
 
@@ -52,9 +52,8 @@ sudo apt-get update
 sudo apt-get upgrade -y
 sudo apt-get install -y git curl ca-certificates gnupg ufw fail2ban unattended-upgrades
 
-sudo adduser deploy
-sudo usermod -aG sudo deploy
-sudo install -d -o deploy -g deploy /opt/1111
+sudo usermod -aG sudo,docker ubuntu
+sudo install -d -o ubuntu -g ubuntu /opt/1111
 
 sudo sed -i 's/^#\?PasswordAuthentication .*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sudo sed -i 's/^#\?PermitRootLogin .*/PermitRootLogin no/' /etc/ssh/sshd_config
@@ -77,7 +76,7 @@ sudo chmod a+r /etc/apt/keyrings/docker.gpg
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
-sudo usermod -aG docker deploy
+sudo usermod -aG docker ubuntu
 ```
 
 Install host-managed stateful services with the repository scripts:
@@ -95,9 +94,11 @@ sudo bash infra/scripts/07-pgbouncer.sh
 Fill `/etc/app/secrets/.env`, copy RS256 keys into `/etc/app/secrets/keys`, then materialize Docker secrets:
 
 ```bash
-sudo -u deploy bash /opt/1111/infra/scripts/08-materialize-secrets.sh
-sudo chown -R root:deploy /etc/app/secrets
+sudo -u ubuntu bash /opt/1111/infra/scripts/08-materialize-secrets.sh
+sudo chown -R root:ubuntu /etc/app/secrets
+sudo chown -R ubuntu:ubuntu /etc/app/secrets/runtime
 sudo chmod 750 /etc/app/secrets /etc/app/secrets/keys
+sudo chmod 770 /etc/app/secrets/runtime
 sudo chmod 640 /etc/app/secrets/.env /etc/app/secrets/keys/*.pem
 ```
 
@@ -113,7 +114,7 @@ sudo certbot renew --dry-run
 
 ```bash
 cd /opt/1111
-sudo -u deploy bash infra/scripts/08-materialize-secrets.sh
+sudo -u ubuntu bash infra/scripts/08-materialize-secrets.sh
 docker login ghcr.io
 IMAGE_TAG=<git-short-sha> docker compose -f docker-compose.prod.yml --env-file /etc/app/secrets/.env pull
 IMAGE_TAG=<git-short-sha> docker compose -f docker-compose.prod.yml --env-file /etc/app/secrets/.env up -d --wait
@@ -130,7 +131,7 @@ curl -fsS https://backend.1111.tn/health
 - No PostgreSQL, Redis, RabbitMQ, PgBouncer, or internal Go service port is public.
 - CORS is exactly `https://1111.tn`; no wildcard origins.
 - Refresh cookie is HttpOnly, Secure, `SameSite=Lax`, and scoped to `/auth`.
-- `.env`, generated runtime secrets, and private keys are not committed and are readable only by root/deploy.
+- `.env`, generated runtime secrets, and private keys are not committed and are readable only by root/ubuntu.
 - Nginx does not inject backend CORS headers; the Go gateway owns backend CORS/security headers.
 - Logs must not contain access tokens, refresh cookies, passwords, or OTP codes.
 
