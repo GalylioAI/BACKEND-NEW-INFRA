@@ -10,6 +10,7 @@ __pycache__/
 *.pyc
 smoke-cookies.txt
 secrets/*.pem
+backend/secrets/*.pem
 
 .idea/
 .vscode/

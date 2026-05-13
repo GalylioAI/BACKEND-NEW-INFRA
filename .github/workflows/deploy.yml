@@ -53,8 +53,8 @@ jobs:
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v5
         with:
-          context: .
-          file: ./${{ matrix.service }}/Dockerfile
+          context: ./backend
+          file: ./backend/${{ matrix.service }}/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -80,8 +80,9 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "docker-compose.prod.yml,infra/scripts/health-check.sh,infra/scripts/rollback.sh,infra/scripts/08-materialize-secrets.sh"
+          source: "backend/docker-compose.prod.yml,backend/infra/scripts/health-check.sh,backend/infra/scripts/rollback.sh,backend/infra/scripts/08-materialize-secrets.sh"
           target: "/opt/app/"
+          strip_components: 1
 
       - name: Deploy on VPS
         uses: appleboy/ssh-action@v1.0.3

@@ -29,6 +29,7 @@ Run these as root on Ubuntu:
 ```bash
 git clone https://github.com/GalylioAI/BACKEND-NEW-INFRA /tmp/setup
 cd /tmp/setup
+cd backend
 
 bash infra/scripts/01-system.sh
 bash infra/scripts/02-postgres.sh
