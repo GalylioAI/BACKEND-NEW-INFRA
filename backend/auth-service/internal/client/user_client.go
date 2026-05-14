@@ -50,7 +50,7 @@ func (c *HTTPUserClient) GetByID(ctx context.Context, userID uuid.UUID) (domain.
 
 func (c *HTTPUserClient) GetPublicByID(ctx context.Context, userID uuid.UUID) (domain.PublicUser, error) {
 	var user domain.PublicUser
-	err := c.get(ctx, "/internal/users/"+userID.String()+"/profile", &user)
+	err := c.get(ctx, "/internal/users/profile/"+userID.String(), &user)
 	return user, err
 }
 

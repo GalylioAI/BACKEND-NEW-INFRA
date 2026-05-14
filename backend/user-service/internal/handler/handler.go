@@ -51,7 +51,7 @@ func (h *Handler) Routes() http.Handler {
 	internal := middleware.RequireInternalSecret(h.internalSecret)
 	mux.Handle("GET /internal/users/lookup", internal(http.HandlerFunc(h.internalLookup)))
 	mux.Handle("GET /internal/users/by-email/{email}", internal(http.HandlerFunc(h.internalGetByEmail)))
-	mux.Handle("GET /internal/users/{id}/profile", internal(http.HandlerFunc(h.internalGetPublicProfile)))
+	mux.Handle("GET /internal/users/profile/{id}", internal(http.HandlerFunc(h.internalGetPublicProfile)))
 	mux.Handle("GET /internal/users/{id}", internal(http.HandlerFunc(h.internalGetByID)))
 	mux.Handle("PATCH /internal/users/{id}/verify", internal(http.HandlerFunc(h.internalMarkVerified)))
 	mux.Handle("PATCH /internal/users/{id}/2fa", internal(http.HandlerFunc(h.internalSetTwoFactor)))
