@@ -386,7 +386,7 @@ export default function AccountClient() {
                   Informations personnelles
                 </h2>
                 <a
-                  href="/dashboard/parametre"
+                  href="/compte/profil"
                   className="acct-edit"
                   style={{
                     fontSize: 12,
@@ -562,6 +562,44 @@ export default function AccountClient() {
                     {user?.is_verified ? "✓ Vérifié" : "⏳ En attente"}
                   </span>
                 </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.14em",
+                      color: "rgba(255,255,255,0.35)",
+                    }}
+                  >
+                    2FA
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      padding: "3px 12px",
+                      borderRadius: 999,
+                      color: user?.two_factor_enabled ? "#4ade80" : "#f97316",
+                      background: user?.two_factor_enabled
+                        ? "rgba(74,222,128,0.1)"
+                        : "rgba(249,115,22,0.1)",
+                      border: `1px solid ${
+                        user?.two_factor_enabled
+                          ? "rgba(74,222,128,0.25)"
+                          : "rgba(249,115,22,0.25)"
+                      }`,
+                    }}
+                  >
+                    {user?.two_factor_enabled ? "Activee" : "Inactive"}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -584,7 +622,7 @@ export default function AccountClient() {
                   style={{ display: "flex", flexDirection: "column", gap: 10 }}
                 >
                   <QuickAction
-                    href="/dashboard/parametre"
+                    href="/compte/profil"
                     icon={
                       <svg
                         width="17"
@@ -611,7 +649,7 @@ export default function AccountClient() {
                     sub="Dernière modification inconnue"
                   />
                   <QuickAction
-                    href="/dashboard/parametre"
+                    href="/compte/profil"
                     icon={
                       <svg
                         width="17"

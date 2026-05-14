@@ -35,6 +35,14 @@ function safeRedirect(value: string | null) {
   return value && value.startsWith("/") ? value : "/";
 }
 
+function getPostLoginDestination(role?: string) {
+  if (role === "admin" || role === "superadmin") {
+    return "/dashboard";
+  }
+
+  return "/compte";
+}
+
 export default function TwoFactorLoginPage() {
   const router = useRouter();
   const { refreshUser } = useAuth();
@@ -69,8 +77,12 @@ export default function TwoFactorLoginPage() {
     try {
       await verifyLogin2FA(normalizedCode, pending.token);
       sessionStorage.removeItem(TWO_FACTOR_PENDING_KEY);
-      await refreshUser();
-      router.replace(redirectTo);
+      const currentUser = await refreshUser();
+      router.replace(
+        redirectTo === "/"
+          ? getPostLoginDestination(currentUser?.role)
+          : redirectTo,
+      );
     } catch (err) {
       setError(getApiErrorMessage(err, "Verification 2FA impossible."));
     } finally {

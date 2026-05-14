@@ -44,9 +44,14 @@ func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) ht
 			}
 		}
 		req.Header.Del("Authorization")
+		req.Header.Del("Origin")
 		req.Header.Set(middleware.HeaderInternalSecret, internalSecret)
 		req.Header.Set("X-Forwarded-For", forwardedFor(req))
 		req.Header.Set("X-Forwarded-Proto", "http")
+	}
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		stripGatewayOwnedHeaders(resp.Header)
+		return nil
 	}
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		if strings.Contains(err.Error(), "request body too large") {
@@ -61,6 +66,22 @@ func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) ht
 		httpjson.WriteError(w, r, apperr.New(http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "The requested service is temporarily unavailable."))
 	}
 	return proxy
+}
+
+func stripGatewayOwnedHeaders(header http.Header) {
+	for _, name := range []string{
+		"Access-Control-Allow-Origin",
+		"Access-Control-Allow-Credentials",
+		"Access-Control-Allow-Headers",
+		"Access-Control-Allow-Methods",
+		"Access-Control-Expose-Headers",
+		"Access-Control-Max-Age",
+		"X-Frame-Options",
+		"X-Content-Type-Options",
+		"Strict-Transport-Security",
+	} {
+		header.Del(name)
+	}
 }
 
 func bearerToken(header string) string {

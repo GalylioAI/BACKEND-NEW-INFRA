@@ -35,7 +35,7 @@ function getPostLoginDestination(role?: string) {
     return "/dashboard";
   }
 
-  return "/";
+  return "/compte";
 }
 
 export default function ConnexionPage() {

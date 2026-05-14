@@ -35,7 +35,7 @@ function getPostLoginDestination(role?: string) {
     return "/dashboard";
   }
 
-  return "/products";
+  return "/compte/profil";
 }
 
 export default function InscriptionPage() {
@@ -183,7 +183,7 @@ export default function InscriptionPage() {
             createdAt: Date.now(),
           }),
         );
-        router.replace("/connexion/2fa?redirect=/products");
+        router.replace("/connexion/2fa?redirect=/compte/profil");
         return;
       }
 
