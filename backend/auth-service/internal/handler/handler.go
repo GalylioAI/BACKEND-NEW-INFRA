@@ -46,7 +46,7 @@ func New(service *service.Service, internalSecret string, refreshCookie RefreshC
 		refreshCookie.MaxAge = 30 * 24 * time.Hour
 	}
 	if refreshCookie.SameSite == 0 {
-		refreshCookie.SameSite = http.SameSiteStrictMode
+		refreshCookie.SameSite = http.SameSiteLaxMode
 	}
 	h := &Handler{service: service, internalSecret: internalSecret, refreshCookie: refreshCookie}
 	if len(healthCheck) > 0 {

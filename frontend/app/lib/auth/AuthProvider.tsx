@@ -18,6 +18,7 @@ import {
   session as restoreSession,
 } from "../api/auth";
 import { setUnauthorizedHandler } from "../api/client";
+import { hasSessionMarker } from "../api/token-store";
 import { signup as signupRequest } from "../api/users";
 import type { LoginRequest, SignupRequest, UserResponse } from "../api/types";
 
@@ -41,6 +42,16 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function shouldAttemptSessionRestore() {
+  if (hasSessionMarker()) return true;
+  if (typeof window === "undefined") return false;
+
+  const protectedPrefixes = ["/compte", "/dashboard", "/admin"];
+  return protectedPrefixes.some((prefix) =>
+    window.location.pathname.startsWith(prefix),
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<UserResponse | null>(null);
@@ -62,6 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function restore() {
       setStatus("loading");
+      if (!shouldAttemptSessionRestore()) {
+        if (!active) return;
+        clearAuthToken();
+        setUser(null);
+        setStatus("anonymous");
+        return;
+      }
+
       try {
         const restored = await restoreSession();
         if (!active) return;

@@ -96,6 +96,7 @@ server {
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Cross-Origin-Opener-Policy "same-origin-allow-popups" always;
 
     location /_next/static/ {
         proxy_pass http://127.0.0.1:3000;

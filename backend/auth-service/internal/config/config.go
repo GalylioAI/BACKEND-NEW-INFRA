@@ -95,7 +95,7 @@ func Load() (Config, error) {
 		RefreshCookieSecure:       sharedcfg.String("COOKIE_SECURE", sharedcfg.String("REFRESH_COOKIE_SECURE", "true")) != "false",
 		RefreshCookieName:         sharedcfg.String("REFRESH_COOKIE_NAME", "refresh_token"),
 		RefreshCookiePath:         sharedcfg.String("REFRESH_COOKIE_PATH", "/auth"),
-		RefreshCookieSameSite:     sharedcfg.String("REFRESH_COOKIE_SAMESITE", "Strict"),
+		RefreshCookieSameSite:     sharedcfg.String("REFRESH_COOKIE_SAMESITE", "Lax"),
 		RefreshCookieHTTPOnly:     sharedcfg.Bool("REFRESH_COOKIE_HTTPONLY", true),
 		RefreshCookieMaxAge:       durationOrDefault("REFRESH_COOKIE_MAX_AGE", refreshExpiry),
 		CookieDomain:              sharedcfg.String("REFRESH_COOKIE_DOMAIN", sharedcfg.String("COOKIE_DOMAIN", "")),

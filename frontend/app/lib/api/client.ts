@@ -2,7 +2,9 @@ import { apiUrl } from "./config";
 import { endpoints } from "./endpoints";
 import {
   clearAccessToken,
+  clearSessionMarker,
   getAccessToken,
+  markSessionPresent,
   setAccessToken,
 } from "./token-store";
 import type { AccessTokenResponse, ApiFailureEnvelope, ApiMeta } from "./types";
@@ -248,9 +250,11 @@ async function refreshAccessToken() {
         });
         const { data } = await parseResponse<AccessTokenResponse>(response);
         setAccessToken(data.access_token);
+        markSessionPresent();
         return data.access_token;
       } catch {
         clearAccessToken();
+        clearSessionMarker();
         return null;
       } finally {
         refreshPromise = null;

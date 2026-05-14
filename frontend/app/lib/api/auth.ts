@@ -2,7 +2,9 @@ import { apiRequest, primeSessionFromRefresh } from "./client";
 import { endpoints } from "./endpoints";
 import {
   clearAccessToken,
+  clearSessionMarker,
   getAccessToken,
+  markSessionPresent,
   setAccessToken,
 } from "./token-store";
 import type {
@@ -15,6 +17,12 @@ import type {
 } from "./types";
 import { normalizeUser } from "./types";
 
+type NormalizedSessionResponse = Omit<SessionResponse, "user"> & {
+  user: UserResponse;
+};
+
+let sessionPromise: Promise<NormalizedSessionResponse> | null = null;
+
 export async function login(payload: LoginRequest) {
   const result = await apiRequest<LoginResponse>(endpoints.auth.login, {
     method: "POST",
@@ -23,6 +31,7 @@ export async function login(payload: LoginRequest) {
 
   if (result.access_token) {
     setAccessToken(result.access_token);
+    markSessionPresent();
   }
 
   return result;
@@ -36,6 +45,7 @@ export async function googleLogin(idToken: string) {
 
   if (result.access_token) {
     setAccessToken(result.access_token);
+    markSessionPresent();
   }
 
   return result;
@@ -51,6 +61,7 @@ export async function verifyLogin2FA(code: string, pendingToken: string) {
     },
   );
   setAccessToken(result.access_token);
+  markSessionPresent();
   return result;
 }
 
@@ -60,15 +71,33 @@ export async function refreshSession() {
 }
 
 export async function session() {
-  const result = await apiRequest<SessionResponse>(endpoints.auth.session, {
-    method: "POST",
-    retryOnAuthFailure: false,
-  });
-  setAccessToken(result.access_token);
-  return {
-    ...result,
-    user: normalizeUser(result.user),
-  };
+  if (!sessionPromise) {
+    sessionPromise = (async () => {
+      try {
+        const result = await apiRequest<SessionResponse>(
+          endpoints.auth.session,
+          {
+            method: "POST",
+            retryOnAuthFailure: false,
+          },
+        );
+        setAccessToken(result.access_token);
+        markSessionPresent();
+        return {
+          ...result,
+          user: normalizeUser(result.user),
+        };
+      } catch (error) {
+        clearAccessToken();
+        clearSessionMarker();
+        throw error;
+      } finally {
+        sessionPromise = null;
+      }
+    })();
+  }
+
+  return sessionPromise;
 }
 
 export async function currentUser() {
@@ -89,6 +118,7 @@ export async function logout() {
     });
   } finally {
     clearAccessToken();
+    clearSessionMarker();
   }
 }
 
@@ -100,9 +130,11 @@ export async function logoutAll() {
     });
   } finally {
     clearAccessToken();
+    clearSessionMarker();
   }
 }
 
 export function clearAuthToken() {
   clearAccessToken();
+  clearSessionMarker();
 }
