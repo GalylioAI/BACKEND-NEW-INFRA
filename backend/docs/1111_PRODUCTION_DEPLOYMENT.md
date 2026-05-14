@@ -31,6 +31,7 @@ BASE_API_URL=https://backend.1111.tn
 FRONTEND_URL=https://1111.tn
 NEXT_PUBLIC_API_BASE_URL=https://backend.1111.tn
 NEXT_PUBLIC_APP_URL=https://1111.tn
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<same value as GOOGLE_CLIENT_ID>
 CORS_ALLOWED_ORIGINS=https://1111.tn
 CORS_ALLOW_CREDENTIALS=true
 COOKIE_DOMAIN=backend.1111.tn
@@ -44,6 +45,8 @@ GATEWAY_BIND_IP=127.0.0.1
 ```
 
 `SameSite=Lax` works because `1111.tn` and `backend.1111.tn` are same-site under HTTPS. `Path=/auth` keeps the refresh cookie limited to refresh/logout endpoints. Switch to `SameSite=None` only if the browser-origin credential test fails.
+
+For Google login/signup, configure the Google OAuth web client with `https://1111.tn` in Authorized JavaScript origins. Put the client id in both `GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on the VPS; the frontend exposes only the client id, never the client secret.
 
 ## Ubuntu VPS Setup
 

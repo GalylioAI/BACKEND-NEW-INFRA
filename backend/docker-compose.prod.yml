@@ -34,6 +34,8 @@ services:
       PORT: "3000"
       NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://backend.1111.tn}
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://1111.tn}
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
     networks:
       - gateway-net
     healthcheck:

@@ -9,7 +9,10 @@ import {
   verifyEmailOtp,
   type Gouvernorat,
 } from "../lib/api";
+import { GoogleAuthButton } from "../components/auth/GoogleAuthButton";
 import { useAuth } from "../lib/auth/AuthProvider";
+
+const TWO_FACTOR_PENDING_KEY = "1111:2fa-pending";
 
 function useIsLight() {
   const [isLight, setIsLight] = useState(false);
@@ -27,10 +30,18 @@ function useIsLight() {
   return isLight;
 }
 
+function getPostLoginDestination(role?: string) {
+  if (role === "admin" || role === "superadmin") {
+    return "/dashboard";
+  }
+
+  return "/products";
+}
+
 export default function InscriptionPage() {
   const router = useRouter();
   const isLight = useIsLight();
-  const { signup, login, status } = useAuth();
+  const { signup, login, loginWithGoogle, status, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [firstName, setFirstName] = useState("");
@@ -45,6 +56,7 @@ export default function InscriptionPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [terms, setTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -54,10 +66,10 @@ export default function InscriptionPage() {
   );
 
   useEffect(() => {
-    if (status === "authenticated") {
-      router.replace("/products");
+    if (status === "authenticated" && user) {
+      router.replace(getPostLoginDestination(user.role));
     }
-  }, [router, status]);
+  }, [router, status, user]);
 
   useEffect(() => {
     let active = true;
@@ -153,6 +165,38 @@ export default function InscriptionPage() {
       setError(getApiErrorMessage(err, "Creation du compte impossible."));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (idToken: string) => {
+    setError("");
+    setSuccess("");
+    setGoogleLoading(true);
+    try {
+      const result = await loginWithGoogle(idToken);
+      if (result.status === "2fa_required") {
+        sessionStorage.setItem(
+          TWO_FACTOR_PENDING_KEY,
+          JSON.stringify({
+            token: result.pendingToken,
+            email: "votre compte Google",
+            createdAt: Date.now(),
+          }),
+        );
+        router.replace("/connexion/2fa?redirect=/products");
+        return;
+      }
+
+      router.replace(getPostLoginDestination(result.user.role));
+    } catch (err) {
+      setError(
+        getApiErrorMessage(
+          err,
+          "Inscription avec Google impossible pour le moment.",
+        ),
+      );
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -392,6 +436,46 @@ export default function InscriptionPage() {
           font-weight: 600;
           line-height: 1.5;
         }
+        .auth-google-button,
+        .auth-google-fallback {
+          width: 100%;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .auth-google-button > div {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+        }
+        .auth-google-fallback {
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.05);
+          color: rgba(255,255,255,0.5);
+          font-size: 14px;
+          font-weight: 700;
+          font-family: 'Inter', system-ui, sans-serif;
+        }
+        .auth-divider {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin: 18px 0;
+          color: rgba(255,255,255,0.32);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .auth-divider::before,
+        .auth-divider::after {
+          content: "";
+          height: 1px;
+          flex: 1;
+          background: rgba(255,255,255,0.1);
+        }
         @media (max-width: 900px) {
           .auth-left-panel { display: none !important; }
           .auth-right-panel {
@@ -505,6 +589,18 @@ export default function InscriptionPage() {
         }
         [data-theme="light"] .auth-form-shell label {
           color: rgba(30,27,75,0.55) !important;
+        }
+        [data-theme="light"] .auth-google-fallback {
+          border-color: rgba(91,33,182,0.18);
+          background: rgba(91,33,182,0.04);
+          color: rgba(30,27,75,0.45);
+        }
+        [data-theme="light"] .auth-divider {
+          color: rgba(30,27,75,0.35);
+        }
+        [data-theme="light"] .auth-divider::before,
+        [data-theme="light"] .auth-divider::after {
+          background: rgba(91,33,182,0.12);
         }
       `}</style>
 
@@ -892,6 +988,19 @@ export default function InscriptionPage() {
             </div>
           )}
 
+          {step !== 3 && (
+            <>
+              <GoogleAuthButton
+                text="signup_with"
+                isLight={isLight}
+                disabled={loading || googleLoading || status === "loading"}
+                onCredential={handleGoogleCredential}
+                onError={setError}
+              />
+              <div className="auth-divider">ou</div>
+            </>
+          )}
+
           {step === 1 ? (
             <form
               onSubmit={handleNext}
@@ -925,7 +1034,7 @@ export default function InscriptionPage() {
                     placeholder="Ahmed"
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
-                    disabled={loading}
+                    disabled={loading || googleLoading}
                     required
                   />
                 </div>
@@ -949,7 +1058,7 @@ export default function InscriptionPage() {
                     placeholder="Ben Ali"
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
-                    disabled={loading}
+                    disabled={loading || googleLoading}
                     required
                   />
                 </div>
@@ -975,7 +1084,7 @@ export default function InscriptionPage() {
                   placeholder="votre@email.com"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                   autoComplete="email"
                   required
                 />
@@ -1001,7 +1110,7 @@ export default function InscriptionPage() {
                   placeholder="ahmed_ba"
                   value={username}
                   onChange={(event) => setUsername(event.target.value)}
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                   autoComplete="username"
                   required
                 />
@@ -1042,7 +1151,7 @@ export default function InscriptionPage() {
                     style={{ paddingLeft: "52px" }}
                     value={phone}
                     onChange={(event) => setPhone(event.target.value)}
-                    disabled={loading}
+                    disabled={loading || googleLoading}
                     autoComplete="tel"
                   />
                 </div>
@@ -1052,7 +1161,7 @@ export default function InscriptionPage() {
                 type="submit"
                 className="auth-btn"
                 style={{ marginTop: "8px" }}
-                disabled={loading}
+                disabled={loading || googleLoading}
               >
                 Continuer
               </button>
@@ -1084,7 +1193,7 @@ export default function InscriptionPage() {
                     style={{ paddingRight: "46px" }}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    disabled={loading}
+                    disabled={loading || googleLoading}
                     autoComplete="new-password"
                     required
                   />
@@ -1175,7 +1284,7 @@ export default function InscriptionPage() {
                   placeholder="Repeter le mot de passe"
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                   autoComplete="new-password"
                   required
                 />
@@ -1200,7 +1309,7 @@ export default function InscriptionPage() {
                   style={{ cursor: "pointer" }}
                   value={gouvernoratId}
                   onChange={(event) => setGouvernoratId(event.target.value)}
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                   required
                 >
                   <option value="" style={{ background: "#0a0f0d" }}>
@@ -1230,7 +1339,7 @@ export default function InscriptionPage() {
                   id="terms"
                   checked={terms}
                   onChange={(event) => setTerms(event.target.checked)}
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                   style={{
                     accentColor: "#3BDEB9",
                     width: 16,
@@ -1259,11 +1368,15 @@ export default function InscriptionPage() {
                   type="button"
                   className="auth-btn-outline"
                   onClick={() => setStep(1)}
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                 >
                   Retour
                 </button>
-                <button type="submit" className="auth-btn" disabled={loading}>
+                <button
+                  type="submit"
+                  className="auth-btn"
+                  disabled={loading || googleLoading}
+                >
                   {loading ? "Creation..." : "Creer mon compte"}
                 </button>
               </div>
@@ -1298,7 +1411,7 @@ export default function InscriptionPage() {
                   onChange={(event) =>
                     setVerificationCode(event.target.value.replace(/\D/g, ""))
                   }
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                   inputMode="numeric"
                   maxLength={6}
                   required
@@ -1309,11 +1422,15 @@ export default function InscriptionPage() {
                   type="button"
                   className="auth-btn-outline"
                   onClick={() => setStep(2)}
-                  disabled={loading}
+                  disabled={loading || googleLoading}
                 >
                   Retour
                 </button>
-                <button type="submit" className="auth-btn" disabled={loading}>
+                <button
+                  type="submit"
+                  className="auth-btn"
+                  disabled={loading || googleLoading}
+                >
                   {loading ? "Verification..." : "Verifier mon email"}
                 </button>
               </div>

@@ -9,6 +9,7 @@ Local development:
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
 ```
 
 Production:
@@ -16,6 +17,7 @@ Production:
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://backend.1111.tn
 NEXT_PUBLIC_APP_URL=https://1111.tn
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
 ```
 
 Only public browser-safe values may use `NEXT_PUBLIC_*`. Refresh tokens are never stored by the frontend; they are kept in the backend HttpOnly cookie.

@@ -12,6 +12,7 @@ import {
 import {
   clearAuthToken,
   currentUser as fetchCurrentUser,
+  googleLogin as googleLoginRequest,
   login as loginRequest,
   logout as logoutRequest,
   refreshSession,
@@ -31,6 +32,7 @@ interface AuthContextValue {
   loading: boolean;
   user: UserResponse | null;
   login: (payload: LoginRequest) => Promise<LoginResult>;
+  loginWithGoogle: (idToken: string) => Promise<LoginResult>;
   signup: (payload: SignupRequest) => Promise<UserResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<UserResponse | null>;
@@ -101,6 +103,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { status: "authenticated" as const, user: currentUser };
   }, []);
 
+  const loginWithGoogle = useCallback(async (idToken: string) => {
+    const loginResult = await googleLoginRequest(idToken);
+    if (
+      loginResult.two_factor_required &&
+      loginResult.two_factor_session_token
+    ) {
+      return {
+        status: "2fa_required" as const,
+        pendingToken: loginResult.two_factor_session_token,
+      };
+    }
+
+    const currentUser = await fetchCurrentUser();
+    setUser(currentUser);
+    setStatus("authenticated");
+    return { status: "authenticated" as const, user: currentUser };
+  }, []);
+
   const signup = useCallback(
     async (payload: SignupRequest) => signupRequest(payload),
     [],
@@ -132,12 +152,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       user,
       login,
+      loginWithGoogle,
       signup,
       logout,
       refreshUser,
       clearSession,
     }),
-    [status, loading, user, login, signup, logout, refreshUser, clearSession],
+    [
+      status,
+      loading,
+      user,
+      login,
+      loginWithGoogle,
+      signup,
+      logout,
+      refreshUser,
+      clearSession,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

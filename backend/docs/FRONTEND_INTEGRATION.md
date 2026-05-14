@@ -9,6 +9,7 @@ Frontend:
 ```env
 NEXT_PUBLIC_API_BASE_URL=https://backend.1111.tn
 NEXT_PUBLIC_APP_URL=https://1111.tn
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=<google-oauth-web-client-id>
 ```
 
 Backend:
@@ -31,6 +32,7 @@ No wildcard CORS is allowed in production.
 ## Auth Contract
 
 - `POST /auth/login` accepts `{ "identifier": "<email-or-username>", "password": "<password>" }`.
+- `POST /auth/google` accepts `{ "id_token": "<google-id-token>" }` from Google Identity Services. The same endpoint powers both "login with Google" and "signup with Google"; new Google users are created by the backend.
 - Normal login returns `access_token` and `access_token_expires_at`.
 - 2FA login returns `two_factor_required: true` and `two_factor_session_token`.
 - `POST /otp/2fa/login/verify` sends `Authorization: Bearer <two_factor_session_token>`.

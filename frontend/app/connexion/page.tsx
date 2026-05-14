@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { GoogleAuthButton } from "../components/auth/GoogleAuthButton";
 import { getApiErrorMessage } from "../lib/api/client";
 import { sendPasswordReset } from "../lib/api/otp";
 import { useAuth } from "../lib/auth/AuthProvider";
@@ -40,11 +41,12 @@ function getPostLoginDestination(role?: string) {
 export default function ConnexionPage() {
   const router = useRouter();
   const isLight = useIsLight();
-  const { login, status, user } = useAuth();
+  const { login, loginWithGoogle, status, user } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -93,6 +95,37 @@ export default function ConnexionPage() {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (idToken: string) => {
+    setError("");
+    setSuccess("");
+    setGoogleLoading(true);
+    try {
+      const result = await loginWithGoogle(idToken);
+      if (result.status === "2fa_required") {
+        sessionStorage.setItem(
+          TWO_FACTOR_PENDING_KEY,
+          JSON.stringify({
+            token: result.pendingToken,
+            email: "votre compte Google",
+            createdAt: Date.now(),
+          }),
+        );
+        router.replace(
+          `/connexion/2fa?redirect=${encodeURIComponent(redirectAfterLogin())}`,
+        );
+        return;
+      }
+
+      router.replace(getPostLoginDestination(result.user.role));
+    } catch (err) {
+      setError(
+        getApiErrorMessage(err, "Connexion Google impossible pour le moment."),
+      );
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -319,6 +352,46 @@ export default function ConnexionPage() {
           font-weight: 600;
           line-height: 1.5;
         }
+        .auth-google-button,
+        .auth-google-fallback {
+          width: 100%;
+          min-height: 44px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .auth-google-button > div {
+          width: 100%;
+          display: flex;
+          justify-content: center;
+        }
+        .auth-google-fallback {
+          border-radius: 999px;
+          border: 1px solid rgba(255,255,255,0.18);
+          background: rgba(255,255,255,0.05);
+          color: rgba(255,255,255,0.5);
+          font-size: 14px;
+          font-weight: 700;
+          font-family: 'Inter', system-ui, sans-serif;
+        }
+        .auth-divider {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin: 18px 0;
+          color: rgba(255,255,255,0.32);
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .auth-divider::before,
+        .auth-divider::after {
+          content: "";
+          height: 1px;
+          flex: 1;
+          background: rgba(255,255,255,0.1);
+        }
         @media (max-width: 900px) {
           .auth-left-panel { display: none !important; }
           .auth-right-panel {
@@ -425,6 +498,18 @@ export default function ConnexionPage() {
         }
         [data-theme="light"] .auth-form-shell label {
           color: rgba(30,27,75,0.55) !important;
+        }
+        [data-theme="light"] .auth-google-fallback {
+          border-color: rgba(91,33,182,0.18);
+          background: rgba(91,33,182,0.04);
+          color: rgba(30,27,75,0.45);
+        }
+        [data-theme="light"] .auth-divider {
+          color: rgba(30,27,75,0.35);
+        }
+        [data-theme="light"] .auth-divider::before,
+        [data-theme="light"] .auth-divider::after {
+          background: rgba(91,33,182,0.12);
         }
       `}</style>
 
@@ -743,6 +828,15 @@ export default function ConnexionPage() {
             </div>
           )}
 
+          <GoogleAuthButton
+            text="signin_with"
+            isLight={isLight}
+            disabled={loading || googleLoading || status === "loading"}
+            onCredential={handleGoogleCredential}
+            onError={setError}
+          />
+          <div className="auth-divider">ou</div>
+
           <form
             onSubmit={handleSubmit}
             style={{ display: "flex", flexDirection: "column", gap: "16px" }}
@@ -863,7 +957,7 @@ export default function ConnexionPage() {
               type="submit"
               className="auth-btn"
               style={{ marginTop: "8px" }}
-              disabled={loading || status === "loading"}
+              disabled={loading || googleLoading || status === "loading"}
             >
               {loading ? "Connexion..." : "Se connecter"}
             </button>
