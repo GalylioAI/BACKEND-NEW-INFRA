@@ -8,6 +8,7 @@ import type {
 } from "../../lib/demo-data/types";
 import type { ShopSeries } from "./PriceEvolutionChart";
 import PriceEvolutionChart from "./PriceEvolutionChart";
+import ProductEngagementPanel from "./ProductEngagementPanel";
 import ProductImageGallery from "./ProductImageGallery";
 import RecommendationsCarousel from "./RecommendationsCarousel";
 import {
@@ -706,6 +707,7 @@ function ProductPageDark({
                 </div>
               ))}
             </div>
+            <ProductEngagementPanel product={product} tone="dark" />
           </div>
 
           {/* Col 3: chart */}

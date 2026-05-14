@@ -82,6 +82,32 @@ paths:
           $ref: "#/components/responses/Error"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /auth/session:
+    post:
+      tags: [Auth]
+      summary: Restore a browser session from the HttpOnly refresh cookie
+      description: >
+        Uses `credentials: include`, rotates the refresh cookie like
+        `/auth/refresh`, and returns a new access token with the safe current
+        user profile. No request body is accepted.
+      responses:
+        "200":
+          description: New access token, refresh cookie, and current user
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Success"
+                  - type: object
+                    properties:
+                      data:
+                        $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Error"
   /auth/refresh:
     post:
       tags: [Auth]
@@ -871,6 +897,79 @@ components:
           type: boolean
         two_factor_session_token:
           type: string
+    SessionResponse:
+      type: object
+      required: [access_token, access_token_expires_at, user]
+      properties:
+        access_token:
+          type: string
+        access_token_expires_at:
+          type: string
+          format: date-time
+        user:
+          $ref: "#/components/schemas/UserResponse"
+    UserResponse:
+      type: object
+      required:
+        [
+          id,
+          full_name,
+          username,
+          email,
+          role,
+          auth_provider,
+          is_verified,
+          is_banned,
+          two_factor_enabled,
+          created_at,
+          updated_at,
+        ]
+      properties:
+        id:
+          type: string
+          format: uuid
+        full_name:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+          nullable: true
+        gouvernorat_id:
+          type: integer
+          nullable: true
+        role:
+          type: string
+          enum: [user, admin, superadmin]
+        auth_provider:
+          type: string
+          enum: [manual, google]
+        is_verified:
+          type: boolean
+        is_banned:
+          type: boolean
+        ban_reason:
+          type: string
+          nullable: true
+        two_factor_enabled:
+          type: boolean
+        two_factor_enabled_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_login_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     SignupRequest:
       type: object
       required: [full_name, username, email, phone, password, gouvernorat_id]

@@ -640,7 +640,9 @@ func (s *Service) GetOrCreateGoogleUser(ctx context.Context, req GoogleUserReque
 	existing, err := s.repo.GetByEmail(ctx, email)
 	if err == nil {
 		if existing.AuthProvider == domain.ProviderManual {
-			return domain.CredentialUser{}, false, apperr.New(http.StatusConflict, apperr.CodeEmailRegistered, "Email address is already registered with password login.")
+			return domain.CredentialUser{}, false, apperr.WithFields(http.StatusConflict, apperr.CodeEmailRegistered, "Email address is already registered with password login.", apperr.FieldErrors{
+				"email": "Email address is already registered with password login.",
+			})
 		}
 		return domain.Credential(existing), false, nil
 	}

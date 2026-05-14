@@ -10,6 +10,7 @@ import type {
   LoginRequest,
   LoginResponse,
   MessageResponse,
+  SessionResponse,
   UserResponse,
 } from "./types";
 import { normalizeUser } from "./types";
@@ -56,6 +57,18 @@ export async function verifyLogin2FA(code: string, pendingToken: string) {
 export async function refreshSession() {
   const token = await primeSessionFromRefresh();
   return token;
+}
+
+export async function session() {
+  const result = await apiRequest<SessionResponse>(endpoints.auth.session, {
+    method: "POST",
+    retryOnAuthFailure: false,
+  });
+  setAccessToken(result.access_token);
+  return {
+    ...result,
+    user: normalizeUser(result.user),
+  };
 }
 
 export async function currentUser() {

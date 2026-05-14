@@ -15,7 +15,7 @@ import {
   googleLogin as googleLoginRequest,
   login as loginRequest,
   logout as logoutRequest,
-  refreshSession,
+  session as restoreSession,
 } from "../api/auth";
 import { setUnauthorizedHandler } from "../api/client";
 import { signup as signupRequest } from "../api/users";
@@ -63,15 +63,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function restore() {
       setStatus("loading");
       try {
-        const token = await refreshSession();
+        const restored = await restoreSession();
         if (!active) return;
-        if (!token) {
-          clearSession();
-          return;
-        }
-        const currentUser = await fetchCurrentUser();
-        if (!active) return;
-        setUser(currentUser);
+        setUser(restored.user);
         setStatus("authenticated");
       } catch {
         if (!active) return;

@@ -20,6 +20,7 @@ import (
 type UserClient interface {
 	LookupCredential(ctx context.Context, identifier string) (domain.User, error)
 	GetByID(ctx context.Context, userID uuid.UUID) (domain.User, error)
+	GetPublicByID(ctx context.Context, userID uuid.UUID) (domain.PublicUser, error)
 	RecordLoginFailure(ctx context.Context, userID uuid.UUID, currentFailures int16) error
 	RecordLoginSuccess(ctx context.Context, userID uuid.UUID) error
 	GetOrCreateGoogle(ctx context.Context, email, fullName, picture string) (domain.User, bool, error)
@@ -44,6 +45,12 @@ func (c *HTTPUserClient) LookupCredential(ctx context.Context, identifier string
 func (c *HTTPUserClient) GetByID(ctx context.Context, userID uuid.UUID) (domain.User, error) {
 	var user domain.User
 	err := c.get(ctx, "/internal/users/"+userID.String(), &user)
+	return user, err
+}
+
+func (c *HTTPUserClient) GetPublicByID(ctx context.Context, userID uuid.UUID) (domain.PublicUser, error) {
+	var user domain.PublicUser
+	err := c.get(ctx, "/internal/users/"+userID.String()+"/profile", &user)
 	return user, err
 }
 
@@ -97,8 +104,9 @@ func (c *HTTPUserClient) do(req *http.Request, dst any) error {
 		Success bool            `json:"success"`
 		Data    json.RawMessage `json:"data"`
 		Error   struct {
-			Code    string `json:"code"`
-			Message string `json:"message"`
+			Code    string             `json:"code"`
+			Message string             `json:"message"`
+			Fields  apperr.FieldErrors `json:"fields"`
 		} `json:"error"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
@@ -107,6 +115,9 @@ func (c *HTTPUserClient) do(req *http.Request, dst any) error {
 	if resp.StatusCode >= 300 || !envelope.Success {
 		if envelope.Error.Code == "" {
 			return fmt.Errorf("user service returned status %d", resp.StatusCode)
+		}
+		if len(envelope.Error.Fields) > 0 {
+			return apperr.WithFields(resp.StatusCode, envelope.Error.Code, envelope.Error.Message, envelope.Error.Fields)
 		}
 		return apperr.New(resp.StatusCode, envelope.Error.Code, envelope.Error.Message)
 	}

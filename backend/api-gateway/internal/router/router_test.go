@@ -116,6 +116,25 @@ func TestRouteAuthContract(t *testing.T) {
 		}
 	})
 
+	t.Run("session restore is public and origin protected", func(t *testing.T) {
+		blockedReq := httptest.NewRequest(http.MethodPost, "/auth/session", nil)
+		blockedReq.Header.Set("Origin", "https://evil.example")
+		blockedRec := httptest.NewRecorder()
+		handler.ServeHTTP(blockedRec, blockedReq)
+		if blockedRec.Code != http.StatusForbidden {
+			t.Fatalf("expected disallowed origin to be rejected, got %d: %s", blockedRec.Code, blockedRec.Body.String())
+		}
+
+		req := httptest.NewRequest(http.MethodPost, "/auth/session", nil)
+		req.Header.Set("Origin", "https://frontend.example")
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("expected session route to pass, got %d: %s", rec.Code, rec.Body.String())
+		}
+	})
+
 	t.Run("old ambiguous 2fa verify route is removed", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/otp/2fa/verify", strings.NewReader(`{"code":"123456"}`))
 		req.Header.Set("Content-Type", "application/json")

@@ -63,6 +63,129 @@ export function getApiErrorMessage(
   return fallback;
 }
 
+export function getApiErrorCode(error: unknown) {
+  return error instanceof ApiError ? error.code : "";
+}
+
+export function getApiErrorRequestId(error: unknown) {
+  return error instanceof ApiError ? error.requestId : undefined;
+}
+
+export function getApiErrorFields(error: unknown) {
+  return error instanceof ApiError && error.fields ? error.fields : {};
+}
+
+const fieldMessageMap: Record<string, Record<string, string>> = {
+  email: {
+    EMAIL_ALREADY_REGISTERED:
+      "Un compte existe deja avec cet email. Connectez-vous avec le mot de passe.",
+    CONFLICT: "Cette adresse email est deja utilisee.",
+  },
+  phone: {
+    CONFLICT: "Ce numero de telephone est deja utilise.",
+  },
+  username: {
+    CONFLICT: "Ce nom d'utilisateur est deja utilise.",
+  },
+};
+
+function fallbackFieldMessage(field: string, raw: string, code: string) {
+  const lower = raw.toLowerCase();
+  if (field === "email") {
+    if (code === "EMAIL_ALREADY_REGISTERED" || lower.includes("password")) {
+      return "Un compte existe deja avec cet email. Connectez-vous avec le mot de passe.";
+    }
+    if (lower.includes("already") || lower.includes("use")) {
+      return "Cette adresse email est deja utilisee.";
+    }
+    return "Verifiez cette adresse email.";
+  }
+  if (field === "phone") {
+    if (lower.includes("already") || lower.includes("use")) {
+      return "Ce numero de telephone est deja utilise.";
+    }
+    return "Verifiez ce numero de telephone.";
+  }
+  if (field === "username") {
+    if (lower.includes("already") || lower.includes("use")) {
+      return "Ce nom d'utilisateur est deja utilise.";
+    }
+    return "Verifiez ce nom d'utilisateur.";
+  }
+  if (field === "password" || field.includes("password")) {
+    return "Verifiez le mot de passe.";
+  }
+  if (field === "code") {
+    return "Le code doit contenir 6 chiffres.";
+  }
+  return raw || "Verifiez ce champ.";
+}
+
+export function getApiFieldErrors(error: unknown) {
+  if (!(error instanceof ApiError) || !error.fields) {
+    return {} as Record<string, string>;
+  }
+  return Object.fromEntries(
+    Object.entries(error.fields).map(([field, message]) => [
+      field,
+      fieldMessageMap[field]?.[error.code] ||
+        fallbackFieldMessage(field, message, error.code),
+    ]),
+  );
+}
+
+export function getApiFieldMessage(
+  error: unknown,
+  field: string,
+  fallback = "",
+) {
+  return getApiFieldErrors(error)[field] || fallback;
+}
+
+export function getFrenchApiErrorMessage(
+  error: unknown,
+  fallback = "Une erreur est survenue.",
+) {
+  if (!(error instanceof ApiError)) {
+    return getApiErrorMessage(error, fallback);
+  }
+
+  if (error.code === "EMAIL_ALREADY_REGISTERED") {
+    return "Un compte existe deja avec cet email. Connectez-vous avec le mot de passe.";
+  }
+  if (error.code === "USE_GOOGLE_LOGIN") {
+    return "Ce compte utilise Google. Connectez-vous avec Google.";
+  }
+  if (error.code === "INVALID_CREDENTIALS") {
+    return "Email ou mot de passe incorrect.";
+  }
+  if (error.code === "ACCOUNT_NOT_VERIFIED") {
+    return "Votre email n'est pas encore verifie.";
+  }
+  if (error.code === "ACCOUNT_BANNED") {
+    return "Ce compte est bloque.";
+  }
+  if (error.code === "DUPLICATE_ALERT") {
+    return "Vous avez deja une alerte active pour ce produit.";
+  }
+  if (error.code === "ALREADY_FAVORITED") {
+    return "Ce produit est deja dans vos favoris.";
+  }
+  if (error.status === 422) {
+    return "Verifiez les champs saisis.";
+  }
+  if (error.status === 429) {
+    const retry = error.retryAfterSeconds
+      ? ` Reessayez dans ${error.retryAfterSeconds} seconde${
+          error.retryAfterSeconds > 1 ? "s" : ""
+        }.`
+      : "";
+    return `Trop de tentatives.${retry}`;
+  }
+
+  return getApiErrorMessage(error, fallback);
+}
+
 function withQuery(path: string, query?: Record<string, QueryValue>) {
   if (!query) return path;
   const params = new URLSearchParams();

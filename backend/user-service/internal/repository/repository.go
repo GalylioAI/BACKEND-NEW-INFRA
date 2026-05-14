@@ -435,6 +435,20 @@ func mapPGError(err error) error {
 		return err
 	}
 	if pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "uq_users_email_active":
+			return apperr.WithFields(http.StatusConflict, apperr.CodeConflict, "One or more fields are already in use.", apperr.FieldErrors{
+				"email": "Email address is already in use.",
+			})
+		case "uq_users_username_active":
+			return apperr.WithFields(http.StatusConflict, apperr.CodeConflict, "One or more fields are already in use.", apperr.FieldErrors{
+				"username": "Username is already in use.",
+			})
+		case "uq_users_phone_active":
+			return apperr.WithFields(http.StatusConflict, apperr.CodeConflict, "One or more fields are already in use.", apperr.FieldErrors{
+				"phone": "Phone number is already in use.",
+			})
+		}
 		return apperr.New(http.StatusConflict, apperr.CodeConflict, "A unique field is already in use.")
 	}
 	if pgErr.Code == "23503" {

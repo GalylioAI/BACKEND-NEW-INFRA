@@ -56,6 +56,7 @@ func (r *Router) routes() http.Handler {
 
 	r.public(mux, "POST /auth/login", auth)
 	r.public(mux, "POST /auth/google", auth)
+	r.public(mux, "POST /auth/session", auth)
 	r.public(mux, "POST /auth/refresh", auth)
 	r.public(mux, "POST /auth/logout", auth)
 	r.public(mux, "POST /users/signup", user)
@@ -114,7 +115,7 @@ func (r *Router) routes() http.Handler {
 		gwmw.Timeout(r.cfg.RequestTimeout),
 		gwmw.Logger(r.logger),
 		gwmw.BodySizeLimit(r.cfg.BodyLimitBytes),
-		gwmw.RequireAllowedOrigin(r.cfg.AllowedOrigins, "POST /auth/refresh", "POST /auth/logout", "POST /auth/logout-all"),
+		gwmw.RequireAllowedOrigin(r.cfg.AllowedOrigins, "POST /auth/session", "POST /auth/refresh", "POST /auth/logout", "POST /auth/logout-all"),
 	)
 }
 

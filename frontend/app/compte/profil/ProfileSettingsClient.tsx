@@ -14,13 +14,15 @@ import {
 } from "lucide-react";
 
 import ProtectedRoute from "../../components/ProtectedRoute";
+import { FieldErrorText, OtpCodeInput } from "../../components/auth/AuthFields";
 import { useAuth } from "../../lib/auth/AuthProvider";
 import {
   changePassword,
   deleteOwnAccount,
   disableTwoFactor,
   enableTwoFactor,
-  getApiErrorMessage,
+  getApiFieldErrors,
+  getFrenchApiErrorMessage,
   listGouvernorats,
   logoutAll,
   setPassword,
@@ -38,6 +40,7 @@ export default function ProfileSettingsClient() {
   const [gouvernorats, setGouvernorats] = useState<Gouvernorat[]>([]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<Message>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [profileData, setProfileData] = useState({
     full_name: "",
     username: "",
@@ -89,12 +92,18 @@ export default function ProfileSettingsClient() {
     user?.auth_provider === "google" ? "Google" : "Mot de passe";
 
   const setSuccess = (text: string) => setMessage({ type: "success", text });
-  const setFailure = (error: unknown, fallback: string) =>
-    setMessage({ type: "error", text: getApiErrorMessage(error, fallback) });
+  const setFailure = (error: unknown, fallback: string) => {
+    setFieldErrors(getApiFieldErrors(error));
+    setMessage({
+      type: "error",
+      text: getFrenchApiErrorMessage(error, fallback),
+    });
+  };
 
   const saveProfile = async () => {
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     try {
       await updateProfile({
         full_name: profileData.full_name.trim(),
@@ -116,6 +125,7 @@ export default function ProfileSettingsClient() {
   const savePassword = async () => {
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     try {
       await changePassword(passwordData);
       setPasswordData({ current_password: "", new_password: "" });
@@ -130,6 +140,7 @@ export default function ProfileSettingsClient() {
   const saveLocalPassword = async () => {
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     try {
       await setPassword(localPasswordData);
       setLocalPasswordData({ new_password: "", new_password_confirm: "" });
@@ -143,6 +154,9 @@ export default function ProfileSettingsClient() {
 
   const startTwoFactor = async () => {
     if (!twoFactorPassword.trim()) {
+      setFieldErrors({
+        current_password: "Saisissez votre mot de passe actuel.",
+      });
       setMessage({
         type: "error",
         text: "Saisissez votre mot de passe actuel.",
@@ -152,6 +166,7 @@ export default function ProfileSettingsClient() {
 
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     try {
       if (user?.two_factor_enabled) {
         await disableTwoFactor(twoFactorPassword);
@@ -174,12 +189,14 @@ export default function ProfileSettingsClient() {
   const verifyTwoFactor = async () => {
     const normalizedCode = twoFactorCode.trim();
     if (!/^\d{6}$/.test(normalizedCode)) {
+      setFieldErrors({ code: "Le code doit contenir 6 chiffres." });
       setMessage({ type: "error", text: "Le code doit contenir 6 chiffres." });
       return;
     }
 
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     try {
       if (twoFactorMode === "enable_verify") {
         await verifyEnableTwoFactor(normalizedCode);
@@ -201,6 +218,7 @@ export default function ProfileSettingsClient() {
   const closeAllSessions = async () => {
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     try {
       await logoutAll();
       clearSession();
@@ -218,6 +236,7 @@ export default function ProfileSettingsClient() {
 
     setSaving(true);
     setMessage(null);
+    setFieldErrors({});
     try {
       await deleteOwnAccount();
       clearSession();
@@ -356,7 +375,8 @@ export default function ProfileSettingsClient() {
             gap: 7px;
           }
           .profile-settings-field input,
-          .profile-settings-field select {
+          .profile-settings-field select,
+          .auth-input {
             width: 100%;
             min-height: 44px;
             box-sizing: border-box;
@@ -371,7 +391,8 @@ export default function ProfileSettingsClient() {
             background: #0a0f0d;
           }
           .profile-settings-field input:focus,
-          .profile-settings-field select:focus {
+          .profile-settings-field select:focus,
+          .auth-input:focus {
             border-color: rgba(59,222,185,0.55);
             box-shadow: 0 0 0 3px rgba(59,222,185,0.12);
           }
@@ -482,7 +503,9 @@ export default function ProfileSettingsClient() {
                           full_name: event.target.value,
                         }))
                       }
+                      aria-invalid={Boolean(fieldErrors.full_name)}
                     />
+                    <FieldErrorText>{fieldErrors.full_name}</FieldErrorText>
                   </label>
                   <label className="profile-settings-field">
                     <span>
@@ -496,7 +519,9 @@ export default function ProfileSettingsClient() {
                           username: event.target.value,
                         }))
                       }
+                      aria-invalid={Boolean(fieldErrors.username)}
                     />
+                    <FieldErrorText>{fieldErrors.username}</FieldErrorText>
                   </label>
                   <label className="profile-settings-field">
                     <span>
@@ -516,6 +541,7 @@ export default function ProfileSettingsClient() {
                           gouvernorat_id: event.target.value,
                         }))
                       }
+                      aria-invalid={Boolean(fieldErrors.gouvernorat_id)}
                     >
                       <option value="">Selectionner</option>
                       {gouvernorats.map((item) => (
@@ -524,6 +550,9 @@ export default function ProfileSettingsClient() {
                         </option>
                       ))}
                     </select>
+                    <FieldErrorText>
+                      {fieldErrors.gouvernorat_id}
+                    </FieldErrorText>
                   </label>
                   <label className="profile-settings-field is-full">
                     <span>
@@ -538,7 +567,9 @@ export default function ProfileSettingsClient() {
                         }))
                       }
                       placeholder="+216..."
+                      aria-invalid={Boolean(fieldErrors.phone)}
                     />
+                    <FieldErrorText>{fieldErrors.phone}</FieldErrorText>
                   </label>
                 </div>
                 <div className="profile-settings-actions">
@@ -576,26 +607,22 @@ export default function ProfileSettingsClient() {
                             setTwoFactorPassword(event.target.value)
                           }
                           autoComplete="current-password"
+                          aria-invalid={Boolean(fieldErrors.current_password)}
                         />
+                        <FieldErrorText>
+                          {fieldErrors.current_password}
+                        </FieldErrorText>
                       </label>
                     ) : (
-                      <label className="profile-settings-field is-full">
-                        <span>
-                          <Mail size={15} /> Code email
-                        </span>
-                        <input
+                      <div className="profile-settings-field is-full">
+                        <OtpCodeInput
                           value={twoFactorCode}
-                          onChange={(event) =>
-                            setTwoFactorCode(
-                              event.target.value.replace(/\D/g, ""),
-                            )
-                          }
-                          inputMode="numeric"
-                          maxLength={6}
-                          autoComplete="one-time-code"
-                          placeholder="000000"
+                          onChange={setTwoFactorCode}
+                          disabled={saving}
+                          error={fieldErrors.code}
+                          label="Code email"
                         />
-                      </label>
+                      </div>
                     )}
                   </div>
                   <div className="profile-settings-actions">
@@ -653,7 +680,11 @@ export default function ProfileSettingsClient() {
                             }))
                           }
                           autoComplete="new-password"
+                          aria-invalid={Boolean(fieldErrors.new_password)}
                         />
+                        <FieldErrorText>
+                          {fieldErrors.new_password}
+                        </FieldErrorText>
                       </label>
                       <label className="profile-settings-field is-full">
                         <span>Confirmation</span>
@@ -667,7 +698,13 @@ export default function ProfileSettingsClient() {
                             }))
                           }
                           autoComplete="new-password"
+                          aria-invalid={Boolean(
+                            fieldErrors.new_password_confirm,
+                          )}
                         />
+                        <FieldErrorText>
+                          {fieldErrors.new_password_confirm}
+                        </FieldErrorText>
                       </label>
                     </div>
                     <div className="profile-settings-actions">
@@ -701,7 +738,11 @@ export default function ProfileSettingsClient() {
                           }))
                         }
                         autoComplete="current-password"
+                        aria-invalid={Boolean(fieldErrors.current_password)}
                       />
+                      <FieldErrorText>
+                        {fieldErrors.current_password}
+                      </FieldErrorText>
                     </label>
                     <label className="profile-settings-field is-full">
                       <span>Nouveau mot de passe</span>
@@ -715,7 +756,11 @@ export default function ProfileSettingsClient() {
                           }))
                         }
                         autoComplete="new-password"
+                        aria-invalid={Boolean(fieldErrors.new_password)}
                       />
+                      <FieldErrorText>
+                        {fieldErrors.new_password}
+                      </FieldErrorText>
                     </label>
                   </div>
                   <div className="profile-settings-actions">

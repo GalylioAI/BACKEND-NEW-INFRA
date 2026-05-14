@@ -2,6 +2,7 @@ export const endpoints = {
   auth: {
     login: "/auth/login",
     google: "/auth/google",
+    session: "/auth/session",
     refresh: "/auth/refresh",
     logout: "/auth/logout",
     logoutAll: "/auth/logout-all",

@@ -156,6 +156,37 @@ func TestRefreshRotatesTokenAndIssuesAccess(t *testing.T) {
 	}
 }
 
+func TestSessionRotatesRefreshAndReturnsPublicUser(t *testing.T) {
+	user := verifiedManualUser(t, false)
+	authTime := time.Now().Add(-30 * time.Minute).UTC()
+	sessionID := uuid.New()
+	repo := &fakeAuthRepo{rotateRecord: domain.RefreshRecord{
+		UserID:      user.ID,
+		AuthTime:    authTime,
+		AuthMethods: []string{"password"},
+		SessionID:   sessionID,
+	}}
+	users := &fakeUserClient{
+		user:       user,
+		publicUser: domain.PublicUser{ID: user.ID, FullName: user.FullName, Username: user.Username, Email: user.Email, Role: user.Role, AuthProvider: user.AuthProvider, IsVerified: user.IsVerified},
+	}
+	svc := service.New(repo, users, &fakeOTPClient{}, testJWTManager(t), nil, 30*24*time.Hour)
+
+	result, tokens, err := svc.Session(context.Background(), "old-refresh-token", "device", net.ParseIP("127.0.0.1"))
+	if err != nil {
+		t.Fatalf("Session returned error: %v", err)
+	}
+	if result.AccessToken == "" || tokens.RefreshToken == "" {
+		t.Fatal("expected session to return access token and rotated refresh token")
+	}
+	if result.User.ID != user.ID || result.User.Email != user.Email {
+		t.Fatalf("expected public session user, got %#v", result.User)
+	}
+	if !users.publicLookup {
+		t.Fatal("expected public user lookup")
+	}
+}
+
 func TestIssuedAccessTokenContainsAccessType(t *testing.T) {
 	user := verifiedManualUser(t, false)
 	manager := testJWTManager(t)
@@ -304,14 +335,20 @@ func (f *fakeOTPClient) SendLogin2FA(_ context.Context, _ uuid.UUID, jti string)
 
 type fakeUserClient struct {
 	user         domain.User
+	publicUser   domain.PublicUser
 	loginFailure bool
 	loginSuccess bool
+	publicLookup bool
 }
 
 func (f *fakeUserClient) LookupCredential(context.Context, string) (domain.User, error) {
 	return f.user, nil
 }
 func (f *fakeUserClient) GetByID(context.Context, uuid.UUID) (domain.User, error) { return f.user, nil }
+func (f *fakeUserClient) GetPublicByID(context.Context, uuid.UUID) (domain.PublicUser, error) {
+	f.publicLookup = true
+	return f.publicUser, nil
+}
 func (f *fakeUserClient) RecordLoginFailure(context.Context, uuid.UUID, int16) error {
 	f.loginFailure = true
 	return nil

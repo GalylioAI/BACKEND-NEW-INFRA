@@ -100,6 +100,36 @@ Common errors: `INVALID_CREDENTIALS`, `ACCOUNT_NOT_VERIFIED`, `ACCOUNT_BANNED`, 
 ```
 
 Returns the same access token/cookie shape as manual login, or a 2FA pending-token response when the Google user has 2FA enabled.
+If the submitted Google email already belongs to a password account, the backend returns `409 EMAIL_ALREADY_REGISTERED` with `fields.email`.
+
+### `POST /auth/session`
+
+Uses the HttpOnly refresh cookie. Send with browser credentials enabled and no request body. It rotates the refresh cookie like `/auth/refresh`, then returns the new access token together with the safe current user profile.
+
+```json
+{
+  "success": true,
+  "data": {
+    "access_token": "<jwt>",
+    "access_token_expires_at": "2026-05-14T10:00:00Z",
+    "user": {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "full_name": "Jane Doe",
+      "username": "janedoe",
+      "email": "jane@example.com",
+      "role": "user",
+      "auth_provider": "manual",
+      "is_verified": true,
+      "is_banned": false,
+      "two_factor_enabled": false,
+      "created_at": "2026-05-14T09:00:00Z",
+      "updated_at": "2026-05-14T09:00:00Z"
+    }
+  }
+}
+```
+
+Missing, invalid, expired, or revoked refresh cookies return `401`.
 
 ### `POST /auth/refresh`
 
@@ -129,6 +159,11 @@ Protected. Revokes all refresh tokens for the current user.
 ```
 
 Creates an unverified manual user and publishes `user.created`, which triggers OTP email delivery.
+Duplicate active accounts return field-aware conflicts:
+
+- duplicate email: `409 CONFLICT` with `fields.email`
+- duplicate username: `409 CONFLICT` with `fields.username`
+- duplicate phone: `409 CONFLICT` with `fields.phone`
 
 ### `GET /gouvernorats`
 
@@ -310,6 +345,7 @@ Updates the password, revokes sessions, and publishes a security email.
 ## Favorites Endpoints
 
 All favorites routes are protected.
+The current frontend static catalog maps product ids to deterministic synthetic UUIDs until a real product backend exists.
 
 ### `POST /favorites`
 
@@ -354,6 +390,7 @@ Admin+. Query: `limit`, default `10`, max `50`.
 ## Alerts Endpoints
 
 All user alert routes are protected.
+The same synthetic product UUID mapping used for favorites is used for alert `product_id` values.
 
 ### `POST /alerts`
 

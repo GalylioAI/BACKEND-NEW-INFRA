@@ -50,18 +50,49 @@ func TestSignupValidatesAndNormalizesUser(t *testing.T) {
 }
 
 func TestSignupReturnsFieldConflict(t *testing.T) {
-	repo := &fakeUserRepo{emailExists: true}
+	repo := &fakeUserRepo{emailExists: true, usernameExists: true, phoneExists: true}
 	svc := service.New(repo, &fakeAuthClient{})
 	_, err := svc.Signup(context.Background(), service.SignupRequest{
 		FullName:      "Jane Doe",
 		Username:      "janed",
 		Email:         "jane@example.com",
+		Phone:         "12 345 678",
 		Password:      "Strong$123",
 		GouvernoratID: 1,
 	})
 	app := apperr.From(err)
 	if app.Code != apperr.CodeConflict {
 		t.Fatalf("expected conflict, got %#v", app)
+	}
+	if app.Fields["email"] == "" {
+		t.Fatal("expected email field conflict")
+	}
+	if app.Fields["username"] == "" {
+		t.Fatal("expected username field conflict")
+	}
+	if app.Fields["phone"] == "" {
+		t.Fatal("expected phone field conflict")
+	}
+}
+
+func TestGetOrCreateGoogleUserReturnsFieldConflictForManualAccount(t *testing.T) {
+	repo := &fakeUserRepo{current: domain.User{
+		ID:           uuid.New(),
+		FullName:     "Jane Doe",
+		Username:     "janed",
+		Email:        "jane@example.com",
+		AuthProvider: domain.ProviderManual,
+	}}
+	svc := service.New(repo, &fakeAuthClient{})
+
+	_, _, err := svc.GetOrCreateGoogleUser(context.Background(), service.GoogleUserRequest{
+		Email:    "JANE@example.com",
+		FullName: "Jane Doe",
+	})
+
+	app := apperr.From(err)
+	if app.Status != 409 || app.Code != apperr.CodeEmailRegistered {
+		t.Fatalf("expected email registered conflict, got %#v", app)
 	}
 	if app.Fields["email"] == "" {
 		t.Fatal("expected email field conflict")
@@ -326,6 +357,9 @@ func (f *fakeUserRepo) GetByIdentifier(context.Context, string) (domain.User, er
 	return domain.User{}, nil
 }
 func (f *fakeUserRepo) GetByEmail(context.Context, string) (domain.User, error) {
+	if f.current.ID != uuid.Nil {
+		return f.current, nil
+	}
 	return domain.User{}, nil
 }
 func (f *fakeUserRepo) ExistsEmail(context.Context, string) (bool, error) { return f.emailExists, nil }

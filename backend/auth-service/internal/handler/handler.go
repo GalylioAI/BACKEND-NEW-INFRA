@@ -61,6 +61,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.HandleFunc("GET /healthz", h.health)
 	mux.HandleFunc("POST /auth/login", h.login)
 	mux.HandleFunc("POST /auth/google", h.google)
+	mux.HandleFunc("POST /auth/session", h.session)
 	mux.HandleFunc("POST /auth/refresh", h.refresh)
 	mux.HandleFunc("POST /auth/logout", h.logout)
 	mux.Handle("POST /auth/logout-all", middleware.Chain(http.HandlerFunc(h.logoutAll), middleware.RequireInternalSecret(h.internalSecret), middleware.RequireUserContext))
@@ -140,6 +141,18 @@ func (h *Handler) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 	h.setRefreshCookie(w, tokens.RefreshToken)
 	httpjson.Write(w, r, http.StatusOK, map[string]any{"access_token": tokens.AccessToken, "access_token_expires_at": tokens.ExpiresAt})
+}
+
+func (h *Handler) session(w http.ResponseWriter, r *http.Request) {
+	token := h.refreshCookieValue(r)
+	result, tokens, err := h.service.Session(r.Context(), token, r.UserAgent(), clientIP(r))
+	if err != nil {
+		h.clearRefreshCookie(w)
+		httpjson.WriteError(w, r, err)
+		return
+	}
+	h.setRefreshCookie(w, tokens.RefreshToken)
+	httpjson.Write(w, r, http.StatusOK, result)
 }
 
 func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {

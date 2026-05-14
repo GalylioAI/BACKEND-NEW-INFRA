@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { getApiErrorMessage } from "@/lib/api/client";
+import { AuthAlert, OtpCodeInput } from "@/components/auth/AuthFields";
+import { getFrenchApiErrorMessage } from "@/lib/api/client";
 import { verifyLogin2FA } from "@/lib/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -84,7 +85,7 @@ export default function TwoFactorLoginPage() {
           : redirectTo,
       );
     } catch (err) {
-      setError(getApiErrorMessage(err, "Verification 2FA impossible."));
+      setError(getFrenchApiErrorMessage(err, "Verification 2FA impossible."));
     } finally {
       setLoading(false);
     }
@@ -101,6 +102,31 @@ export default function TwoFactorLoginPage() {
         color: "#fff",
       }}
     >
+      <style>{`
+        .auth-input {
+          width: 100%;
+          box-sizing: border-box;
+          border: 1px solid rgba(255,255,255,0.16);
+          border-radius: 14px;
+          background: rgba(255,255,255,0.06);
+          color: #fff;
+          padding: 14px 16px;
+          outline: none;
+          font-family: 'Inter', system-ui, sans-serif;
+        }
+        .auth-input:focus {
+          border-color: rgba(59,222,185,0.62);
+          box-shadow: 0 0 0 3px rgba(59,222,185,0.14);
+        }
+        .auth-input::placeholder { color: rgba(255,255,255,0.25); }
+        .auth-alert {
+          border-radius: 14px;
+          padding: 12px 14px;
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 1.5;
+        }
+      `}</style>
       <form
         onSubmit={handleSubmit}
         style={{
@@ -119,41 +145,16 @@ export default function TwoFactorLoginPage() {
         <p style={{ margin: "0 0 22px", color: "rgba(255,255,255,0.58)" }}>
           Entrez le code envoye a {pending?.email || "votre email"}.
         </p>
-        {error && (
-          <div
-            style={{
-              border: "1px solid rgba(248,113,113,0.35)",
-              borderRadius: 14,
-              background: "rgba(248,113,113,0.12)",
-              color: "#fecaca",
-              padding: "12px 14px",
-              marginBottom: 16,
-            }}
-          >
-            {error}
-          </div>
-        )}
-        <input
+        {error && <AuthAlert tone="error">{error}</AuthAlert>}
+        <OtpCodeInput
           value={code}
-          onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          placeholder="000000"
+          onChange={setCode}
           disabled={loading}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            border: "1px solid rgba(255,255,255,0.16)",
-            borderRadius: 14,
-            background: "rgba(255,255,255,0.06)",
-            color: "#fff",
-            padding: "14px 16px",
-            fontSize: 24,
-            fontWeight: 800,
-            textAlign: "center",
-            letterSpacing: 8,
-          }}
+          error={
+            code && code.length !== 6 ? "Le code doit contenir 6 chiffres." : ""
+          }
+          autoFocus
+          label="Code 2FA"
         />
         <button
           type="submit"

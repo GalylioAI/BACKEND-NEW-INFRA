@@ -74,6 +74,12 @@ type LoginResult struct {
 	TwoFactorSessionToken string    `json:"two_factor_session_token,omitempty"`
 }
 
+type SessionResult struct {
+	AccessToken          string            `json:"access_token"`
+	AccessTokenExpiresAt time.Time         `json:"access_token_expires_at"`
+	User                 domain.PublicUser `json:"user"`
+}
+
 const (
 	AuthMethodPassword = "password"
 	AuthMethodGoogle   = "google"
@@ -176,27 +182,48 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string, deviceInfo st
 }
 
 func (s *Service) Refresh(ctx context.Context, rawRefreshToken string, deviceInfo string, ip net.IP) (domain.Tokens, error) {
+	tokens, _, err := s.refresh(ctx, rawRefreshToken, deviceInfo, ip)
+	return tokens, err
+}
+
+func (s *Service) Session(ctx context.Context, rawRefreshToken string, deviceInfo string, ip net.IP) (SessionResult, domain.Tokens, error) {
+	tokens, userID, err := s.refresh(ctx, rawRefreshToken, deviceInfo, ip)
+	if err != nil {
+		return SessionResult{}, domain.Tokens{}, err
+	}
+	user, err := s.userClient.GetPublicByID(ctx, userID)
+	if err != nil {
+		return SessionResult{}, domain.Tokens{}, err
+	}
+	return SessionResult{
+		AccessToken:          tokens.AccessToken,
+		AccessTokenExpiresAt: tokens.ExpiresAt,
+		User:                 user,
+	}, tokens, nil
+}
+
+func (s *Service) refresh(ctx context.Context, rawRefreshToken string, deviceInfo string, ip net.IP) (domain.Tokens, uuid.UUID, error) {
 	if rawRefreshToken == "" {
-		return domain.Tokens{}, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidRefreshToken, "Refresh token is invalid.")
+		return domain.Tokens{}, uuid.Nil, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidRefreshToken, "Refresh token is invalid.")
 	}
 	newRefresh, err := token.RandomURL(32)
 	if err != nil {
-		return domain.Tokens{}, err
+		return domain.Tokens{}, uuid.Nil, err
 	}
 	record, reused, err := s.repo.RotateRefreshToken(ctx, token.SHA256(rawRefreshToken), token.SHA256(newRefresh), deviceInfo, ip, time.Now().UTC().Add(s.refreshExpiry))
 	if err != nil {
 		if reused {
 			s.audit(ctx, "refresh_reuse_detected", record.UserID, ip, deviceInfo, nil)
 		}
-		return domain.Tokens{}, err
+		return domain.Tokens{}, uuid.Nil, err
 	}
 	user, err := s.userClient.GetByID(ctx, record.UserID)
 	if err != nil {
-		return domain.Tokens{}, err
+		return domain.Tokens{}, uuid.Nil, err
 	}
 	if user.IsBanned {
 		_ = s.repo.RevokeAllRefreshTokens(ctx, user.ID)
-		return domain.Tokens{}, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
+		return domain.Tokens{}, uuid.Nil, apperr.New(http.StatusForbidden, apperr.CodeAccountBanned, "This account is banned.")
 	}
 	access, expiresAt, err := s.jwtManager.IssueAccess(user, authjwt.AccessContext{
 		AuthTime:    record.AuthTime,
@@ -204,10 +231,10 @@ func (s *Service) Refresh(ctx context.Context, rawRefreshToken string, deviceInf
 		SessionID:   record.SessionID,
 	})
 	if err != nil {
-		return domain.Tokens{}, err
+		return domain.Tokens{}, uuid.Nil, err
 	}
 	s.audit(ctx, "refresh_success", user.ID, ip, deviceInfo, nil)
-	return domain.Tokens{AccessToken: access, ExpiresAt: expiresAt, RefreshToken: newRefresh}, nil
+	return domain.Tokens{AccessToken: access, ExpiresAt: expiresAt, RefreshToken: newRefresh}, user.ID, nil
 }
 
 func (s *Service) Logout(ctx context.Context, rawRefreshToken string, deviceInfo string, ip net.IP) error {

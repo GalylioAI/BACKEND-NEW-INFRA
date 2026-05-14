@@ -90,6 +90,10 @@ export interface AccessTokenResponse {
   expires_at?: string;
 }
 
+export interface SessionResponse extends AccessTokenResponse {
+  user: UserResponse;
+}
+
 export interface Gouvernorat {
   id: number;
   name: string;

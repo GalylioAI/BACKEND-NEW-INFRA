@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { AuthAlert, FieldErrorText } from "../components/auth/AuthFields";
 import { GoogleAuthButton } from "../components/auth/GoogleAuthButton";
-import { getApiErrorMessage } from "../lib/api/client";
+import { getApiFieldErrors, getFrenchApiErrorMessage } from "../lib/api/client";
 import { sendPasswordReset } from "../lib/api/otp";
 import { useAuth } from "../lib/auth/AuthProvider";
 
@@ -50,6 +51,7 @@ export default function ConnexionPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (status === "authenticated" && user) {
@@ -61,9 +63,14 @@ export default function ConnexionPage() {
     event.preventDefault();
     setError("");
     setSuccess("");
+    setFieldErrors({});
 
     if (!email.trim() || !password) {
       setError("Email et mot de passe sont obligatoires.");
+      setFieldErrors({
+        email: !email.trim() ? "Saisissez votre adresse email." : "",
+        password: !password ? "Saisissez votre mot de passe." : "",
+      });
       return;
     }
 
@@ -87,8 +94,10 @@ export default function ConnexionPage() {
 
       router.replace(getPostLoginDestination(result.user.role));
     } catch (err) {
+      const fields = getApiFieldErrors(err);
+      setFieldErrors(fields);
       setError(
-        getApiErrorMessage(
+        getFrenchApiErrorMessage(
           err,
           "Connexion impossible. Verifiez vos identifiants.",
         ),
@@ -101,6 +110,7 @@ export default function ConnexionPage() {
   const handleGoogleCredential = async (idToken: string) => {
     setError("");
     setSuccess("");
+    setFieldErrors({});
     setGoogleLoading(true);
     try {
       const result = await loginWithGoogle(idToken);
@@ -121,8 +131,12 @@ export default function ConnexionPage() {
 
       router.replace(getPostLoginDestination(result.user.role));
     } catch (err) {
+      setFieldErrors(getApiFieldErrors(err));
       setError(
-        getApiErrorMessage(err, "Connexion Google impossible pour le moment."),
+        getFrenchApiErrorMessage(
+          err,
+          "Connexion Google impossible pour le moment.",
+        ),
       );
     } finally {
       setGoogleLoading(false);
@@ -132,6 +146,7 @@ export default function ConnexionPage() {
   const handlePasswordReset = async () => {
     setError("");
     setSuccess("");
+    setFieldErrors({});
 
     if (!email.trim()) {
       setError("Saisissez votre email avant de demander la reinitialisation.");
@@ -149,7 +164,10 @@ export default function ConnexionPage() {
       );
     } catch (err) {
       setError(
-        getApiErrorMessage(err, "Reinitialisation impossible pour le moment."),
+        getFrenchApiErrorMessage(
+          err,
+          "Reinitialisation impossible pour le moment.",
+        ),
       );
     } finally {
       setResetLoading(false);
@@ -801,32 +819,8 @@ export default function ConnexionPage() {
             </p>
           </div>
 
-          {error && (
-            <div
-              className="auth-alert"
-              style={{
-                background: "rgba(255,76,76,0.1)",
-                border: "1px solid rgba(255,76,76,0.28)",
-                color: "#ffb4b4",
-                marginBottom: 16,
-              }}
-            >
-              {error}
-            </div>
-          )}
-          {success && (
-            <div
-              className="auth-alert"
-              style={{
-                background: "rgba(59,222,185,0.1)",
-                border: "1px solid rgba(59,222,185,0.25)",
-                color: "#9ff5df",
-                marginBottom: 16,
-              }}
-            >
-              {success}
-            </div>
-          )}
+          {error && <AuthAlert tone="error">{error}</AuthAlert>}
+          {success && <AuthAlert tone="success">{success}</AuthAlert>}
 
           <GoogleAuthButton
             text="signin_with"
@@ -865,8 +859,14 @@ export default function ConnexionPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 disabled={loading}
                 autoComplete="email"
+                aria-invalid={Boolean(
+                  fieldErrors.email || fieldErrors.identifier,
+                )}
                 required
               />
+              <FieldErrorText>
+                {fieldErrors.email || fieldErrors.identifier}
+              </FieldErrorText>
             </div>
 
             <div>
@@ -911,6 +911,7 @@ export default function ConnexionPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   disabled={loading}
                   autoComplete="current-password"
+                  aria-invalid={Boolean(fieldErrors.password)}
                   required
                 />
                 <button
@@ -951,6 +952,7 @@ export default function ConnexionPage() {
                   )}
                 </button>
               </div>
+              <FieldErrorText>{fieldErrors.password}</FieldErrorText>
             </div>
 
             <button

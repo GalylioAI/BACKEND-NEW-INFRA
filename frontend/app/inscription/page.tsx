@@ -3,12 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
-  getApiErrorMessage,
+  getApiFieldErrors,
+  getFrenchApiErrorMessage,
   listGouvernorats,
   sendEmailOtp,
   verifyEmailOtp,
   type Gouvernorat,
 } from "../lib/api";
+import {
+  AuthAlert,
+  FieldErrorText,
+  OtpCodeInput,
+} from "../components/auth/AuthFields";
 import { GoogleAuthButton } from "../components/auth/GoogleAuthButton";
 import { useAuth } from "../lib/auth/AuthProvider";
 
@@ -59,6 +65,7 @@ export default function InscriptionPage() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const fullName = useMemo(
     () => `${firstName.trim()} ${lastName.trim()}`.trim(),
@@ -96,13 +103,32 @@ export default function InscriptionPage() {
     return "";
   };
 
+  const validationFieldsFor = (message: string): Record<string, string> => {
+    if (!message) return {};
+    if (message.includes("Prenom")) {
+      return { full_name: message };
+    }
+    if (message.includes("utilisateur")) {
+      return { username: message };
+    }
+    if (message.includes("email")) {
+      return { email: message };
+    }
+    if (message.includes("telephone")) {
+      return { phone: message };
+    }
+    return {};
+  };
+
   const handleNext = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setSuccess("");
+    setFieldErrors({});
     const validationError = validateFirstStep();
     if (validationError) {
       setError(validationError);
+      setFieldErrors(validationFieldsFor(validationError));
       return;
     }
     setStep(2);
@@ -112,10 +138,12 @@ export default function InscriptionPage() {
     event.preventDefault();
     setError("");
     setSuccess("");
+    setFieldErrors({});
 
     const firstStepError = validateFirstStep();
     if (firstStepError) {
       setError(firstStepError);
+      setFieldErrors(validationFieldsFor(firstStepError));
       setStep(1);
       return;
     }
@@ -130,11 +158,15 @@ export default function InscriptionPage() {
       setError(
         "Le mot de passe doit contenir 8 caracteres, une majuscule, un chiffre et un symbole.",
       );
+      setFieldErrors({ password: "Verifiez la complexite du mot de passe." });
       return;
     }
 
     if (password !== confirmPassword) {
       setError("Les mots de passe ne correspondent pas.");
+      setFieldErrors({
+        new_password_confirm: "Les mots de passe ne correspondent pas.",
+      });
       return;
     }
 
@@ -162,7 +194,12 @@ export default function InscriptionPage() {
       setStep(3);
       setSuccess("Compte cree. Entrez le code envoye par email.");
     } catch (err) {
-      setError(getApiErrorMessage(err, "Creation du compte impossible."));
+      const fields = getApiFieldErrors(err);
+      setFieldErrors(fields);
+      if (fields.email || fields.username || fields.phone) {
+        setStep(1);
+      }
+      setError(getFrenchApiErrorMessage(err, "Creation du compte impossible."));
     } finally {
       setLoading(false);
     }
@@ -171,6 +208,7 @@ export default function InscriptionPage() {
   const handleGoogleCredential = async (idToken: string) => {
     setError("");
     setSuccess("");
+    setFieldErrors({});
     setGoogleLoading(true);
     try {
       const result = await loginWithGoogle(idToken);
@@ -189,8 +227,9 @@ export default function InscriptionPage() {
 
       router.replace(getPostLoginDestination(result.user.role));
     } catch (err) {
+      setFieldErrors(getApiFieldErrors(err));
       setError(
-        getApiErrorMessage(
+        getFrenchApiErrorMessage(
           err,
           "Inscription avec Google impossible pour le moment.",
         ),
@@ -205,6 +244,15 @@ export default function InscriptionPage() {
     setLoading(true);
     setError("");
     setSuccess("");
+    setFieldErrors({});
+
+    if (!/^\d{6}$/.test(verificationCode.trim())) {
+      const message = "Le code doit contenir 6 chiffres.";
+      setError(message);
+      setFieldErrors({ code: message });
+      setLoading(false);
+      return;
+    }
 
     try {
       await verifyEmailOtp(email.trim(), verificationCode.trim());
@@ -215,7 +263,8 @@ export default function InscriptionPage() {
         router.replace("/connexion");
       }
     } catch (err) {
-      setError(getApiErrorMessage(err, "Verification email impossible."));
+      setFieldErrors(getApiFieldErrors(err));
+      setError(getFrenchApiErrorMessage(err, "Verification email impossible."));
     } finally {
       setLoading(false);
     }
@@ -958,34 +1007,14 @@ export default function InscriptionPage() {
             </p>
           </div>
 
-          {error && (
-            <div
-              className="auth-alert"
-              style={{
-                background: "rgba(255,76,76,0.1)",
-                border: "1px solid rgba(255,76,76,0.28)",
-                color: "#ffb4b4",
-                marginBottom: 16,
-              }}
-            >
-              {error}
-            </div>
-          )}
+          {error && <AuthAlert tone="error">{error}</AuthAlert>}
           {success && (
-            <div
-              className="auth-alert"
-              style={{
-                background: "rgba(59,222,185,0.1)",
-                border: "1px solid rgba(59,222,185,0.25)",
-                color: "#9ff5df",
-                marginBottom: 16,
-              }}
-            >
+            <AuthAlert tone="success">
               {success}{" "}
               <a href="/connexion" className="auth-link">
                 Se connecter
               </a>
-            </div>
+            </AuthAlert>
           )}
 
           {step !== 3 && (
@@ -1035,8 +1064,10 @@ export default function InscriptionPage() {
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     disabled={loading || googleLoading}
+                    aria-invalid={Boolean(fieldErrors.full_name)}
                     required
                   />
+                  <FieldErrorText>{fieldErrors.full_name}</FieldErrorText>
                 </div>
                 <div>
                   <label
@@ -1059,8 +1090,10 @@ export default function InscriptionPage() {
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     disabled={loading || googleLoading}
+                    aria-invalid={Boolean(fieldErrors.full_name)}
                     required
                   />
+                  <FieldErrorText>{fieldErrors.full_name}</FieldErrorText>
                 </div>
               </div>
 
@@ -1086,8 +1119,10 @@ export default function InscriptionPage() {
                   onChange={(event) => setEmail(event.target.value)}
                   disabled={loading || googleLoading}
                   autoComplete="email"
+                  aria-invalid={Boolean(fieldErrors.email)}
                   required
                 />
+                <FieldErrorText>{fieldErrors.email}</FieldErrorText>
               </div>
 
               <div>
@@ -1112,8 +1147,10 @@ export default function InscriptionPage() {
                   onChange={(event) => setUsername(event.target.value)}
                   disabled={loading || googleLoading}
                   autoComplete="username"
+                  aria-invalid={Boolean(fieldErrors.username)}
                   required
                 />
+                <FieldErrorText>{fieldErrors.username}</FieldErrorText>
               </div>
 
               <div>
@@ -1153,8 +1190,10 @@ export default function InscriptionPage() {
                     onChange={(event) => setPhone(event.target.value)}
                     disabled={loading || googleLoading}
                     autoComplete="tel"
+                    aria-invalid={Boolean(fieldErrors.phone)}
                   />
                 </div>
+                <FieldErrorText>{fieldErrors.phone}</FieldErrorText>
               </div>
 
               <button
@@ -1195,6 +1234,7 @@ export default function InscriptionPage() {
                     onChange={(event) => setPassword(event.target.value)}
                     disabled={loading || googleLoading}
                     autoComplete="new-password"
+                    aria-invalid={Boolean(fieldErrors.password)}
                     required
                   />
                   <button
@@ -1235,6 +1275,7 @@ export default function InscriptionPage() {
                     )}
                   </button>
                 </div>
+                <FieldErrorText>{fieldErrors.password}</FieldErrorText>
                 <div style={{ display: "flex", gap: "4px", marginTop: "8px" }}>
                   {[1, 2, 3, 4].map((item) => (
                     <div
@@ -1286,8 +1327,12 @@ export default function InscriptionPage() {
                   onChange={(event) => setConfirmPassword(event.target.value)}
                   disabled={loading || googleLoading}
                   autoComplete="new-password"
+                  aria-invalid={Boolean(fieldErrors.new_password_confirm)}
                   required
                 />
+                <FieldErrorText>
+                  {fieldErrors.new_password_confirm}
+                </FieldErrorText>
               </div>
 
               <div>
@@ -1310,6 +1355,7 @@ export default function InscriptionPage() {
                   value={gouvernoratId}
                   onChange={(event) => setGouvernoratId(event.target.value)}
                   disabled={loading || googleLoading}
+                  aria-invalid={Boolean(fieldErrors.gouvernorat_id)}
                   required
                 >
                   <option value="" style={{ background: "#0a0f0d" }}>
@@ -1325,6 +1371,7 @@ export default function InscriptionPage() {
                     </option>
                   ))}
                 </select>
+                <FieldErrorText>{fieldErrors.gouvernorat_id}</FieldErrorText>
               </div>
 
               <div
@@ -1389,34 +1436,13 @@ export default function InscriptionPage() {
               <p className="auth-subtle">
                 Un code a 6 chiffres a ete envoye a {email.trim()}.
               </p>
-              <div>
-                <label
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    color: "rgba(255,255,255,0.5)",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    display: "block",
-                    marginBottom: "8px",
-                  }}
-                >
-                  Code email
-                </label>
-                <input
-                  type="text"
-                  className="auth-input"
-                  placeholder="000000"
-                  value={verificationCode}
-                  onChange={(event) =>
-                    setVerificationCode(event.target.value.replace(/\D/g, ""))
-                  }
-                  disabled={loading || googleLoading}
-                  inputMode="numeric"
-                  maxLength={6}
-                  required
-                />
-              </div>
+              <OtpCodeInput
+                value={verificationCode}
+                onChange={setVerificationCode}
+                disabled={loading || googleLoading}
+                error={fieldErrors.code}
+                label="Code email"
+              />
               <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
                 <button
                   type="button"

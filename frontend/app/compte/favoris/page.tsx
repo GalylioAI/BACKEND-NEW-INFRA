@@ -5,10 +5,15 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import {
   deleteAllFavorites,
   deleteFavorite,
-  getApiErrorMessage,
+  getFrenchApiErrorMessage,
   listFavorites,
   type Favorite,
 } from "@/lib/api";
+import {
+  findStaticProductByBackendId,
+  productLink,
+  syntheticProductIdNote,
+} from "@/lib/product-identity";
 
 export default function FavoritesPage() {
   const [items, setItems] = useState<Favorite[]>([]);
@@ -23,7 +28,9 @@ export default function FavoritesPage() {
       const response = await listFavorites({ per_page: 100 });
       setItems(response.items);
     } catch (err) {
-      setError(getApiErrorMessage(err, "Impossible de charger les favoris."));
+      setError(
+        getFrenchApiErrorMessage(err, "Impossible de charger les favoris."),
+      );
     } finally {
       setLoading(false);
     }
@@ -42,7 +49,7 @@ export default function FavoritesPage() {
         current.filter((item) => item.product_id !== productId),
       );
     } catch (err) {
-      setError(getApiErrorMessage(err, "Suppression impossible."));
+      setError(getFrenchApiErrorMessage(err, "Suppression impossible."));
     }
   };
 
@@ -55,7 +62,9 @@ export default function FavoritesPage() {
       setItems([]);
       setMessage("Tous les favoris ont ete supprimes.");
     } catch (err) {
-      setError(getApiErrorMessage(err, "Suppression globale impossible."));
+      setError(
+        getFrenchApiErrorMessage(err, "Suppression globale impossible."),
+      );
     }
   };
 
@@ -66,8 +75,7 @@ export default function FavoritesPage() {
           <div style={{ maxWidth: 920, margin: "0 auto", color: "#fff" }}>
             <h1 style={{ fontSize: 36, fontWeight: 900 }}>Mes favoris</h1>
             <p style={{ color: "rgba(255,255,255,0.55)" }}>
-              Favoris sauvegardes via le backend. Les produits statiques sans
-              UUID reel ne sont pas ajoutes ici.
+              Favoris sauvegardes via le backend. {syntheticProductIdNote}
             </p>
             {error && <p style={{ color: "#fecaca" }}>{error}</p>}
             {message && <p style={{ color: "#9ff5df" }}>{message}</p>}
@@ -82,22 +90,64 @@ export default function FavoritesPage() {
               <p>Chargement...</p>
             ) : (
               <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
-                {items.map((item) => (
-                  <article key={item.id} style={cardStyle}>
-                    <div>
-                      <strong>{item.product_id}</strong>
-                      <p style={{ margin: "6px 0 0", opacity: 0.6 }}>
-                        Ajoute le {new Date(item.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => remove(item.product_id)}
-                      style={buttonStyle}
-                    >
-                      Supprimer
-                    </button>
-                  </article>
-                ))}
+                {items.map((item) => {
+                  const mapped = findStaticProductByBackendId(item.product_id);
+                  return (
+                    <article key={item.id} style={cardStyle}>
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 14,
+                        }}
+                      >
+                        {mapped?.product.image && (
+                          <img
+                            src={mapped.product.image}
+                            alt=""
+                            style={{
+                              width: 64,
+                              height: 64,
+                              borderRadius: 12,
+                              objectFit: "contain",
+                              background: "rgba(255,255,255,0.08)",
+                            }}
+                          />
+                        )}
+                        <div>
+                          <strong>
+                            {mapped ? (
+                              <a
+                                href={productLink(
+                                  mapped.product,
+                                  mapped.source,
+                                )}
+                                style={{
+                                  color: "#fff",
+                                  textDecoration: "none",
+                                }}
+                              >
+                                {mapped.product.name}
+                              </a>
+                            ) : (
+                              item.product_id
+                            )}
+                          </strong>
+                          <p style={{ margin: "6px 0 0", opacity: 0.6 }}>
+                            Ajoute le{" "}
+                            {new Date(item.created_at).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => remove(item.product_id)}
+                        style={buttonStyle}
+                      >
+                        Supprimer
+                      </button>
+                    </article>
+                  );
+                })}
                 {!items.length && <p>Aucun favori pour le moment.</p>}
               </div>
             )}

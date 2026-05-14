@@ -9,6 +9,7 @@ import {
   sourceLabel,
 } from "../../lib/product-utils";
 import PriceEvolutionChart from "./PriceEvolutionChart";
+import ProductEngagementPanel from "./ProductEngagementPanel";
 import ProductImageGallery from "./ProductImageGallery";
 import RecommendationsCarousel from "./RecommendationsCarousel";
 
@@ -673,6 +674,7 @@ export default function ProductPageLight({
                 </div>
               ))}
             </div>
+            <ProductEngagementPanel product={product} tone="light" />
           </div>
 
           {/* Col 3: chart */}

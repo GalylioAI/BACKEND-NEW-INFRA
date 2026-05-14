@@ -173,7 +173,7 @@ export function GoogleAuthButton({
       shape: "pill",
       text,
       logo_alignment: "left",
-      width: Math.min(container.clientWidth || 392, 400),
+      width: 400,
     });
   }, [clientId, handleCredential, isLight, ready, text]);
 
@@ -195,15 +195,41 @@ export function GoogleAuthButton({
   }
 
   return (
-    <div
-      aria-disabled={disabled}
-      className="auth-google-button"
-      style={{
-        pointerEvents: disabled ? "none" : "auto",
-        opacity: disabled ? 0.55 : 1,
-      }}
-    >
-      <div ref={containerRef} />
-    </div>
+    <>
+      <style>{`
+        .auth-google-button > div {
+          width: min(100%, 400px);
+          max-width: 100%;
+          overflow: hidden;
+          border-radius: 14px;
+          transition: width 0.24s ease, border-radius 0.24s ease, box-shadow 0.24s ease;
+        }
+        .auth-google-button iframe {
+          border-radius: 14px !important;
+        }
+        @media (hover: hover) and (min-width: 560px) {
+          .auth-google-button > div {
+            width: 52px;
+            border-radius: 16px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.18);
+          }
+          .auth-google-button:hover > div,
+          .auth-google-button:focus-within > div {
+            width: min(100%, 400px);
+            border-radius: 14px;
+          }
+        }
+      `}</style>
+      <div
+        aria-disabled={disabled}
+        className="auth-google-button"
+        style={{
+          pointerEvents: disabled ? "none" : "auto",
+          opacity: disabled ? 0.55 : 1,
+        }}
+      >
+        <div ref={containerRef} />
+      </div>
+    </>
   );
 }
