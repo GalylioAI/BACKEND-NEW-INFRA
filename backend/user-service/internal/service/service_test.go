@@ -49,6 +49,28 @@ func TestSignupValidatesAndNormalizesUser(t *testing.T) {
 	}
 }
 
+func TestStatusByIDOmitsPasswordHash(t *testing.T) {
+	hash := "$argon2id$v=19$m=65536,t=3,p=2$abc$def"
+	userID := uuid.New()
+	repo := &fakeUserRepo{current: domain.User{
+		ID:           userID,
+		FullName:     "Jane",
+		Username:     "jane",
+		Email:        "jane@example.com",
+		PasswordHash: &hash,
+		Role:         domain.RoleUser,
+		IsVerified:   true,
+	}}
+	svc := service.New(repo, &fakeAuthClient{})
+	status, err := svc.StatusByID(context.Background(), userID)
+	if err != nil {
+		t.Fatalf("StatusByID returned error: %v", err)
+	}
+	if status.Email != "jane@example.com" || status.ID != userID {
+		t.Fatalf("unexpected status: %#v", status)
+	}
+}
+
 func TestSignupReturnsFieldConflict(t *testing.T) {
 	repo := &fakeUserRepo{emailExists: true, usernameExists: true, phoneExists: true}
 	svc := service.New(repo, &fakeAuthClient{})

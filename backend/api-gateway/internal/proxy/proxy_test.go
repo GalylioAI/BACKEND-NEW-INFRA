@@ -36,7 +36,7 @@ func TestServiceProxyLetsGatewayOwnCORSHeaders(t *testing.T) {
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: true,
 		MaxAge:           600,
-	})(NewServiceProxy(upstream.URL, "internal-secret", zerolog.Nop()))
+	})(NewServiceProxy(upstream.URL, "internal-secret", []string{"127.0.0.1/32"}, zerolog.Nop()))
 
 	req := httptest.NewRequest(http.MethodPost, "/auth/refresh", nil)
 	req.Header.Set("Origin", "https://1111.tn")
@@ -59,5 +59,27 @@ func TestServiceProxyLetsGatewayOwnCORSHeaders(t *testing.T) {
 	}
 	if cookies := rr.Result().Cookies(); len(cookies) != 1 || cookies[0].Name != "refresh_token" {
 		t.Fatalf("refresh cookie must still pass through, got %#v", cookies)
+	}
+}
+
+func TestServiceProxyPassesMultipleSetCookieHeaders(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: "", Path: "/auth", MaxAge: -1})
+		http.SetCookie(w, &http.Cookie{Name: "refresh_token", Value: "rotated", Path: "/auth", HttpOnly: true})
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer upstream.Close()
+
+	handler := NewServiceProxy(upstream.URL, "internal-secret", nil, zerolog.Nop())
+	req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", rr.Code)
+	}
+	cookies := rr.Result().Cookies()
+	if len(cookies) != 2 {
+		t.Fatalf("expected two Set-Cookie headers passthrough, got %#v", cookies)
 	}
 }

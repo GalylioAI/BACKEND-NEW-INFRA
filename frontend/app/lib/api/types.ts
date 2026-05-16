@@ -79,6 +79,8 @@ export interface LoginRequest {
 export interface LoginResponse {
   access_token?: string;
   access_token_expires_at?: string;
+  token_type?: string;
+  expires_in?: number;
   expires_at?: string;
   two_factor_required?: boolean;
   two_factor_session_token?: string;
@@ -87,6 +89,8 @@ export interface LoginResponse {
 export interface AccessTokenResponse {
   access_token: string;
   access_token_expires_at?: string;
+  token_type?: string;
+  expires_in?: number;
   expires_at?: string;
 }
 

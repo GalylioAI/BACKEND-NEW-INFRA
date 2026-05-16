@@ -68,7 +68,7 @@ func (c *UserStatusChecker) Middleware(next http.Handler) http.Handler {
 func (c *UserStatusChecker) fetch(ctx context.Context, userID string) (gatewayUserStatus, error) {
 	reqCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
-	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, c.userServiceURL+"/internal/users/"+userID, nil)
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, c.userServiceURL+"/internal/users/status/"+userID, nil)
 	if err != nil {
 		return gatewayUserStatus{}, apperr.New(http.StatusServiceUnavailable, "USER_STATUS_UNAVAILABLE", "User status could not be verified.")
 	}

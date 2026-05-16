@@ -7,7 +7,3 @@ UPDATE refresh_tokens SET revoked = true WHERE user_id = $1;
 
 -- name: RevokeOtherRefreshTokens :exec
 UPDATE refresh_tokens SET revoked = true WHERE user_id = $1 AND session_id <> $2;
-
--- name: CreateTwoFactorSession :exec
-INSERT INTO two_factor_sessions (user_id, token_hash, expires_at)
-VALUES ($1, $2, $3);

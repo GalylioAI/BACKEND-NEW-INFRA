@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"time"
 
 	sharedcfg "backend/shared/config"
@@ -119,19 +121,51 @@ func Load() (Config, error) {
 		RateLimitMax:    rateMax,
 		RateLimitWindow: rateWindow,
 	}
-	if cfg.InternalSecret == "" && cfg.AppEnv == "production" {
-		return Config{}, fmt.Errorf("INTERNAL_SECRET is required in production")
+	applyEnvironmentDefaults(&cfg)
+	if err := sharedcfg.ValidateInternalSecret(cfg.InternalSecret, cfg.AppEnv); err != nil {
+		return Config{}, err
+	}
+	if err := sharedcfg.ValidateJWTSigningKeyPaths(cfg.JWTPrivateKeyPath, cfg.JWTPublicKeyPath, cfg.AppEnv); err != nil {
+		return Config{}, err
 	}
 	if cfg.JWTSigningAlgorithm != "RS256" {
 		return Config{}, fmt.Errorf("JWT_SIGNING_ALGORITHM must be RS256")
 	}
-	if cfg.AppEnv == "production" && !cfg.RefreshCookieSecure {
+	if sharedcfg.IsProduction(cfg.AppEnv) && !cfg.RefreshCookieSecure {
 		return Config{}, fmt.Errorf("REFRESH_COOKIE_SECURE must be true in production")
 	}
 	if equalFold(cfg.RefreshCookieSameSite, "None") && !cfg.RefreshCookieSecure {
 		return Config{}, fmt.Errorf("REFRESH_COOKIE_SECURE must be true when REFRESH_COOKIE_SAMESITE=None")
 	}
+	if sharedcfg.IsProduction(cfg.AppEnv) && cfg.CookieDomain == "" {
+		return Config{}, fmt.Errorf("COOKIE_DOMAIN or REFRESH_COOKIE_DOMAIN is required in production")
+	}
 	return cfg, nil
+}
+
+func applyEnvironmentDefaults(cfg *Config) {
+	if sharedcfg.IsProduction(cfg.AppEnv) {
+		if !envSet("REFRESH_COOKIE_SECURE") && !envSet("COOKIE_SECURE") {
+			cfg.RefreshCookieSecure = true
+		}
+		if !envSet("REFRESH_COOKIE_SAMESITE") {
+			cfg.RefreshCookieSameSite = "None"
+		}
+		return
+	}
+	if !envSet("REFRESH_COOKIE_SECURE") && !envSet("COOKIE_SECURE") {
+		cfg.RefreshCookieSecure = false
+	}
+	if !envSet("REFRESH_COOKIE_SAMESITE") {
+		cfg.RefreshCookieSameSite = "Lax"
+	}
+	if !envSet("REFRESH_COOKIE_DOMAIN") && !envSet("COOKIE_DOMAIN") {
+		cfg.CookieDomain = ""
+	}
+}
+
+func envSet(key string) bool {
+	return strings.TrimSpace(os.Getenv(key)) != ""
 }
 
 func legacyRefreshExpiry() time.Duration {

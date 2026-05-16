@@ -21,6 +21,27 @@ import (
 	"github.com/google/uuid"
 )
 
+func TestTwoLoginsProduceDifferentSessionIDs(t *testing.T) {
+	user := verifiedManualUser(t, false)
+	repo := &fakeAuthRepo{}
+	users := &fakeUserClient{user: user}
+	svc := service.New(repo, users, &fakeOTPClient{}, testJWTManager(t), nil, 30*24*time.Hour)
+
+	res1, _, err := svc.ManualLogin(context.Background(), service.ManualLoginRequest{Identifier: user.Email, Password: "Strong$123"}, "device-a", net.ParseIP("127.0.0.1"))
+	if err != nil {
+		t.Fatalf("first login failed: %v", err)
+	}
+	res2, _, err := svc.ManualLogin(context.Background(), service.ManualLoginRequest{Identifier: user.Email, Password: "Strong$123"}, "device-b", net.ParseIP("127.0.0.2"))
+	if err != nil {
+		t.Fatalf("second login failed: %v", err)
+	}
+	sid1, _ := parseTokenClaims(t, res1.AccessToken)["sid"].(string)
+	sid2, _ := parseTokenClaims(t, res2.AccessToken)["sid"].(string)
+	if sid1 == "" || sid2 == "" || sid1 == sid2 {
+		t.Fatalf("expected different session ids, got %q and %q", sid1, sid2)
+	}
+}
+
 func TestManualLoginIssuesTokenPair(t *testing.T) {
 	user := verifiedManualUser(t, false)
 	repo := &fakeAuthRepo{}
@@ -33,6 +54,9 @@ func TestManualLoginIssuesTokenPair(t *testing.T) {
 	}
 	if result.AccessToken == "" || tokens.RefreshToken == "" {
 		t.Fatal("expected access and refresh tokens")
+	}
+	if result.TokenType != "Bearer" || result.ExpiresIn <= 0 {
+		t.Fatalf("expected bearer metadata on login result, got type=%q expires_in=%d", result.TokenType, result.ExpiresIn)
 	}
 	claims := parseTokenClaims(t, result.AccessToken)
 	if got := claimStrings(claims["amr"]); len(got) != 1 || got[0] != "password" {
@@ -89,9 +113,6 @@ func TestManualLoginWithTwoFactorIssuesPendingJWTAndSendsOTP(t *testing.T) {
 	}
 	if !otp.sent {
 		t.Fatal("expected 2FA OTP to be requested")
-	}
-	if repo.twoFactorCreated {
-		t.Fatal("2FA pending JWT must not create DB sessions")
 	}
 }
 
@@ -269,7 +290,6 @@ func testJWTManager(t *testing.T) *authjwt.Manager {
 type fakeAuthRepo struct {
 	refreshCreated   bool
 	refreshRotated   bool
-	twoFactorCreated bool
 	rotateRecord     domain.RefreshRecord
 }
 
@@ -290,13 +310,6 @@ func (f *fakeAuthRepo) RevokeOtherRefreshTokens(context.Context, uuid.UUID, uuid
 }
 func (f *fakeAuthRepo) CreateAuditEvent(context.Context, string, uuid.UUID, net.IP, string, any) error {
 	return nil
-}
-func (f *fakeAuthRepo) CreateTwoFactorSession(context.Context, uuid.UUID, string, time.Time) error {
-	f.twoFactorCreated = true
-	return nil
-}
-func (f *fakeAuthRepo) ConsumeTwoFactorSession(context.Context, string) (uuid.UUID, error) {
-	return f.rotateRecord.UserID, nil
 }
 func (f *fakeAuthRepo) Ping(context.Context) error { return nil }
 

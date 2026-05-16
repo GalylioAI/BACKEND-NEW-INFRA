@@ -43,6 +43,26 @@ type Gouvernorat struct {
 	Name string `json:"name"`
 }
 
+type UserStatus struct {
+	ID         uuid.UUID `json:"id"`
+	Email      string    `json:"email"`
+	Username   string    `json:"username"`
+	Role       string    `json:"role"`
+	IsVerified bool      `json:"is_verified"`
+	IsBanned   bool      `json:"is_banned"`
+}
+
+func Status(user User) UserStatus {
+	return UserStatus{
+		ID:         user.ID,
+		Email:      user.Email,
+		Username:   user.Username,
+		Role:       user.Role,
+		IsVerified: user.IsVerified,
+		IsBanned:   user.IsBanned,
+	}
+}
+
 type PublicUser struct {
 	ID                 uuid.UUID  `json:"id"`
 	FullName           string     `json:"full_name"`

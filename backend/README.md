@@ -38,12 +38,18 @@ flowchart LR
 
 ## Local Development
 
-From the `backend/` directory, copy `.env.example` to `.env`, fill required secrets for local Docker, then run:
+From the `backend/` directory:
+
+1. Copy `.env.example` to `.env` and set `INTERNAL_SECRET` (for example `openssl rand -hex 32`).
+2. Generate JWT keys: `make keys` (creates `secrets/jwt_private.pem` and `secrets/jwt_public.pem`).
+3. Start the stack:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+make compose-up
 curl http://localhost:8080/health
 ```
+
+Local development uses `docker-compose.dev.yml` overrides (`APP_ENV=development`, `REFRESH_COOKIE_SECURE=false`, `REFRESH_COOKIE_SAMESITE=Lax`). Production uses `REFRESH_COOKIE_SAMESITE=None` with `REFRESH_COOKIE_SECURE=true` for cross-subdomain browser auth.
 
 Dev compose exposes service ports and Mailpit for debugging. Production compose exposes only the gateway.
 

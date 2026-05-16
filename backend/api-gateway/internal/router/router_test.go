@@ -47,16 +47,16 @@ func TestRouteAuthContract(t *testing.T) {
 			t.Fatalf("expected internal secret on user status check, got %q", got)
 		}
 		switch r.URL.Path {
-		case "/internal/users/user-1":
+		case "/internal/users/status/user-1":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"success":true,"data":{"id":"user-1","email":"user@example.com","role":"user","is_verified":true,"is_banned":false}}`))
-		case "/internal/users/admin-1":
+		case "/internal/users/status/admin-1":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"success":true,"data":{"id":"admin-1","email":"admin@example.com","role":"admin","is_verified":true,"is_banned":false}}`))
-		case "/internal/users/superadmin-1":
+		case "/internal/users/status/superadmin-1":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"success":true,"data":{"id":"superadmin-1","email":"superadmin@example.com","role":"superadmin","is_verified":true,"is_banned":false}}`))
-		case "/internal/users/banned-1":
+		case "/internal/users/status/banned-1":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write([]byte(`{"success":true,"data":{"id":"banned-1","email":"banned@example.com","role":"user","is_verified":true,"is_banned":true}}`))
 		case "/users/target/role":
@@ -90,8 +90,9 @@ func TestRouteAuthContract(t *testing.T) {
 		PublicKey:           &key.PublicKey,
 		JWTIssuer:           "issuer",
 		JWTAudience:         "audience",
-		AllowedOrigins:      []string{"https://frontend.example"},
-		AuthServiceURL:      otpServer.URL,
+		AllowedOrigins:        []string{"https://frontend.example"},
+		CORSAllowCredentials:  true,
+		AuthServiceURL:        otpServer.URL,
 		UserServiceURL:      userServer.URL,
 		OTPServiceURL:       otpServer.URL,
 		FavoritesServiceURL: favoritesServer.URL,
@@ -113,6 +114,24 @@ func TestRouteAuthContract(t *testing.T) {
 		}
 		if otpHits.Load() != 1 {
 			t.Fatalf("expected OTP upstream hit")
+		}
+	})
+
+	t.Run("session route preflight allows credentials", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodOptions, "/auth/session", nil)
+		req.Header.Set("Origin", "https://frontend.example")
+		req.Header.Set("Access-Control-Request-Method", "POST")
+		rec := httptest.NewRecorder()
+
+		handler.ServeHTTP(rec, req)
+		if rec.Code != http.StatusNoContent {
+			t.Fatalf("expected 204 preflight, got %d: %s", rec.Code, rec.Body.String())
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+			t.Fatalf("expected credentials allowed, got %q", got)
+		}
+		if got := rec.Header().Get("Access-Control-Allow-Origin"); got != "https://frontend.example" {
+			t.Fatalf("expected allowed origin echoed, got %q", got)
 		}
 	})
 

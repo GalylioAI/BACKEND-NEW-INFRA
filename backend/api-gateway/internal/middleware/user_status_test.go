@@ -14,7 +14,7 @@ func TestUserStatusCheckerAllowsVerifiedActiveUser(t *testing.T) {
 		if got := r.Header.Get(sharedmw.HeaderInternalSecret); got != "secret" {
 			t.Fatalf("expected internal secret, got %q", got)
 		}
-		if r.URL.Path != "/internal/users/user-1" {
+		if r.URL.Path != "/internal/users/status/user-1" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")

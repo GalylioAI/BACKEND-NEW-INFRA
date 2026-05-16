@@ -41,6 +41,21 @@ func TestClientIPTrustsConfiguredProxyCIDR(t *testing.T) {
 	}
 }
 
+func TestSensitiveRouteUsesMemoryLimiterWithoutRedis(t *testing.T) {
+	limiter := NewRateLimiter(nil, zerolog.Nop(), []string{"127.0.0.1/32"})
+	called := false
+	handler := limiter.Middleware("POST /auth/login")(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	}))
+	req := httptest.NewRequest(http.MethodPost, "/auth/login", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	if !called {
+		t.Fatal("expected request to pass via memory fallback when redis is nil")
+	}
+}
+
 func TestPublicOTPVerifyRoutesUseStrictRateLimit(t *testing.T) {
 	routes := []string{
 		"POST /otp/email/verify",

@@ -543,6 +543,14 @@ func (s *Service) CredentialByIdentifier(ctx context.Context, identifier string)
 	return domain.Credential(user), nil
 }
 
+func (s *Service) StatusByID(ctx context.Context, id uuid.UUID) (domain.UserStatus, error) {
+	user, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return domain.UserStatus{}, err
+	}
+	return domain.Status(user), nil
+}
+
 func (s *Service) CredentialByID(ctx context.Context, id uuid.UUID) (domain.CredentialUser, error) {
 	user, err := s.repo.GetByID(ctx, id)
 	if err != nil {

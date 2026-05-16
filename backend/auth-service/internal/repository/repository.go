@@ -26,8 +26,6 @@ type Repository interface {
 	RevokeAllRefreshTokens(ctx context.Context, userID uuid.UUID) error
 	RevokeOtherRefreshTokens(ctx context.Context, userID, sessionID uuid.UUID) error
 	CreateAuditEvent(ctx context.Context, eventType string, userID uuid.UUID, ip net.IP, userAgent string, metadata any) error
-	CreateTwoFactorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error
-	ConsumeTwoFactorSession(ctx context.Context, tokenHash string) (uuid.UUID, error)
 	Ping(ctx context.Context) error
 }
 
@@ -134,49 +132,6 @@ func (r *PostgresRepository) RevokeOtherRefreshTokens(ctx context.Context, userI
 	defer cancel()
 	_, err := r.pool.Exec(ctx, `UPDATE refresh_tokens SET revoked = true WHERE user_id = $1 AND session_id <> $2`, userID, sessionID)
 	return err
-}
-
-func (r *PostgresRepository) CreateTwoFactorSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
-	ctx, cancel := shareddb.Timeout(ctx)
-	defer cancel()
-	_, err := r.pool.Exec(ctx, `
-		INSERT INTO two_factor_sessions (user_id, token_hash, expires_at)
-		VALUES ($1, $2, $3)`, userID, tokenHash, expiresAt)
-	return err
-}
-
-func (r *PostgresRepository) ConsumeTwoFactorSession(ctx context.Context, tokenHash string) (uuid.UUID, error) {
-	ctx, cancel := shareddb.Timeout(ctx)
-	defer cancel()
-	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
-	if err != nil {
-		return uuid.Nil, err
-	}
-	defer tx.Rollback(ctx)
-	var userID uuid.UUID
-	var used bool
-	var expiresAt time.Time
-	err = tx.QueryRow(ctx, `
-		SELECT user_id, used, expires_at
-		FROM two_factor_sessions
-		WHERE token_hash = $1
-		FOR UPDATE`, tokenHash).Scan(&userID, &used, &expiresAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return uuid.Nil, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidTwoFASession, "2FA session token is invalid.")
-		}
-		return uuid.Nil, err
-	}
-	if used || time.Now().UTC().After(expiresAt) {
-		return uuid.Nil, apperr.New(http.StatusUnauthorized, apperr.CodeInvalidTwoFASession, "2FA session token is invalid.")
-	}
-	if _, err := tx.Exec(ctx, `UPDATE two_factor_sessions SET used = true WHERE token_hash = $1`, tokenHash); err != nil {
-		return uuid.Nil, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return uuid.Nil, err
-	}
-	return userID, nil
 }
 
 func nullString(value string) sql.NullString {

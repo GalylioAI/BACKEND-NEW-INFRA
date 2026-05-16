@@ -72,7 +72,6 @@ func (h *Handler) Routes() http.Handler {
 	mux.Handle("DELETE /internal/auth/sessions/{user_id}/others/{session_id}", internal(http.HandlerFunc(h.internalDeleteOtherSessions)))
 	mux.Handle("POST /internal/auth/issue-jwt", internal(http.HandlerFunc(h.internalIssueJWT)))
 	mux.Handle("POST /internal/auth/2fa-pending", internal(http.HandlerFunc(h.internalTwoFAPending)))
-	mux.Handle("POST /internal/auth/2fa/complete", internal(http.HandlerFunc(h.internalCompleteTwoFactor)))
 	return mux
 }
 
@@ -258,22 +257,6 @@ func (h *Handler) internalTwoFAPending(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpjson.Write(w, r, http.StatusOK, map[string]any{"session_token": pending, "expires_at": expiresAt})
-}
-
-func (h *Handler) internalCompleteTwoFactor(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		SessionToken string `json:"session_token"`
-	}
-	if err := httpjson.Decode(r, &req); err != nil {
-		httpjson.WriteError(w, r, err)
-		return
-	}
-	tokens, err := h.service.CompleteTwoFactor(r.Context(), req.SessionToken, r.UserAgent(), clientIP(r))
-	if err != nil {
-		httpjson.WriteError(w, r, err)
-		return
-	}
-	httpjson.Write(w, r, http.StatusOK, map[string]any{"access_token": tokens.AccessToken, "refresh_token": tokens.RefreshToken, "access_token_expires_at": tokens.ExpiresAt})
 }
 
 func (h *Handler) setRefreshCookie(w http.ResponseWriter, value string) {

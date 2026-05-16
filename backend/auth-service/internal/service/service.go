@@ -70,8 +70,23 @@ func (v GoogleIDTokenVerifier) Verify(ctx context.Context, raw string) (GoogleCl
 type LoginResult struct {
 	AccessToken           string    `json:"access_token,omitempty"`
 	AccessTokenExpiresAt  time.Time `json:"access_token_expires_at,omitempty"`
+	TokenType             string    `json:"token_type,omitempty"`
+	ExpiresIn             int64     `json:"expires_in,omitempty"`
 	TwoFactorRequired     bool      `json:"two_factor_required,omitempty"`
 	TwoFactorSessionToken string    `json:"two_factor_session_token,omitempty"`
+}
+
+func enrichLoginResult(result LoginResult) LoginResult {
+	if result.AccessToken == "" || result.AccessTokenExpiresAt.IsZero() {
+		return result
+	}
+	result.TokenType = "Bearer"
+	remaining := time.Until(result.AccessTokenExpiresAt).Seconds()
+	if remaining < 0 {
+		remaining = 0
+	}
+	result.ExpiresIn = int64(remaining)
+	return result
 }
 
 type SessionResult struct {
@@ -146,7 +161,7 @@ func (s *Service) ManualLogin(ctx context.Context, req ManualLoginRequest, devic
 	}
 	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
 	s.audit(ctx, "login_success", user.ID, ip, deviceInfo, map[string]any{"provider": domain.ProviderManual})
-	return LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}, tokens, nil
+	return enrichLoginResult(LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}), tokens, nil
 }
 
 func (s *Service) GoogleLogin(ctx context.Context, idToken string, deviceInfo string, ip net.IP) (LoginResult, domain.Tokens, error) {
@@ -178,7 +193,7 @@ func (s *Service) GoogleLogin(ctx context.Context, idToken string, deviceInfo st
 	}
 	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
 	s.audit(ctx, "login_success", user.ID, ip, deviceInfo, map[string]any{"provider": domain.ProviderGoogle})
-	return LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}, tokens, nil
+	return enrichLoginResult(LoginResult{AccessToken: tokens.AccessToken, AccessTokenExpiresAt: tokens.ExpiresAt}), tokens, nil
 }
 
 func (s *Service) Refresh(ctx context.Context, rawRefreshToken string, deviceInfo string, ip net.IP) (domain.Tokens, error) {
@@ -255,24 +270,6 @@ func (s *Service) LogoutAll(ctx context.Context, userID uuid.UUID) error {
 		s.audit(ctx, "logout_all", userID, nil, "", nil)
 	}
 	return err
-}
-
-func (s *Service) CompleteTwoFactor(ctx context.Context, sessionToken string, deviceInfo string, ip net.IP) (domain.Tokens, error) {
-	userID, err := s.repo.ConsumeTwoFactorSession(ctx, token.SHA256(sessionToken))
-	if err != nil {
-		return domain.Tokens{}, err
-	}
-	user, err := s.userClient.GetByID(ctx, userID)
-	if err != nil {
-		return domain.Tokens{}, err
-	}
-	tokens, err := s.issueTokenPair(ctx, user, []string{AuthMethodPassword, AuthMethodOTP}, deviceInfo, ip)
-	if err != nil {
-		return domain.Tokens{}, err
-	}
-	_ = s.userClient.RecordLoginSuccess(ctx, user.ID)
-	s.audit(ctx, "2fa_login_success", user.ID, ip, deviceInfo, nil)
-	return tokens, nil
 }
 
 func (s *Service) IssueTokenPairForUser(ctx context.Context, userID uuid.UUID, authMethods []string, deviceInfo string, ip net.IP) (domain.Tokens, error) {

@@ -69,11 +69,14 @@ Success without 2FA:
   "success": true,
   "data": {
     "access_token": "<jwt>",
+    "access_token_expires_at": "2026-05-14T10:00:00Z",
     "token_type": "Bearer",
     "expires_in": 900
   }
 }
 ```
+
+The refresh token is returned only as an HttpOnly cookie (`refresh_token`, path `/auth`). The response body never includes the refresh token. Each new login issues a new session id (`sid` claim); refresh keeps the same `sid` for that device until a new login.
 
 If 2FA is enabled, the response is still `200`, but no full JWT is issued:
 

@@ -15,11 +15,12 @@ import (
 	"github.com/rs/zerolog"
 )
 
-func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) http.Handler {
+func NewServiceProxy(targetURL, internalSecret string, trustedProxyCIDRs []string, logger zerolog.Logger) http.Handler {
 	target, err := url.Parse(targetURL)
 	if err != nil {
 		panic(err)
 	}
+	trusted := parseTrustedProxyCIDRs(trustedProxyCIDRs)
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.Transport = &http.Transport{
 		DialContext: (&net.Dialer{
@@ -47,7 +48,7 @@ func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) ht
 		req.Header.Del("Origin")
 		req.Header.Set(middleware.HeaderInternalSecret, internalSecret)
 		req.Header.Set("X-Forwarded-For", forwardedFor(req))
-		req.Header.Set("X-Forwarded-Proto", "http")
+		req.Header.Set("X-Forwarded-Proto", forwardedProto(req, trusted))
 	}
 	proxy.ModifyResponse = func(resp *http.Response) error {
 		stripGatewayOwnedHeaders(resp.Header)
@@ -66,6 +67,63 @@ func NewServiceProxy(targetURL, internalSecret string, logger zerolog.Logger) ht
 		httpjson.WriteError(w, r, apperr.New(http.StatusServiceUnavailable, "SERVICE_UNAVAILABLE", "The requested service is temporarily unavailable."))
 	}
 	return proxy
+}
+
+func forwardedProto(req *http.Request, trusted []*net.IPNet) string {
+	if clientFromTrustedProxy(req, trusted) {
+		if proto := strings.ToLower(strings.TrimSpace(req.Header.Get("X-Forwarded-Proto"))); proto == "https" || proto == "http" {
+			return proto
+		}
+	}
+	if req.TLS != nil {
+		return "https"
+	}
+	return "http"
+}
+
+func clientFromTrustedProxy(req *http.Request, trusted []*net.IPNet) bool {
+	host, _, err := net.SplitHostPort(req.RemoteAddr)
+	if err != nil {
+		host = req.RemoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, network := range trusted {
+		if network.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+func parseTrustedProxyCIDRs(values []string) []*net.IPNet {
+	if len(values) == 0 {
+		values = []string{"127.0.0.1/32", "::1/128"}
+	}
+	networks := make([]*net.IPNet, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		if ip := net.ParseIP(value); ip != nil {
+			bits := 32
+			if ip.To4() == nil {
+				bits = 128
+			}
+			networks = append(networks, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+			continue
+		}
+		if _, network, err := net.ParseCIDR(value); err == nil {
+			networks = append(networks, network)
+		}
+	}
+	if len(networks) == 0 {
+		return parseTrustedProxyCIDRs(nil)
+	}
+	return networks
 }
 
 func stripGatewayOwnedHeaders(header http.Header) {

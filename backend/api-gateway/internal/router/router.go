@@ -43,11 +43,11 @@ func New(cfg config.Config, logger zerolog.Logger, redisClient *redis.Client) ht
 
 func (r *Router) routes() http.Handler {
 	mux := http.NewServeMux()
-	auth := proxy.NewServiceProxy(r.cfg.AuthServiceURL, r.cfg.InternalSecret, r.logger)
-	user := proxy.NewServiceProxy(r.cfg.UserServiceURL, r.cfg.InternalSecret, r.logger)
-	otp := proxy.NewServiceProxy(r.cfg.OTPServiceURL, r.cfg.InternalSecret, r.logger)
-	favorites := proxy.NewServiceProxy(r.cfg.FavoritesServiceURL, r.cfg.InternalSecret, r.logger)
-	alerts := proxy.NewServiceProxy(r.cfg.AlertsServiceURL, r.cfg.InternalSecret, r.logger)
+	auth := proxy.NewServiceProxy(r.cfg.AuthServiceURL, r.cfg.InternalSecret, r.cfg.TrustedProxyCIDRs, r.logger)
+	user := proxy.NewServiceProxy(r.cfg.UserServiceURL, r.cfg.InternalSecret, r.cfg.TrustedProxyCIDRs, r.logger)
+	otp := proxy.NewServiceProxy(r.cfg.OTPServiceURL, r.cfg.InternalSecret, r.cfg.TrustedProxyCIDRs, r.logger)
+	favorites := proxy.NewServiceProxy(r.cfg.FavoritesServiceURL, r.cfg.InternalSecret, r.cfg.TrustedProxyCIDRs, r.logger)
+	alerts := proxy.NewServiceProxy(r.cfg.AlertsServiceURL, r.cfg.InternalSecret, r.cfg.TrustedProxyCIDRs, r.logger)
 
 	mux.HandleFunc("GET /health", r.health)
 	if r.cfg.DocsEnabled {

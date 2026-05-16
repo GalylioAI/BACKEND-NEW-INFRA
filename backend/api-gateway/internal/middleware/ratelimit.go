@@ -38,6 +38,7 @@ type RateLimiter struct {
 	script          *redis.Script
 	trustedProxyNet []*net.IPNet
 	limits          RateLimitConfig
+	memory          *memoryRateLimiter
 }
 
 type routeLimit struct {
@@ -84,24 +85,62 @@ func NewRateLimiterWithConfig(client *redis.Client, logger zerolog.Logger, trust
 		script:          redis.NewScript(slidingWindowLua),
 		trustedProxyNet: parseTrustedProxyCIDRs(trustedProxyCIDRs),
 		limits:          limits,
+		memory:          newMemoryRateLimiter(),
 	}
 }
 
 func (r *RateLimiter) Middleware(routeKey string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			if r == nil || r.client == nil {
+			if r == nil {
 				next.ServeHTTP(w, req)
 				return
 			}
 			limit := r.limitForRoute(routeKey)
-			allowed, retryAfter, err := r.allow(req.Context(), routeKey, r.clientIP(req), limit)
+			clientIP := r.clientIP(req)
+			sensitive := isSensitiveRoute(routeKey)
+
+			if r.client == nil {
+				if !sensitive {
+					next.ServeHTTP(w, req)
+					return
+				}
+				allowed, retryAfter := r.memory.allow(memoryRateLimitKey(routeKey, clientIP), limit, time.Now().UTC())
+				if !allowed {
+					w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+					writeRateLimit(w, req, retryAfter)
+					return
+				}
+				next.ServeHTTP(w, req)
+				return
+			}
+
+			allowed, retryAfter, err := r.allow(req.Context(), routeKey, clientIP, limit)
 			if err != nil {
+				if sensitive {
+					r.logger.Warn().
+						Str("request_id", req.Header.Get("X-Request-Id")).
+						Str("route", routeKey).
+						Err(err).
+						Msg("redis_rate_limit_failed")
+					allowed, retryAfter = r.memory.allow(memoryRateLimitKey(routeKey, clientIP), limit, time.Now().UTC())
+					if !allowed {
+						w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+						writeRateLimit(w, req, retryAfter)
+						return
+					}
+					r.logger.Warn().
+						Str("request_id", req.Header.Get("X-Request-Id")).
+						Str("route", routeKey).
+						Msg("rate_limit_memory_fallback")
+					next.ServeHTTP(w, req)
+					return
+				}
 				r.logger.Warn().
 					Str("request_id", req.Header.Get("X-Request-Id")).
 					Str("route", routeKey).
 					Err(err).
-					Msg("redis rate limiter unavailable; allowing request")
+					Msg("redis_rate_limit_failed")
 				next.ServeHTTP(w, req)
 				return
 			}
@@ -112,6 +151,19 @@ func (r *RateLimiter) Middleware(routeKey string) func(http.Handler) http.Handle
 			}
 			next.ServeHTTP(w, req)
 		})
+	}
+}
+
+func isSensitiveRoute(routeKey string) bool {
+	switch routeKey {
+	case "POST /auth/login", "POST /auth/google", "POST /users/signup",
+		"POST /otp/email/send", "POST /otp/email/verify",
+		"POST /otp/2fa/enable", "POST /otp/2fa/disable",
+		"POST /otp/2fa/login/verify", "POST /otp/2fa/enable/verify", "POST /otp/2fa/disable/verify",
+		"POST /otp/password-reset/send", "POST /otp/password-reset/verify", "POST /otp/password-reset/apply":
+		return true
+	default:
+		return false
 	}
 }
 

@@ -121,8 +121,11 @@ func Load() (Config, error) {
 		RateLimitMax:    rateMax,
 		RateLimitWindow: rateWindow,
 	}
-	if cfg.InternalSecret == "" && cfg.AppEnv == "production" {
-		return Config{}, fmt.Errorf("INTERNAL_SECRET is required in production")
+	if err := sharedcfg.ValidateInternalSecret(cfg.InternalSecret, cfg.AppEnv); err != nil {
+		return Config{}, err
+	}
+	if err := sharedcfg.ValidateJWTKeyPaths(cfg.JWTPublicKeyPath, cfg.AppEnv); err != nil {
+		return Config{}, err
 	}
 	if cfg.JWTSigningAlgorithm != "RS256" {
 		return Config{}, fmt.Errorf("JWT_SIGNING_ALGORITHM must be RS256")

@@ -46,7 +46,7 @@ function getPostLoginDestination(role?: string) {
 
 export default function TwoFactorLoginPage() {
   const router = useRouter();
-  const { refreshUser } = useAuth();
+  const { restoreFromSession } = useAuth();
   const [pending, setPending] = useState<PendingLogin | null>(null);
   const [redirectTo, setRedirectTo] = useState("/");
   const [code, setCode] = useState("");
@@ -78,7 +78,10 @@ export default function TwoFactorLoginPage() {
     try {
       await verifyLogin2FA(normalizedCode, pending.token);
       sessionStorage.removeItem(TWO_FACTOR_PENDING_KEY);
-      const currentUser = await refreshUser();
+      const currentUser = await restoreFromSession();
+      if (!currentUser) {
+        throw new Error("Session restore failed after 2FA.");
+      }
       router.replace(
         redirectTo === "/"
           ? getPostLoginDestination(currentUser?.role)

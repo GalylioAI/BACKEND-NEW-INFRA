@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"time"
 
 	sharedcfg "backend/shared/config"
@@ -82,8 +81,11 @@ func Load() (Config, error) {
 		RateLimitMax:           rateMax,
 		RateLimitWindow:        rateWindow,
 	}
-	if cfg.InternalSecret == "" && cfg.AppEnv == "production" {
-		return Config{}, fmt.Errorf("INTERNAL_SECRET is required in production")
+	if err := sharedcfg.ValidateInternalSecret(cfg.InternalSecret, cfg.AppEnv); err != nil {
+		return Config{}, err
+	}
+	if sharedcfg.IsProduction(cfg.AppEnv) && len(cfg.AllowedOrigins) == 0 {
+		cfg.AllowedOrigins = nil
 	}
 	return cfg, nil
 }

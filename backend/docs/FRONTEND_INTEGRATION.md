@@ -59,6 +59,10 @@ Browser requests that need refresh-cookie behavior must set:
 credentials: "include"
 ```
 
+Production API hosts must use `REFRESH_COOKIE_SAMESITE=None` and `REFRESH_COOKIE_SECURE=true` so cookies are sent on cross-subdomain XHR from the frontend origin to the API host. Local development uses `SameSite=Lax` and `Secure=false`.
+
+Store the access token in memory only (not `localStorage`). Never store the refresh token in JavaScript; it lives in the HttpOnly cookie only. Copying an access token to another machine reuses the same `sid` until that access token expires; each browser login creates a distinct refresh session and `sid`.
+
 The frontend should refresh once after a `401`, retry the original request once, and then clear auth state if refresh fails.
 
 ## Field Errors

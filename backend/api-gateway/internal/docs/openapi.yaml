@@ -893,10 +893,17 @@ components:
         access_token_expires_at:
           type: string
           format: date-time
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+          description: Seconds until access_token_expires_at
         two_factor_required:
           type: boolean
         two_factor_session_token:
           type: string
+          description: Pending JWT for POST /otp/2fa/login/verify (not a refresh token)
     SessionResponse:
       type: object
       required: [access_token, access_token_expires_at, user]

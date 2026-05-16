@@ -18,7 +18,6 @@ import {
   session as restoreSession,
 } from "../api/auth";
 import { setUnauthorizedHandler } from "../api/client";
-import { hasSessionMarker } from "../api/token-store";
 import { signup as signupRequest } from "../api/users";
 import type { LoginRequest, SignupRequest, UserResponse } from "../api/types";
 
@@ -37,20 +36,11 @@ interface AuthContextValue {
   signup: (payload: SignupRequest) => Promise<UserResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<UserResponse | null>;
+  restoreFromSession: () => Promise<UserResponse | null>;
   clearSession: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
-
-function shouldAttemptSessionRestore() {
-  if (hasSessionMarker()) return true;
-  if (typeof window === "undefined") return false;
-
-  const protectedPrefixes = ["/compte", "/dashboard", "/admin"];
-  return protectedPrefixes.some((prefix) =>
-    window.location.pathname.startsWith(prefix),
-  );
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("loading");
@@ -73,14 +63,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function restore() {
       setStatus("loading");
-      if (!shouldAttemptSessionRestore()) {
-        if (!active) return;
-        clearAuthToken();
-        setUser(null);
-        setStatus("anonymous");
-        return;
-      }
-
       try {
         const restored = await restoreSession();
         if (!active) return;
@@ -159,6 +141,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [clearSession]);
 
+  const restoreFromSession = useCallback(async () => {
+    try {
+      const restored = await restoreSession();
+      setUser(restored.user);
+      setStatus("authenticated");
+      return restored.user;
+    } catch {
+      clearSession();
+      return null;
+    }
+  }, [clearSession]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -169,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signup,
       logout,
       refreshUser,
+      restoreFromSession,
       clearSession,
     }),
     [
@@ -180,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signup,
       logout,
       refreshUser,
+      restoreFromSession,
       clearSession,
     ],
   );

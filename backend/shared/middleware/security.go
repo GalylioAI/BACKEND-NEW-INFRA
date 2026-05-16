@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -9,13 +10,15 @@ func SecurityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("Strict-Transport-Security", "max-age=63072000")
+		if strings.EqualFold(strings.TrimSpace(os.Getenv("APP_ENV")), "production") {
+			w.Header().Set("Strict-Transport-Security", "max-age=63072000")
+		}
 		next.ServeHTTP(w, r)
 	})
 }
 
 func CORS(allowed []string) func(http.Handler) http.Handler {
-	allowAll := len(allowed) == 0
+	allowAll := len(allowed) == 0 && !strings.EqualFold(strings.TrimSpace(os.Getenv("APP_ENV")), "production")
 	allowedSet := map[string]struct{}{}
 	for _, origin := range allowed {
 		allowedSet[strings.TrimSpace(origin)] = struct{}{}

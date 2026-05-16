@@ -89,7 +89,7 @@ func Load() (Config, error) {
 		RateLimitLoginWindow:   mustDuration("RATE_LIMIT_LOGIN_WINDOW", time.Minute),
 		RateLimitOTPLimit:      mustInt("RATE_LIMIT_OTP_LIMIT", 3),
 		RateLimitOTPWindow:     mustDuration("RATE_LIMIT_OTP_WINDOW", time.Minute),
-		DocsEnabled:            sharedcfg.Bool("DOCS_ENABLED", true),
+		DocsEnabled:            docsEnabledDefault(),
 		RequestTimeout:         mustDuration("REQUEST_TIMEOUT", 30*time.Second),
 		ShutdownTimeout:        mustDuration("SHUTDOWN_TIMEOUT", 10*time.Second),
 		ReadHeaderTimeout:      mustDuration("READ_HEADER_TIMEOUT", 5*time.Second),
@@ -101,13 +101,16 @@ func Load() (Config, error) {
 	if len(cfg.TrustedProxyCIDRs) == 0 {
 		cfg.TrustedProxyCIDRs = []string{"127.0.0.1/32", "::1/128"}
 	}
-	if cfg.InternalSecret == "" && cfg.AppEnv == "production" {
-		return Config{}, fmt.Errorf("INTERNAL_SECRET is required in production")
+	if err := sharedcfg.ValidateInternalSecret(cfg.InternalSecret, cfg.AppEnv); err != nil {
+		return Config{}, err
+	}
+	if err := sharedcfg.ValidateJWTKeyPaths(cfg.PublicKeyPath, cfg.AppEnv); err != nil {
+		return Config{}, err
 	}
 	if cfg.JWTSigningAlgorithm != "RS256" {
 		return Config{}, fmt.Errorf("JWT_SIGNING_ALGORITHM must be RS256")
 	}
-	if cfg.AppEnv == "production" {
+	if sharedcfg.IsProduction(cfg.AppEnv) {
 		if len(cfg.AllowedOrigins) == 0 {
 			return Config{}, fmt.Errorf("CORS_ALLOWED_ORIGINS is required in production")
 		}
@@ -116,8 +119,18 @@ func Load() (Config, error) {
 				return Config{}, fmt.Errorf("CORS_ALLOWED_ORIGINS must not contain wildcard in production")
 			}
 		}
+		if cfg.RedisURL == "" {
+			return Config{}, fmt.Errorf("REDIS_URL is required in production")
+		}
 	}
 	return cfg, nil
+}
+
+func docsEnabledDefault() bool {
+	if sharedcfg.IsProduction(sharedcfg.String("APP_ENV", "development")) {
+		return sharedcfg.Bool("DOCS_ENABLED", false)
+	}
+	return sharedcfg.Bool("DOCS_ENABLED", true)
 }
 
 func withDefault(values, fallback []string) []string {

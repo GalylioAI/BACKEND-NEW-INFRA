@@ -52,6 +52,7 @@ func (h *Handler) Routes() http.Handler {
 	mux.Handle("GET /internal/users/lookup", internal(http.HandlerFunc(h.internalLookup)))
 	mux.Handle("GET /internal/users/by-email/{email}", internal(http.HandlerFunc(h.internalGetByEmail)))
 	mux.Handle("GET /internal/users/profile/{id}", internal(http.HandlerFunc(h.internalGetPublicProfile)))
+	mux.Handle("GET /internal/users/status/{id}", internal(http.HandlerFunc(h.internalUserStatus)))
 	mux.Handle("GET /internal/users/{id}", internal(http.HandlerFunc(h.internalGetByID)))
 	mux.Handle("PATCH /internal/users/{id}/verify", internal(http.HandlerFunc(h.internalMarkVerified)))
 	mux.Handle("PATCH /internal/users/{id}/2fa", internal(http.HandlerFunc(h.internalSetTwoFactor)))
@@ -269,6 +270,19 @@ func (h *Handler) internalLookup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpjson.Write(w, r, http.StatusOK, user)
+}
+
+func (h *Handler) internalUserStatus(w http.ResponseWriter, r *http.Request) {
+	id, ok := parsePathUUID(w, r, "id")
+	if !ok {
+		return
+	}
+	status, err := h.service.StatusByID(r.Context(), id)
+	if err != nil {
+		httpjson.WriteError(w, r, err)
+		return
+	}
+	httpjson.Write(w, r, http.StatusOK, status)
 }
 
 func (h *Handler) internalGetByID(w http.ResponseWriter, r *http.Request) {

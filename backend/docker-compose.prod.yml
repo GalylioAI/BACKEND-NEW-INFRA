@@ -58,7 +58,7 @@ services:
     environment:
       APP_PORT: "8080"
       APP_ENV: production
-      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+      DOCS_ENABLED: ${DOCS_ENABLED:-false}
       INTERNAL_SECRET_FILE: /run/secrets/internal_secret
       RS256_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       JWT_ISSUER: ${JWT_ISSUER}

@@ -345,7 +345,7 @@ services:
       dockerfile: user-service/Dockerfile
     environment:
       APP_PORT: 8082
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-development}
       ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
       INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
       AUTH_SERVICE_URL: http://auth-service:8081
@@ -382,7 +382,7 @@ services:
       dockerfile: auth-service/Dockerfile
     environment:
       APP_PORT: 8081
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-development}
       ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
       INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
       USER_SERVICE_URL: http://user-service:8082
@@ -439,7 +439,7 @@ services:
       dockerfile: otp-service/Dockerfile
     environment:
       APP_PORT: 8083
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-development}
       ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
       INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
       USER_SERVICE_URL: http://user-service:8082
@@ -493,7 +493,7 @@ services:
       dockerfile: favorites-service/Dockerfile
     environment:
       APP_PORT: 8084
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-development}
       ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
       INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
       MIGRATION_DATABASE_URL: postgres://favorites_user:${FAVORITES_DB_PASSWORD:-favorites_pass}@postgres-favorites:5432/favorites_db?sslmode=disable
@@ -523,7 +523,7 @@ services:
       dockerfile: alerts-service/Dockerfile
     environment:
       APP_PORT: 8085
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-development}
       ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-https://example.com}
       INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
       USER_SERVICE_URL: http://user-service:8082
@@ -589,10 +589,10 @@ services:
       dockerfile: api-gateway/Dockerfile
     environment:
       APP_PORT: 8080
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:-development}
       INTERNAL_SECRET: ${INTERNAL_SECRET:?set INTERNAL_SECRET}
       REDIS_URL: redis://:${REDIS_PASSWORD:-redis_pass}@redis:6379/0
-      DOCS_ENABLED: ${DOCS_ENABLED:-true}
+      DOCS_ENABLED: ${DOCS_ENABLED:-false}
       RS256_PUBLIC_KEY_PATH: /run/secrets/jwt_public.pem
       JWT_ISSUER: ${JWT_ISSUER:-your-app-name}
       JWT_AUDIENCE: ${JWT_AUDIENCE:-your-app-client}
