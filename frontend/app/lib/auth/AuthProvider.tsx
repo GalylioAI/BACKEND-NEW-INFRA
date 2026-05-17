@@ -9,9 +9,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { signalAuthReady } from "../api/auth-ready";
 import {
   clearAuthToken,
-  currentUser as fetchCurrentUser,
   googleLogin as googleLoginRequest,
   login as loginRequest,
   logout as logoutRequest,
@@ -71,6 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         if (!active) return;
         clearSession();
+      } finally {
+        if (active) {
+          signalAuthReady();
+        }
       }
     }
 
@@ -80,41 +84,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [clearSession]);
 
-  const login = useCallback(async (payload: LoginRequest) => {
-    const loginResult = await loginRequest(payload);
-    if (
-      loginResult.two_factor_required &&
-      loginResult.two_factor_session_token
-    ) {
-      return {
-        status: "2fa_required" as const,
-        pendingToken: loginResult.two_factor_session_token,
-      };
-    }
-
-    const currentUser = await fetchCurrentUser();
-    setUser(currentUser);
+  const completeAuthenticatedLogin = useCallback(async () => {
+    const restored = await restoreSession();
+    setUser(restored.user);
     setStatus("authenticated");
-    return { status: "authenticated" as const, user: currentUser };
+    return restored.user;
   }, []);
 
-  const loginWithGoogle = useCallback(async (idToken: string) => {
-    const loginResult = await googleLoginRequest(idToken);
-    if (
-      loginResult.two_factor_required &&
-      loginResult.two_factor_session_token
-    ) {
-      return {
-        status: "2fa_required" as const,
-        pendingToken: loginResult.two_factor_session_token,
-      };
-    }
+  const login = useCallback(
+    async (payload: LoginRequest) => {
+      const loginResult = await loginRequest(payload);
+      if (
+        loginResult.two_factor_required &&
+        loginResult.two_factor_session_token
+      ) {
+        return {
+          status: "2fa_required" as const,
+          pendingToken: loginResult.two_factor_session_token,
+        };
+      }
 
-    const currentUser = await fetchCurrentUser();
-    setUser(currentUser);
-    setStatus("authenticated");
-    return { status: "authenticated" as const, user: currentUser };
-  }, []);
+      const currentUser = await completeAuthenticatedLogin();
+      return { status: "authenticated" as const, user: currentUser };
+    },
+    [completeAuthenticatedLogin],
+  );
+
+  const loginWithGoogle = useCallback(
+    async (idToken: string) => {
+      const loginResult = await googleLoginRequest(idToken);
+      if (
+        loginResult.two_factor_required &&
+        loginResult.two_factor_session_token
+      ) {
+        return {
+          status: "2fa_required" as const,
+          pendingToken: loginResult.two_factor_session_token,
+        };
+      }
+
+      const currentUser = await completeAuthenticatedLogin();
+      return { status: "authenticated" as const, user: currentUser };
+    },
+    [completeAuthenticatedLogin],
+  );
 
   const signup = useCallback(
     async (payload: SignupRequest) => signupRequest(payload),
@@ -131,10 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const currentUser = await fetchCurrentUser();
-      setUser(currentUser);
+      const restored = await restoreSession();
+      setUser(restored.user);
       setStatus("authenticated");
-      return currentUser;
+      return restored.user;
     } catch {
       clearSession();
       return null;

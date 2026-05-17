@@ -28,7 +28,8 @@ Only public browser-safe values may use `NEXT_PUBLIC_*`. Never put refresh token
 - **Refresh token:** HttpOnly cookie on the API host (`backend.1111.tn`), path `/auth`. The frontend never reads or stores it.
 - **All auth API calls** use `credentials: "include"` so the browser sends the refresh cookie cross-origin (production: `SameSite=None; Secure` on the API).
 - **Bootstrap:** `AuthProvider` always calls `POST /auth/session` on load. A valid cookie restores the session without localStorage.
-- **401 retry:** protected requests call `POST /auth/refresh` once, then retry with the new access token.
+- **401 retry:** protected requests use a single shared `POST /auth/session` renewal (never parallel `/auth/refresh`), then retry once with the new access token.
+- **Proactive renewal:** access tokens renew ~60s before expiry when a protected request runs.
 - **2FA login:** `POST /otp/2fa/login/verify` with `Authorization: Bearer <two_factor_session_token>` from the login response (pending JWT in sessionStorage only during the 2FA step).
 - **Logout:** `POST /auth/logout` clears server session and cookie; frontend clears in-memory token and session marker.
 

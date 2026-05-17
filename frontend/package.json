@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "node --test app/lib/api/credential-renewal.singleflight.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",

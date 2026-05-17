@@ -1,4 +1,5 @@
-import { apiRequest, primeSessionFromRefresh } from "./client";
+import { apiRequest } from "./client";
+import { renewCredentials } from "./credential-renewal";
 import { endpoints } from "./endpoints";
 import {
   clearAccessToken,
@@ -12,16 +13,9 @@ import type {
   LoginRequest,
   LoginResponse,
   MessageResponse,
-  SessionResponse,
   UserResponse,
 } from "./types";
 import { normalizeUser } from "./types";
-
-type NormalizedSessionResponse = Omit<SessionResponse, "user"> & {
-  user: UserResponse;
-};
-
-let sessionPromise: Promise<NormalizedSessionResponse> | null = null;
 
 export async function login(payload: LoginRequest) {
   const result = await apiRequest<LoginResponse>(endpoints.auth.login, {
@@ -30,7 +24,9 @@ export async function login(payload: LoginRequest) {
   });
 
   if (result.access_token) {
-    setAccessToken(result.access_token);
+    setAccessToken(result.access_token, {
+      expiresAt: result.access_token_expires_at,
+    });
     markSessionPresent();
   }
 
@@ -44,7 +40,9 @@ export async function googleLogin(idToken: string) {
   });
 
   if (result.access_token) {
-    setAccessToken(result.access_token);
+    setAccessToken(result.access_token, {
+      expiresAt: result.access_token_expires_at,
+    });
     markSessionPresent();
   }
 
@@ -60,44 +58,26 @@ export async function verifyLogin2FA(code: string, pendingToken: string) {
       headers: { Authorization: `Bearer ${pendingToken}` },
     },
   );
-  setAccessToken(result.access_token);
+  setAccessToken(result.access_token, {
+    expiresAt: result.access_token_expires_at,
+  });
   markSessionPresent();
   return result;
 }
 
 export async function refreshSession() {
-  const token = await primeSessionFromRefresh();
-  return token;
+  const renewed = await renewCredentials();
+  return renewed?.access_token ?? null;
 }
 
 export async function session() {
-  if (!sessionPromise) {
-    sessionPromise = (async () => {
-      try {
-        const result = await apiRequest<SessionResponse>(
-          endpoints.auth.session,
-          {
-            method: "POST",
-            retryOnAuthFailure: false,
-          },
-        );
-        setAccessToken(result.access_token);
-        markSessionPresent();
-        return {
-          ...result,
-          user: normalizeUser(result.user),
-        };
-      } catch (error) {
-        clearAccessToken();
-        clearSessionMarker();
-        throw error;
-      } finally {
-        sessionPromise = null;
-      }
-    })();
+  const renewed = await renewCredentials();
+  if (!renewed) {
+    clearAccessToken();
+    clearSessionMarker();
+    throw new Error("Session could not be restored.");
   }
-
-  return sessionPromise;
+  return renewed;
 }
 
 export async function currentUser() {

@@ -1,13 +1,11 @@
+import { whenAuthReady } from "./auth-ready";
+import { renewCredentials } from "./credential-renewal";
 import { apiUrl } from "./config";
-import { endpoints } from "./endpoints";
 import {
-  clearAccessToken,
-  clearSessionMarker,
   getAccessToken,
-  markSessionPresent,
-  setAccessToken,
+  needsAccessTokenRenewal,
 } from "./token-store";
-import type { AccessTokenResponse, ApiFailureEnvelope, ApiMeta } from "./types";
+import type { ApiFailureEnvelope, ApiMeta } from "./types";
 
 type QueryValue = string | number | boolean | null | undefined;
 
@@ -45,7 +43,12 @@ export class ApiError extends Error {
   }
 }
 
-let refreshPromise: Promise<string | null> | null = null;
+const REFRESHABLE_AUTH_CODES = new Set([
+  "TOKEN_EXPIRED",
+  "MISSING_TOKEN",
+  "INVALID_TOKEN",
+]);
+
 let unauthorizedHandler: (() => void) | null = null;
 
 export function setUnauthorizedHandler(handler: (() => void) | null) {
@@ -239,29 +242,23 @@ async function parseResponse<T>(response: Response): Promise<{
   return { data: body as T };
 }
 
-async function refreshAccessToken() {
-  if (!refreshPromise) {
-    refreshPromise = (async () => {
-      try {
-        const response = await fetch(apiUrl(endpoints.auth.refresh), {
-          method: "POST",
-          credentials: "include",
-          headers: { Accept: "application/json" },
-        });
-        const { data } = await parseResponse<AccessTokenResponse>(response);
-        setAccessToken(data.access_token);
-        markSessionPresent();
-        return data.access_token;
-      } catch {
-        clearAccessToken();
-        clearSessionMarker();
-        return null;
-      } finally {
-        refreshPromise = null;
-      }
-    })();
+function isRefreshableAuthError(error: ApiError) {
+  return (
+    error.status === 401 && REFRESHABLE_AUTH_CODES.has(error.code)
+  );
+}
+
+async function ensureAccessTokenForRequest() {
+  if (!needsAccessTokenRenewal()) {
+    return getAccessToken();
   }
-  return refreshPromise;
+  const renewed = await renewCredentials();
+  return renewed?.access_token ?? null;
+}
+
+export async function refreshAccessToken() {
+  const renewed = await renewCredentials();
+  return renewed?.access_token ?? null;
 }
 
 export async function apiRequest<T>(
@@ -276,6 +273,12 @@ export async function apiRequest<T>(
     headers,
     ...init
   } = options;
+
+  if (auth) {
+    await whenAuthReady();
+    await ensureAccessTokenForRequest();
+  }
+
   const token = getAccessToken();
   const requestHeaders = new Headers(headers);
 
@@ -302,7 +305,7 @@ export async function apiRequest<T>(
       auth &&
       retryOnAuthFailure &&
       error instanceof ApiError &&
-      error.status === 401
+      isRefreshableAuthError(error)
     ) {
       const refreshedToken = await refreshAccessToken();
       if (refreshedToken) {
